@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DIVO11 · IBOVESPA · CDI</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080c14;--surface:#0f1623;--surface2:#151e2e;
+  --text:#e8eef5;--muted:#7d90a8;--border:rgba(255,255,255,.06);
+  --divo:#818cf8;--ibov:#10b981;--cdi:#f59e0b;
+}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;min-height:100vh}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.title{font-size:19px;font-weight:700;letter-spacing:-.3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.title small{font-size:12px;font-weight:400;color:var(--muted)}
+.pills{display:flex;gap:6px;align-items:center}
+.pill{padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);
+      color:var(--muted);font-size:12px;cursor:pointer;transition:all .15s;line-height:1}
+.pill:hover{border-color:rgba(255,255,255,.15);color:var(--text)}
+.pill.active{background:#1e293b;border-color:rgba(255,255,255,.22);color:var(--text);font-weight:600}
+.pill.reload{border-color:rgba(129,140,248,.4);color:#818cf8}
+.chart-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:14px;position:relative}
+.hint{font-size:10px;color:var(--muted);position:absolute;top:10px;right:14px;opacity:.7}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.stat-name{font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:5px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%}
+.stat-val{font-size:26px;font-weight:700;line-height:1.1}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:5px}
+.pos{color:#10b981}.neg{color:#f43f5e}
+#status{font-size:12px;color:var(--muted);text-align:center;padding:8px 0;min-height:18px}
+.source{font-size:10px;color:var(--muted);text-align:center;padding-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="title">
+      <span class="dot" style="background:var(--divo)"></span>DIVO11
+      <span style="color:var(--muted)">·</span>
+      <span class="dot" style="background:var(--ibov)"></span>IBOVESPA
+      <span style="color:var(--muted)">·</span>
+      <span class="dot" style="background:var(--cdi)"></span>CDI
+      <small>— Retorno acumulado (base 100)</small>
+    </div>
+    <div class="pills">
+      <button class="pill" onclick="setRange(1)">1A</button>
+      <button class="pill" onclick="setRange(2)">2A</button>
+      <button class="pill" onclick="setRange(3)">3A</button>
+      <button class="pill" onclick="setRange(5)">5A</button>
+      <button class="pill active" onclick="setRange(0)">Desde início</button>
+      <button class="pill reload" onclick="forceReload()">↻</button>
+    </div>
+  </div>
+
+  <div id="status">Carregando dados…</div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-name"><span class="dot" style="background:var(--divo)"></span>DIVO11</div>
+      <div class="stat-val" id="sv-divo">—</div>
+      <div class="stat-sub" id="ss-divo">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-name"><span class="dot" style="background:var(--ibov)"></span>IBOVESPA</div>
+      <div class="stat-val" id="sv-ibov">—</div>
+      <div class="stat-sub" id="ss-ibov">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-name"><span class="dot" style="background:var(--cdi)"></span>CDI</div>
+      <div class="stat-val" id="sv-cdi">—</div>
+      <div class="stat-sub" id="ss-cdi">—</div>
+    </div>
+  </div>
+
+  <div class="chart-box">
+    <div class="hint">Ctrl + scroll = zoom &nbsp;·&nbsp; arrastar eixo Y = escala</div>
+    <div id="ch-main" style="height:480px"></div>
+  </div>
+
+  <div class="source">
+    DIVO11 &amp; IBOVESPA: Yahoo Finance (preço ajustado, máx. histórico) ·
+    CDI: Banco Central do Brasil (série 4189) ·
+    Base 100 = primeiro mês disponível do DIVO11 ·
+    <span id="last-update"></span>
+  </div>
+</div>
+
+<script>
+var _allData = { divo: null, ibov: null, cdi: null };
+var _rangeYears = 0; // 0 = desde início
+
+var CFG = {
+  responsive: true,
+  scrollZoom: true,          // habilitado; Ctrl+scroll controlado via JS abaixo
+  displayModeBar: true,
+  displaylogo: false,
+  modeBarButtonsToRemove: ["select2d","lasso2d","toImage",
+    "hoverClosestCartesian","hoverCompareCartesian"],
+  // autoScale2d e resetScale2d ficam disponíveis para controle de escala vertical
+};
+
+var LAYOUT_BASE = {
+  paper_bgcolor:"rgba(0,0,0,0)", plot_bgcolor:"rgba(0,0,0,0)",
+  font:{ family:"system-ui,sans-serif", color:"#e8eef5", size:12 },
+  xaxis:{ gridcolor:"rgba(255,255,255,.05)", linecolor:"rgba(255,255,255,.06)",
+          tickfont:{ size:11 } },
+  yaxis:{ gridcolor:"rgba(255,255,255,.05)", linecolor:"rgba(255,255,255,.06)",
+          tickfont:{ size:11 }, fixedrange:false },
+  legend:{ bgcolor:"rgba(0,0,0,0)", bordercolor:"rgba(255,255,255,.08)", borderwidth:1,
+           x:0.01, y:0.99, xanchor:"left", yanchor:"top", font:{ size:12 } },
+  margin:{ t:20, b:44, l:62, r:20 },
+  hovermode:"x unified",
+};
+
+// ── Ctrl+scroll zoom: só zooma quando Ctrl está pressionado ───────────────
+function initScrollZoom(divId) {
+  var el = document.getElementById(divId);
+  if (!el) return;
+  el.addEventListener("wheel", function(e) {
+    if (!e.ctrlKey) {
+      // sem Ctrl → bloqueia zoom do Plotly mas deixa a página rolar
+      e.stopImmediatePropagation();
+    }
+    // com Ctrl → evento chega ao Plotly normalmente → zoom
+  }, { capture: true, passive: false });
+}
+
+function getCutDate(years) {
+  if (!years) {
+    // Desde criação do DIVO11: usa o primeiro ponto disponível do DIVO11
+    if (_allData.divo && _allData.divo.length) return _allData.divo[0].date;
+    return "1900-01-01";
+  }
+  var d = new Date();
+  d.setFullYear(d.getFullYear() - years);
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-01";
+}
+
+function normalizeSeries(series, cutoff) {
+  var base = null;
+  for (var i = 0; i < series.length; i++) {
+    if (series[i].date >= cutoff) { base = series[i].value; break; }
+  }
+  if (!base) return [];
+  return series
+    .filter(function(p){ return p.date >= cutoff; })
+    .map(function(p){ return { date:p.date, value: p.value / base * 100 }; });
+}
+
+function computeStats(norm) {
+  if (!norm || norm.length < 2) return null;
+  var end = norm[norm.length-1].value;
+  var n   = norm.length - 1;
+  return { total: end - 100, ann: (Math.pow(end/100, 12/n) - 1) * 100 };
+}
+
+function fmtStat(s, elVal, elSub) {
+  if (!s) {
+    document.getElementById(elVal).textContent = "—";
+    document.getElementById(elSub).textContent = "—";
+    return;
+  }
+  var cls  = s.total >= 0 ? "pos" : "neg";
+  var sign = s.total >= 0 ? "+" : "";
+  document.getElementById(elVal).innerHTML =
+    "<span class='" + cls + "'>" + sign + s.total.toFixed(1) + "%</span>";
+  var asign = s.ann >= 0 ? "+" : "";
+  document.getElementById(elSub).innerHTML =
+    "Anualizado: <b class='" + cls + "'>" + asign + s.ann.toFixed(1) + "% a.a.</b>";
+}
+
+function render() {
+  var cutoff = getCutDate(_rangeYears);
+  var divo = _allData.divo ? normalizeSeries(_allData.divo, cutoff) : null;
+  var ibov = _allData.ibov ? normalizeSeries(_allData.ibov, cutoff) : null;
+  var cdi  = _allData.cdi  ? normalizeSeries(_allData.cdi,  cutoff) : null;
+
+  var traces = [];
+  if (divo && divo.length) traces.push({
+    type:"scatter", mode:"lines", name:"DIVO11",
+    x:divo.map(function(p){return p.date;}),
+    y:divo.map(function(p){return +p.value.toFixed(2);}),
+    line:{ color:"#818cf8", width:2.5 },
+    hovertemplate:"DIVO11: <b>%{y:.1f}</b><extra></extra>"
+  });
+  if (ibov && ibov.length) traces.push({
+    type:"scatter", mode:"lines", name:"IBOVESPA",
+    x:ibov.map(function(p){return p.date;}),
+    y:ibov.map(function(p){return +p.value.toFixed(2);}),
+    line:{ color:"#10b981", width:2.5 },
+    hovertemplate:"IBOVESPA: <b>%{y:.1f}</b><extra></extra>"
+  });
+  if (cdi && cdi.length) traces.push({
+    type:"scatter", mode:"lines", name:"CDI",
+    x:cdi.map(function(p){return p.date;}),
+    y:cdi.map(function(p){return +p.value.toFixed(2);}),
+    line:{ color:"#f59e0b", width:2, dash:"dot" },
+    hovertemplate:"CDI: <b>%{y:.1f}</b><extra></extra>"
+  });
+
+  if (!traces.length) {
+    document.getElementById("ch-main").innerHTML =
+      "<p style='color:#7d90a8;text-align:center;padding:140px 0'>Sem dados disponíveis.</p>";
+    return;
+  }
+
+  var allX = [].concat.apply([], traces.map(function(t){return t.x;}));
+  var x0 = allX.reduce(function(a,b){return a<b?a:b;});
+  var x1 = allX.reduce(function(a,b){return a>b?a:b;});
+
+  var layout = Object.assign({}, LAYOUT_BASE, {
+    yaxis: Object.assign({}, LAYOUT_BASE.yaxis, {
+      title:{ text:"Base 100 = início do período", font:{size:11,color:"#7d90a8"} },
+      hoverformat:".1f",
+    }),
+    shapes:[{ type:"line", x0:x0, x1:x1, y0:100, y1:100,
+              line:{ color:"rgba(255,255,255,.12)", width:1, dash:"dot" } }],
+  });
+
+  Plotly.newPlot("ch-main", traces, layout, CFG);
+  initScrollZoom("ch-main");
+
+  fmtStat(computeStats(divo), "sv-divo", "ss-divo");
+  fmtStat(computeStats(ibov), "sv-ibov", "ss-ibov");
+  fmtStat(computeStats(cdi),  "sv-cdi",  "ss-cdi");
+}
+
+async function loadAll() {
+  document.getElementById("status").textContent = "Carregando dados…";
+  try {
+    var r = await fetch("/api/divo-data");
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    var data = await r.json();
+    if (data.error) throw new Error(data.error);
+    _allData.divo = data.divo;
+    _allData.ibov = data.ibov;
+    _allData.cdi  = data.cdi;
+    document.getElementById("status").textContent = "";
+    document.getElementById("last-update").textContent =
+      "Atualizado: " + new Date().toLocaleString("pt-BR");
+    render();
+  } catch(e) {
+    document.getElementById("status").textContent = "Erro: " + e.message;
+  }
+}
+
+async function forceReload() {
+  _allData = { divo: null, ibov: null, cdi: null };
+  await loadAll();
+}
+
+function setRange(years) {
+  _rangeYears = years;
+  document.querySelectorAll(".pill:not(.reload)").forEach(function(b){ b.classList.remove("active"); });
+  var map = {"0":"Desde início","1":"1A","2":"2A","3":"3A","5":"5A"};
+  document.querySelectorAll(".pill:not(.reload)").forEach(function(b){
+    if (b.textContent.trim() === map[String(years)]) b.classList.add("active");
+  });
+  render();
+}
+
+loadAll();
+</script>
+</body>
+</html>

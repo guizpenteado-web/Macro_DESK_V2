@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Intermarket Dashboard</title>
+<script src="https://code.highcharts.com/stock/highstock.js"></script>
+<script src="https://code.highcharts.com/stock/modules/mouse-wheel-zoom.js"></script>
+<script src="https://code.highcharts.com/modules/accessibility.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;min-height:100vh;overflow-x:hidden}
+
+/* ── Header ── */
+.header{background:#161b22;border-bottom:1px solid #30363d;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.header h1{font-size:14px;font-weight:600;color:#e6edf3;letter-spacing:.2px;white-space:nowrap}
+.header-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* ── Controls ── */
+.controls{background:#161b22;border-bottom:1px solid #30363d;padding:8px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+
+/* Period buttons */
+.period-group{display:flex;gap:3px}
+.period-btn{background:#21262d;border:1px solid #30363d;color:#8b949e;cursor:pointer;padding:3px 9px;border-radius:4px;font-size:12px;transition:all .15s}
+.period-btn:hover{background:#30363d;color:#c9d1d9}
+.period-btn.active{background:#1f6feb;border-color:#1f6feb;color:#fff}
+
+/* Series toggles */
+.series-toggles{display:flex;gap:6px;flex-wrap:wrap}
+.toggle-btn{display:flex;align-items:center;gap:5px;background:#21262d;border:1.5px solid #30363d;border-radius:5px;cursor:pointer;padding:4px 10px;font-size:12px;color:#c9d1d9;transition:all .15s;user-select:none}
+.toggle-btn:hover{background:#2d333b}
+.toggle-btn.off{opacity:.35;text-decoration:line-through}
+.toggle-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+
+/* Mode selector */
+.mode-group{display:flex;align-items:center;gap:6px;margin-left:auto}
+.mode-group label{color:#8b949e;font-size:11px;white-space:nowrap}
+.mode-select{background:#21262d;border:1px solid #30363d;color:#c9d1d9;border-radius:4px;padding:3px 8px;font-size:12px;cursor:pointer}
+.mode-select:focus{outline:none;border-color:#1f6feb}
+
+/* Invert NTN-B */
+.invert-group{display:flex;align-items:center;gap:5px}
+.invert-group label{color:#B44FFF;font-size:11px;white-space:nowrap;cursor:pointer}
+.invert-group input{accent-color:#B44FFF;cursor:pointer}
+
+/* Action buttons */
+.btn{background:#21262d;border:1px solid #30363d;color:#c9d1d9;cursor:pointer;padding:4px 12px;border-radius:5px;font-size:12px;transition:all .15s}
+.btn:hover{background:#30363d}
+.btn.primary{background:#238636;border-color:#2ea043;color:#fff}
+.btn.primary:hover{background:#2ea043}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.warning{background:#9e6a03;border-color:#d29922;color:#fff}
+
+/* ── Navigation modes ── */
+#chart-container.pan-mode .highcharts-plot-background{cursor:grab!important}
+#chart-container.pan-mode .highcharts-plot-background:active{cursor:grabbing!important}
+#chart-container.zoom-mode .highcharts-plot-background{cursor:crosshair!important}
+
+/* ── Chart wrap ── */
+.chart-wrap{padding:12px 20px 0}
+#chart-container{width:100%;height:calc(100vh - 180px);min-height:480px;border-radius:6px;overflow:visible;position:relative}
+
+/* ── Y-axis drag handles (TradingView-style) ── */
+#yd-panel{position:absolute;right:0;display:flex;flex-direction:column;z-index:25;pointer-events:none;border-radius:0 4px 4px 0;overflow:hidden}
+.yd-handle{flex:1;width:20px;display:flex;align-items:center;justify-content:center;pointer-events:all;cursor:ns-resize;background:rgba(13,17,23,0.82);border-left:3px solid transparent;transition:background .12s;min-height:20px}
+.yd-handle:hover{background:rgba(255,255,255,0.07)}
+.yd-handle:active{background:rgba(255,255,255,0.12)}
+.yd-handle span{writing-mode:vertical-rl;transform:rotate(180deg);font-size:8px;font-weight:700;letter-spacing:.6px;opacity:.65;user-select:none}
+.yd-handle:hover span{opacity:1}
+
+/* ── Status bar ── */
+.status-bar{padding:7px 20px;display:flex;gap:16px;flex-wrap:wrap;border-top:1px solid #21262d}
+.status-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#8b949e}
+.status-dot{width:7px;height:7px;border-radius:50%}
+.status-dot.ok{background:#2ea043}
+.status-dot.empty{background:#f85149}
+.status-dot.loading{background:#e3b341;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── Spinner ── */
+.spinner-overlay{position:fixed;inset:0;background:rgba(13,17,23,.85);display:none;align-items:center;justify-content:center;z-index:1000;flex-direction:column;gap:14px}
+.spinner-overlay.show{display:flex}
+.spinner{width:36px;height:36px;border:3px solid #30363d;border-top-color:#1f6feb;border-radius:50%;animation:spin .7s linear infinite}
+.spinner-msg{color:#c9d1d9;font-size:14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Toast ── */
+#toast{position:fixed;bottom:18px;right:18px;background:#1c2128;border:1px solid #30363d;color:#c9d1d9;border-radius:7px;padding:9px 16px;font-size:12px;opacity:0;transition:opacity .3s;z-index:2000;pointer-events:none;max-width:340px}
+#toast.show{opacity:1}
+#toast.error{border-color:#f85149;color:#ff7b72}
+#toast.success{border-color:#2ea043;color:#56d364}
+</style>
+</head>
+<body>
+
+<div class="spinner-overlay" id="spinner">
+  <div class="spinner"></div>
+  <span class="spinner-msg" id="spinner-msg">Carregando...</span>
+</div>
+<div id="toast"></div>
+
+<!-- Header -->
+<div class="header">
+  <h1>Intermarket Dashboard &mdash; IBOVESPA &middot; 6L COT &middot; NTN-B 2035 &middot; Fluxo &middot; DI1F2033</h1>
+  <div class="header-right">
+    <button class="btn primary" id="btn-collect" onclick="collectAll()">&#8635; Atualizar Dados</button>
+    <button class="btn" onclick="collectSingle('ibov')">IBOV</button>
+    <button class="btn" onclick="collectSingle('cot')">COT</button>
+    <button class="btn" onclick="collectSingle('ntnb35')">NTN-B</button>
+    <button class="btn" onclick="collectSingle('foreign_flow')">Fluxo</button>
+    <button class="btn" onclick="collectSingle('di_rates')">DI Rates</button>
+    <button class="btn" onclick="collectSingle('br_indices')">Índices B3</button>
+  </div>
+</div>
+
+<!-- Controls -->
+<div class="controls">
+  <!-- Period -->
+  <div class="period-group" id="period-group">
+    <button class="period-btn" data-months="6">6M</button>
+    <button class="period-btn" data-months="12">1A</button>
+    <button class="period-btn" data-months="24">2A</button>
+    <button class="period-btn" data-months="36">3A</button>
+    <button class="period-btn" data-months="60">5A</button>
+    <button class="period-btn active" data-months="0">Tudo</button>
+  </div>
+  <!-- Series toggles -->
+  <div class="series-toggles">
+    <button class="toggle-btn" id="tog-ibov" onclick="toggleSeries('ibov')">
+      <span class="toggle-dot" style="background:#00BFFF"></span>IBOVESPA
+    </button>
+    <button class="toggle-btn off" id="tog-cot" onclick="toggleSeries('cot')">
+      <span class="toggle-dot" style="background:#E0E0E0"></span>6L COT
+    </button>
+    <button class="toggle-btn" id="tog-ntnb" onclick="toggleSeries('ntnb')">
+      <span class="toggle-dot" style="background:#B44FFF"></span>NTN-B 2035 PU
+    </button>
+    <button class="toggle-btn" id="tog-flow" onclick="toggleSeries('flow')">
+      <span class="toggle-dot" style="background:#FF4444"></span>Fluxo Estrang.
+    </button>
+    <button class="toggle-btn off" id="tog-di2033" onclick="toggleSeries('di2033')">
+      <span class="toggle-dot" style="background:#F59E0B"></span>DI1F2033
+    </button>
+    <span style="color:#30363d;font-size:14px;margin:0 2px">|</span>
+    <button class="toggle-btn off" id="tog-smal11" onclick="toggleSeries('smal11')">
+      <span class="toggle-dot" style="background:#FACC15"></span>SMAL11
+    </button>
+    <button class="toggle-btn off" id="tog-usdbrl" onclick="toggleSeries('usdbrl')">
+      <span class="toggle-dot" style="background:#22C55E"></span>USD/BRL
+    </button>
+  </div>
+
+  <!-- Mode selector -->
+  <div class="mode-group">
+    <label>Escala:</label>
+    <select class="mode-select" id="mode-select" onchange="rebuildChart()">
+      <option value="minmax">Min-Max por série (0–100%)</option>
+      <option value="pct">% desde início do período</option>
+      <option value="absolute" selected>Valores absolutos (4 eixos)</option>
+    </select>
+  </div>
+
+  <!-- Zoom reset -->
+  <button class="btn warning" id="btn-reset-zoom" style="display:none" onclick="resetZoom()">&#8617; Reset Zoom</button>
+</div>
+
+
+<!-- Chart -->
+<div class="chart-wrap">
+  <div id="chart-container"></div>
+</div>
+
+<!-- Status bar -->
+<div class="status-bar">
+  <span class="status-item"><span class="status-dot loading" id="dot-ibov"></span><span id="lbl-ibov">IBOV: —</span></span>
+  <span class="status-item"><span class="status-dot loading" id="dot-cot"></span><span id="lbl-cot">COT: —</span></span>
+  <span class="status-item"><span class="status-dot loading" id="dot-ntnb"></span><span id="lbl-ntnb">NTN-B: —</span></span>
+  <span class="status-item"><span class="status-dot loading" id="dot-flow"></span><span id="lbl-flow">Fluxo: —</span></span>
+  <span class="status-item"><span class="status-dot loading" id="dot-di"></span><span id="lbl-di">DI: —</span></span>
+  <span class="status-item"><span class="status-dot loading" id="dot-bri"></span><span id="lbl-bri">ETFs B3: —</span></span>
+  <span class="status-item" id="lbl-mode" style="color:#484f58"></span>
+  <span class="status-item" id="lbl-last" style="margin-left:auto;color:#484f58"></span>
+</div>
+
+<script>
+// ────────────────────────────────────────────────────────────────
+// Config
+// ────────────────────────────────────────────────────────────────
+const API = "";
+const META = {
+  ibov:   { label: "IBOVESPA",          color: "#00BFFF", unit: " pts",       axisId: "ax-ibov"    },
+  cot:    { label: "6L COT (Asset Mgr)",color: "#E0E0E0", unit: " contratos", axisId: "ax-cot"     },
+  ntnb:   { label: "NTN-B 2035 PU",     color: "#B44FFF", unit: " R$",        axisId: "ax-ntnb"    },
+  flow:   { label: "Fluxo Estrang.",     color: "#FF4444", unit: " R$ mi",     axisId: "ax-flow"    },
+  di2033: { label: "DI1F2033",          color: "#F59E0B", unit: "% a.a.",     axisId: "ax-di"      },
+  smal11: { label: "SMAL11 (Small Cap)", color: "#FACC15", unit: " R$",        axisId: "ax-etfs"    },
+  usdbrl: { label: "USD/BRL",            color: "#22C55E", unit: " R$",        axisId: "ax-usdbrl"  },
+};
+
+let rawData = { ibov: [], cot: [], ntnb: [], flow: [], di2033: [], smal11: [], usdbrl: [] };
+let visible  = { ibov: true, cot: false, ntnb: true, flow: true, di2033: false, smal11: false, usdbrl: false };
+let chart    = null;
+let currentMonths = 0;
+
+// ────────────────────────────────────────────────────────────────
+// Normalizations
+// ────────────────────────────────────────────────────────────────
+function toTs(s){ const [y,m,d]=s.split("-").map(Number); return Date.UTC(y,m-1,d); }
+
+function applyInvert(data, _key){ return data; }
+
+function normMinMax(data){
+  if(!data||!data.length) return [];
+  const vals = data.map(d=>d.value);
+  const mn=Math.min(...vals), mx=Math.max(...vals), rng=mx-mn;
+  if(rng===0) return data.map(d=>[toTs(d.date), 50]);
+  return data.map(d=>[toTs(d.date), +((d.value-mn)/rng*100).toFixed(4)]);
+}
+
+function normPct(data){
+  if(!data||!data.length) return [];
+  const first=data[0].value;
+  if(!first||first===0) return data.map(d=>[toTs(d.date),0]);
+  return data.map(d=>[toTs(d.date), +((d.value-first)/Math.abs(first)*100).toFixed(4)]);
+}
+
+function normRaw(data){
+  return (data||[]).map(d=>[toTs(d.date),d.value]);
+}
+
+function applyNorm(data, key){
+  const d2 = applyInvert(data, key);
+  const mode = document.getElementById("mode-select").value;
+  if(mode==="minmax")   return normMinMax(d2);
+  if(mode==="pct")      return normPct(d2);
+  return normRaw(d2);
+}
+
+// ────────────────────────────────────────────────────────────────
+// Y-axis definitions — sempre 4 eixos por série
+// ────────────────────────────────────────────────────────────────
+function buildAxes(mode){
+  const base = {
+    gridLineColor:"#21262d", lineColor:"#30363d", tickColor:"#30363d",
+    minPadding:0.10, maxPadding:0.10, startOnTick:false, endOnTick:false,
+    top:"0%", height:"100%",
+  };
+  const isAbs = mode==="absolute";
+  const defs = [
+    { key:"ibov",    color:"#00BFFF", label:"IBOV",    opp:false, off:0,           grid:true  },
+    { key:"cot",     color:"#E0E0E0", label:"COT",     opp:true,  off:0,          grid:false },
+    { key:"ntnb",    color:"#B44FFF", label:"NTN-B",   opp:false, off:0,          grid:false },
+    { key:"flow",    color:"#FF4444", label:"FLUXO",   opp:true,  off:isAbs?40:0, grid:false },
+    { key:"di2033",  color:"#F59E0B", label:"DI % aa", opp:true,  off:isAbs?80:0, grid:false },
+    { key:"smal11",  color:"#FACC15", label:"ETFs B3", opp:false, off:0,          grid:false },
+    { key:"usdbrl",  color:"#22C55E", label:"USD/BRL", opp:true,  off:isAbs?120:0,grid:false },
+  ];
+  // ax-etfs is shared by blvb11/bhyb11/divo11/smal11 — only create it once
+  const seen = new Set();
+  const filtered = defs.filter(d => {
+    const aid = META[d.key]?.axisId || d.key;
+    if(seen.has(aid)) return false;
+    seen.add(aid);
+    return true;
+  });
+  return filtered.map(d=>({
+    ...base,
+    id: META[d.key].axisId,
+    gridLineWidth: d.grid ? 1 : 0,
+    opposite: d.opp,
+    offset: d.off,
+    title: { text:null },
+    labels: isAbs && visible[d.key] && (d.key === "ibov" || d.opp)
+      ? { enabled:true, style:{color:d.color,fontSize:"11px"}, formatter(){ return Highcharts.numberFormat(this.value,0,",","."); } }
+      : { enabled:false },
+    min: mode==="minmax" ? 0   : undefined,
+    max: mode==="minmax" ? 100 : undefined,
+    plotLines: (mode==="pct" && d.grid) ? [{value:0,color:"#484f58",width:1,dashStyle:"Dot"}] : [],
+  }));
+}
+
+function getAxisId(mode, key){
+  return META[key].axisId; // sempre eixo dedicado por série
+}
+
+// ────────────────────────────────────────────────────────────────
+// Tooltip formatter
+// ────────────────────────────────────────────────────────────────
+function makeTooltipFormatter(mode){
+  return function(){
+    let s = `<span style="color:#8b949e;font-size:11px">${Highcharts.dateFormat("%d/%m/%Y",this.x)}</span><br>`;
+    this.points.forEach(p=>{
+      const key = p.series.options.id;
+      const raw = rawData[key];
+      // Find actual value closest to this date
+      let actual = p.y;
+      if(raw && raw.length && mode!=="absolute"){
+        const ts = p.x;
+        const closest = raw.reduce((a,b)=>Math.abs(toTs(b.date)-ts)<Math.abs(toTs(a.date)-ts)?b:a);
+        actual = closest.value;
+      }
+      const meta = META[key] || {};
+      const col  = meta.color || p.series.color;
+      const unit = meta.unit  || "";
+      const disp = mode==="absolute"
+        ? Highcharts.numberFormat(actual,2,",",".")
+        : (mode==="minmax"
+            ? Highcharts.numberFormat(p.y,2,",",".")+"% (abs: "+Highcharts.numberFormat(actual,2,",",".")+")"
+            : Highcharts.numberFormat(p.y,2,",",".")+"%");
+      s += `<span style="color:${col}">&#9679;</span> <b>${meta.label||p.series.name}</b>: ${disp}${mode==="absolute"?unit:""}<br>`;
+    });
+    return s;
+  };
+}
+
+// ────────────────────────────────────────────────────────────────
+// Build/rebuild chart
+// ────────────────────────────────────────────────────────────────
+function rebuildChart(){
+  const mode = document.getElementById("mode-select").value;
+  const keys = ["ibov","cot","ntnb","flow","di2033","smal11","usdbrl"];
+
+  document.getElementById("lbl-mode").textContent =
+    mode==="minmax" ? "Escala: Min-Max (0-100%)" :
+    mode==="pct"    ? "Escala: % variação" : "Escala: valores absolutos";
+
+  const axes   = buildAxes(mode);
+  const series = keys.map(k=>({
+    id: k,
+    name: META[k].label,
+    color: META[k].color,
+    yAxis: getAxisId(mode, k),
+    data: applyNorm(rawData[k], k),
+    visible: visible[k],
+    lineWidth: k==="ibov" ? 2 : 1.5,
+    dashStyle: "Solid",
+    marker:{ enabled:false, states:{hover:{enabled:true,radius:3}} },
+    states:{ hover:{ lineWidthPlus:0 } },
+    tooltip:{ valueDecimals:2 },
+    lastPrice:{
+      enabled: mode==="absolute" && visible[k],
+      label:{
+        enabled:true,
+        backgroundColor: META[k].color,
+        style:{ color:"#000", fontSize:"10px", fontWeight:"700" },
+        padding:3, borderRadius:2,
+      },
+    },
+  }));
+
+  if(chart){ chart.destroy(); chart=null; }
+
+  document.getElementById("chart-container").className = "pan-mode";
+
+  chart = Highcharts.stockChart("chart-container",{
+    chart:{
+      backgroundColor:"#161b22",
+      style:{ fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" },
+      animation:false,
+      marginRight: 55,
+      zooming:{
+        type: null,
+        mouseWheel:{ enabled:true, type:"x" },
+        resetButton:{ theme:{ display:"none" } },
+      },
+      panning:{ enabled:true, type:"x" },
+    },
+    rangeSelector:{ enabled:false },
+    navigator:{
+      enabled:true, height:46,
+      outlineColor:"#30363d",
+      handles:{backgroundColor:"#30363d",borderColor:"#8b949e"},
+      maskFill:"rgba(31,111,235,0.12)",
+      series:{color:"#1f6feb",lineWidth:1},
+      xAxis:{labels:{style:{color:"#8b949e",fontSize:"10px"}}},
+    },
+    scrollbar:{ enabled:false },
+    xAxis:{
+      type:"datetime",
+      lineColor:"#30363d", tickColor:"#30363d",
+      labels:{style:{color:"#8b949e"},formatter(){return Highcharts.dateFormat("%b '%y",this.value)}},
+      crosshair:{color:"rgba(255,255,255,0.12)",dashStyle:"Dot",snap:false},
+      gridLineColor:"#1c2229", gridLineWidth:0.5,
+    },
+    yAxis: axes,
+    tooltip:{
+      backgroundColor:"#1c2128", borderColor:"#30363d", borderRadius:7,
+      shadow:false, shared:true, split:false,
+      style:{color:"#c9d1d9",fontSize:"12px"},
+      useHTML:true,
+      formatter: makeTooltipFormatter(mode),
+    },
+    legend:{ enabled:false },
+    plotOptions:{
+      series:{
+        animation:false, turboThreshold:0,
+        cursor:"crosshair",
+        dataGrouping:{ enabled:false },
+      },
+    },
+    series: series,
+    credits:{ enabled:false },
+    exporting:{ enabled:false },
+  });
+
+  addDragHandles();
+
+  // Para todos os períodos: mostra os últimos 50% dos dados no viewport
+  // para que clicar+arrastar funcione imediatamente.
+  // O navigator mostra o período completo com a seleção indicada.
+  applyViewport();
+}
+
+function resetZoom(){
+  if(chart){ chart.zoomOut(); }
+  document.getElementById("btn-reset-zoom").style.display="none";
+}
+
+// ── Viewport: 50% de dados visíveis + margem fixa à direita (estilo MT5 Chart Shift)
+function applyViewport(){
+  if(!chart) return;
+  const xMax = chart.xAxis[0].dataMax;
+  const xMin = chart.xAxis[0].dataMin;
+  if(!xMax || !xMin) return;
+  const fullSpan = xMax - xMin;
+  const viewSpan = fullSpan * 0.5;
+  const MS_DAY   = 86400000;
+  // Margem à direita: 24% do viewport, entre 45 e 210 dias (estilo Sharketo)
+  const rightSpace = Math.min(Math.max(viewSpan * 0.24, 45 * MS_DAY), 210 * MS_DAY);
+  const newMax = xMax + rightSpace;
+  // update() define o max do eixo no nível de configuração (permite espaço além do dataMax)
+  chart.xAxis[0].update({ max: newMax }, false);
+  chart.xAxis[0].setExtremes(xMax - viewSpan, newMax, true, false);
+}
+
+// ────────────────────────────────────────────────────────────────
+// Y-axis drag handles (TradingView-style, barra direita)
+// ────────────────────────────────────────────────────────────────
+let ydDrag = null;
+
+document.addEventListener("mousemove", e => {
+  if(!ydDrag || !chart) return;
+  const dy = e.clientY - ydDrag.startY;
+  const range = Math.abs(ydDrag.startMax - ydDrag.startMin) || 1;
+  const center = (ydDrag.startMin + ydDrag.startMax) / 2;
+  // arrastar para baixo = expande (factor > 1), para cima = comprime (factor < 1)
+  const factor = Math.pow(1.004, dy);
+  const nr = range * factor;
+  ydDrag.axis.setExtremes(center - nr / 2, center + nr / 2, true, false);
+});
+
+document.addEventListener("mouseup", () => { ydDrag = null; });
+
+function addDragHandles(){
+  const old = document.getElementById("yd-panel");
+  if(old) old.remove();
+  if(!chart) return;
+
+  const container = document.getElementById("chart-container");
+  const panel = document.createElement("div");
+  panel.id = "yd-panel";
+  panel.style.cssText =
+    "position:absolute;right:0;width:20px;z-index:25;pointer-events:none;display:flex;flex-direction:column;" +
+    "top:"  + chart.plotTop    + "px;" +
+    "height:" + chart.plotHeight + "px;";
+
+  const keys = ["ibov","cot","ntnb","flow","di2033","smal11","usdbrl"];
+  keys.forEach(key => {
+    const meta = META[key];
+    const axis = chart.get(meta.axisId);
+
+    const h = document.createElement("div");
+    h.className = "yd-handle";
+    h.style.borderLeftColor = meta.color;
+    h.title = meta.label + "\nArrastar ↕ para escalar\nDuplo-clique → auto";
+
+    const lbl = document.createElement("span");
+    lbl.style.color = meta.color;
+    lbl.textContent = meta.label.split(" ")[0].slice(0, 4).toUpperCase();
+    h.appendChild(lbl);
+
+    if(axis){
+      h.addEventListener("mousedown", e => {
+        const ex = axis.getExtremes();
+        const mn = ex.userMin ?? ex.dataMin;
+        const mx = ex.userMax ?? ex.dataMax;
+        ydDrag = { axis, startY: e.clientY, startMin: mn ?? -50, startMax: mx ?? 50 };
+        e.preventDefault();
+        e.stopPropagation();
+      });
+      h.addEventListener("dblclick", () => {
+        axis.setExtremes(null, null, true, true);
+      });
+    }
+
+    panel.appendChild(h);
+  });
+
+  container.appendChild(panel);
+}
+
+// ────────────────────────────────────────────────────────────────
+// Data fetch & load
+// ────────────────────────────────────────────────────────────────
+function getFromDate(months){
+  if(months===0) return "2005-01-01";
+  const d=new Date(); d.setMonth(d.getMonth()-months);
+  return d.toISOString().slice(0,10);
+}
+
+async function fetchAll(months){
+  const from=getFromDate(months), to=new Date().toISOString().slice(0,10);
+  const r=await fetch(`${API}/api/all?from=${from}&to=${to}`);
+  if(!r.ok) throw new Error(`API ${r.status}`);
+  return r.json();
+}
+
+async function loadAndDraw(months){
+  showSpinner("Buscando dados...");
+  try{
+    const d=await fetchAll(months);
+    rawData.ibov   = d.ibov||[];
+    rawData.cot    = d.cot ||[];
+    rawData.ntnb   = d.ntnb35||[];
+    rawData.flow   = d.foreign_flow||[];
+    rawData.di2033 = d.di2033||[];
+    rawData.smal11 = d.smal11 ||[];
+    rawData.usdbrl = d.usdbrl ||[];
+    rebuildChart();
+    await refreshStatus();
+    const tot=rawData.ibov.length+rawData.cot.length+rawData.ntnb.length+rawData.flow.length+rawData.di2033.length;
+    toast(`${tot.toLocaleString("pt-BR")} pontos carregados`,"success");
+  }catch(e){
+    console.error(e); toast("Erro: "+e.message,"error");
+  }finally{ hideSpinner(); }
+}
+
+// ────────────────────────────────────────────────────────────────
+// Series toggle
+// ────────────────────────────────────────────────────────────────
+function toggleSeries(key){
+  visible[key]=!visible[key];
+  document.getElementById("tog-"+key).classList.toggle("off",!visible[key]);
+  if(chart){
+    const s=chart.get(key);
+    if(s) s.setVisible(visible[key]);
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// Status bar
+// ────────────────────────────────────────────────────────────────
+async function refreshStatus(){
+  try{
+    const r=await fetch(`${API}/api/status`);
+    const d=await r.json();
+    const map=[
+      ["ibov","dot-ibov","lbl-ibov",`IBOV: ${d.ibov.rows} pts`],
+      ["cot","dot-cot","lbl-cot",`COT: ${d.cot.rows} sem.`],
+      ["ntnb35","dot-ntnb","lbl-ntnb",`NTN-B: ${d.ntnb35.rows} pts`],
+      ["foreign_flow","dot-flow","lbl-flow",`Fluxo: ${d.foreign_flow.rows} pts`],
+      ["di_rates","dot-di","lbl-di",`DI: ${d.di_rates?.rows||0} pts`],
+      ["br_indices","dot-bri","lbl-bri",`Índices B3: ${d.br_indices?.rows||0} pts`],
+    ];
+    map.forEach(([k,dotId,lblId,lbl])=>{
+      const rows=d[k]?.rows??0;
+      document.getElementById(dotId).className="status-dot "+(rows>0?"ok":"empty");
+      document.getElementById(lblId).textContent=lbl;
+    });
+    const now=new Date();
+    document.getElementById("lbl-last").textContent=
+      `Atualizado: ${now.toLocaleDateString("pt-BR")} ${now.toLocaleTimeString("pt-BR")}`;
+  }catch(e){ console.warn("status:",e); }
+}
+
+// ────────────────────────────────────────────────────────────────
+// Collection
+// ────────────────────────────────────────────────────────────────
+async function collectAll(){
+  const btn=document.getElementById("btn-collect"); btn.disabled=true;
+  showSpinner("Coletando todos os dados (pode demorar alguns minutos)...");
+  try{
+    const r=await fetch(`${API}/api/collect/trigger?series=all`,{method:"POST"});
+    const d=await r.json();
+    const rows=Object.values(d).reduce((s,v)=>s+(v.rows||0),0);
+    toast(`Coleta concluída: ${rows} registros`,"success");
+    await loadAndDraw(currentMonths);
+  }catch(e){ toast("Erro na coleta: "+e.message,"error"); }
+  finally{ btn.disabled=false; hideSpinner(); }
+}
+
+async function collectSingle(series){
+  showSpinner(`Coletando ${series}...`);
+  try{
+    const r=await fetch(`${API}/api/collect/trigger?series=${series}`,{method:"POST"});
+    const d=await r.json();
+    const res=d[series]||d[Object.keys(d)[0]];
+    if(res?.status==="ok"||res?.status==="partial"){
+      toast(`${series}: ${res.rows} registros`,"success");
+      await loadAndDraw(currentMonths);
+    } else { toast(`${series}: ${res?.message||"sem dados"}`,"error"); }
+  }catch(e){ toast("Erro: "+e.message,"error"); }
+  finally{ hideSpinner(); }
+}
+
+// ────────────────────────────────────────────────────────────────
+// Period selector
+// ────────────────────────────────────────────────────────────────
+document.getElementById("period-group").addEventListener("click",function(e){
+  const btn=e.target.closest(".period-btn"); if(!btn) return;
+  document.querySelectorAll(".period-btn").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+  currentMonths=parseInt(btn.dataset.months);
+  loadAndDraw(currentMonths);
+});
+
+// ────────────────────────────────────────────────────────────────
+// UI helpers
+// ────────────────────────────────────────────────────────────────
+function showSpinner(msg){ document.getElementById("spinner-msg").textContent=msg||"Carregando..."; document.getElementById("spinner").classList.add("show"); }
+function hideSpinner(){ document.getElementById("spinner").classList.remove("show"); }
+function toast(msg,type="info"){
+  const el=document.getElementById("toast");
+  el.textContent=msg; el.className="show "+(type||"");
+  clearTimeout(el._t); el._t=setTimeout(()=>{el.className="";},4000);
+}
+
+// ────────────────────────────────────────────────────────────────
+// Init
+// ────────────────────────────────────────────────────────────────
+(async function init(){
+  await refreshStatus();
+  await loadAndDraw(currentMonths);
+})();
+</script>
+</body>
+</html>

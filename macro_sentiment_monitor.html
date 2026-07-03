@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Macro Sentiment Monitor v4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080C12;--card:#0E1420;--card2:#131B28;--border:#1E2A3A;
+  --gold:#E8A020;--cyan:#20C8D8;--green:#28C870;--red:#E03848;
+  --purple:#A848E0;--text:#C8D8E8;--text2:#7A8A9A;--text3:#4A5A6A;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:13px;line-height:1.4;min-height:100vh}
+.mono{font-family:'JetBrains Mono',monospace}
+
+/* HEADER */
+.hdr{background:var(--card);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100}
+.hdr-title{font-size:14px;font-weight:700;color:var(--gold);letter-spacing:.5px}
+.hdr-sub{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+.hdr-score{margin-left:auto;display:flex;align-items:center;gap:12px}
+.hdr-score-num{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700}
+.hdr-score-bar-wrap{width:100px;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.hdr-score-bar{height:100%;border-radius:3px;transition:width .3s,background .3s}
+
+/* TABS */
+.tabs{display:flex;background:var(--card);border-bottom:1px solid var(--border);padding:0 20px;overflow-x:auto}
+.tab{padding:9px 14px;cursor:pointer;font-size:12px;font-weight:500;color:var(--text2);border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s,border-color .15s}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+.tab:hover:not(.active){color:var(--text)}
+
+/* PANES */
+.pane{display:none;padding:14px 20px}
+.pane.active{display:block}
+
+/* STAT CARDS ROW */
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:11px 14px}
+.stat-card-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin-bottom:4px}
+.stat-card-val{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700}
+.stat-card-sub{font-size:10px;color:var(--text2);margin-top:2px}
+
+/* BLOCK */
+.block{background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden}
+.block-hdr{padding:9px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;user-select:none}
+.block-hdr:hover{background:var(--card2)}
+.block-arr{font-size:9px;color:var(--text3);transition:transform .2s;flex-shrink:0}
+.block.open .block-arr{transform:rotate(90deg)}
+.block-title{font-size:12px;font-weight:600;flex:1}
+.block-sc{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;padding:2px 8px;border-radius:4px;background:var(--card2)}
+.block-cnt{font-size:10px;color:var(--text3)}
+.block-body{display:none;border-top:1px solid var(--border)}
+.block.open .block-body{display:block}
+
+/* IND ROW */
+.ind-row{display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.ind-row:last-child{border-bottom:none}
+.ind-row:hover{background:rgba(255,255,255,.018)}
+.ind-info{flex:1;min-width:160px}
+.ind-name{font-size:12px;color:var(--text)}
+.ind-meta{display:flex;align-items:center;gap:5px;margin-top:2px}
+.wbadge{font-size:9px;padding:1px 4px;border-radius:3px;font-weight:600;letter-spacing:.3px}
+.w3{background:rgba(232,160,32,.15);color:var(--gold)}
+.w2{background:rgba(32,200,216,.1);color:var(--cyan)}
+.w1{background:rgba(122,138,154,.1);color:var(--text2)}
+.crit-tag{font-size:9px;padding:1px 4px;border-radius:3px;background:rgba(224,56,72,.15);color:var(--red);font-weight:700}
+
+/* CHIPS */
+.chips{display:flex;gap:3px}
+.chip{padding:3px 6px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .12s;white-space:nowrap;background:none}
+.chip-on{border-color:var(--green);color:var(--green)}.chip-on.act{background:var(--green);color:#000}
+.chip-neu{border-color:var(--text2);color:var(--text2)}.chip-neu.act{background:var(--text2);color:#000}
+.chip-off{border-color:var(--red);color:var(--red)}.chip-off.act{background:var(--red);color:#fff}
+.chip-sd{border-color:var(--text3);color:var(--text3)}.chip-sd.act{background:var(--text3);color:var(--text)}
+.chip-up{border-color:var(--green);color:var(--green)}.chip-up.act{background:var(--green);color:#000}
+.chip-flat{border-color:var(--text2);color:var(--text2)}.chip-flat.act{background:var(--text2);color:#000}
+.chip-dn{border-color:var(--red);color:var(--red)}.chip-dn.act{background:var(--red);color:#fff}
+
+/* CONVICTION */
+.conv-wrap{display:flex;align-items:center;gap:5px;width:105px}
+.conv-val{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;width:16px;text-align:center;color:var(--gold)}
+input[type=range].cslider{width:76px;height:4px;-webkit-appearance:none;appearance:none;background:var(--border);border-radius:2px;outline:none;cursor:pointer}
+input[type=range].cslider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:11px;height:11px;border-radius:50%;background:var(--gold);cursor:pointer}
+
+/* NOTE BTN */
+.note-btn{width:22px;height:22px;border-radius:4px;background:none;border:1px solid var(--border);color:var(--text3);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .12s}
+.note-btn:hover{border-color:var(--gold);color:var(--gold)}
+.note-btn.has{border-color:var(--cyan);color:var(--cyan)}
+
+/* CHECKLIST */
+.cl-sec{margin-bottom:14px}
+.cl-sec-lbl{font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.cl-item{display:flex;align-items:center;gap:8px;padding:7px 12px;background:var(--card);border:1px solid var(--border);border-radius:6px;margin-bottom:5px;cursor:pointer;transition:border-color .12s}
+.cl-item:hover{border-color:var(--text3)}
+.cl-item.chk{border-color:var(--green)}
+.cl-item.blk{border-color:var(--red);background:rgba(224,56,72,.04)}
+.cl-box{width:15px;height:15px;border:2px solid var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;transition:all .12s}
+.cl-item.chk .cl-box{background:var(--green);border-color:var(--green);color:#000}
+.cl-text{flex:1;font-size:12px}
+.cl-crit{font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(224,56,72,.2);color:var(--red);font-weight:700}
+.blocker-warn{padding:9px 13px;background:rgba(224,56,72,.09);border:1px solid var(--red);border-radius:6px;margin-bottom:10px;font-size:12px;color:var(--red)}
+
+/* RISK */
+.risk-item{display:flex;align-items:center;gap:10px;padding:9px 13px;background:var(--card);border:1px solid var(--border);border-radius:6px;margin-bottom:6px}
+.risk-sc{width:34px;height:34px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;flex-shrink:0}
+.risk-hi{background:rgba(224,56,72,.2);color:var(--red)}
+.risk-mid{background:rgba(232,160,32,.15);color:var(--gold)}
+.risk-lo{background:rgba(40,200,112,.1);color:var(--green)}
+.risk-info{flex:1}
+.risk-name{font-size:12px;font-weight:500}
+.risk-desc{font-size:10px;color:var(--text2);margin-top:1px}
+.risk-pxi{font-size:10px;color:var(--text3)}
+.risk-ctrl{display:flex;flex-direction:column;gap:3px;align-items:flex-end}
+.risk-row{display:flex;align-items:center;gap:4px}
+.risk-lbl{font-size:9px;color:var(--text3)}
+.risk-inp{width:30px;background:var(--card2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;padding:2px 4px;text-align:center}
+
+/* HISTORICO */
+.hist-item{display:flex;align-items:center;gap:10px;padding:7px 13px;background:var(--card);border:1px solid var(--border);border-radius:6px;margin-bottom:5px}
+.hist-date{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text2);width:80px;flex-shrink:0}
+.hist-sc{font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:700;width:44px}
+.hist-note{flex:1;font-size:11px;color:var(--text2)}
+.hist-del{width:20px;height:20px;border-radius:3px;background:none;border:1px solid var(--border);color:var(--text3);cursor:pointer;font-size:10px}
+.hist-del:hover{border-color:var(--red);color:var(--red)}
+
+/* INST TABLES */
+.itbl{width:100%;border-collapse:collapse;margin-bottom:18px}
+.itbl th{text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);padding:5px 9px;border-bottom:1px solid var(--border)}
+.itbl td{padding:7px 9px;border-bottom:1px solid var(--border);font-size:12px}
+.itbl tr:hover td{background:rgba(255,255,255,.018)}
+.vbull{color:var(--green);font-weight:600}
+.vbear{color:var(--red);font-weight:600}
+.vneu{color:var(--text2)}
+
+/* EXPORT */
+.exp-box{background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:12px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.6;white-space:pre-wrap;color:var(--text);min-height:200px;max-height:60vh;overflow-y:auto}
+
+/* MODAL */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:none;align-items:center;justify-content:center}
+.modal-ov.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;width:360px;max-width:95vw}
+.modal-title{font-size:13px;font-weight:600;margin-bottom:10px;color:var(--gold)}
+.modal textarea{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Inter',sans-serif;font-size:12px;padding:9px;resize:vertical;min-height:75px;outline:none}
+.modal textarea:focus{border-color:var(--gold)}
+.modal-acts{display:flex;justify-content:flex-end;gap:7px;margin-top:10px}
+
+/* BUTTONS */
+.btn{padding:7px 14px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-size:12px;font-weight:500;transition:all .12s}
+.btn:hover{border-color:var(--gold);color:var(--gold)}
+.btn-prim{background:var(--gold);border-color:var(--gold);color:#000}
+.btn-prim:hover{background:#d49020;border-color:#d49020;color:#000}
+.btn-sm{padding:4px 9px;font-size:11px}
+.btn-danger{border-color:var(--red);color:var(--red)}
+.btn-danger:hover{background:var(--red);color:#fff}
+
+/* UTILS */
+.flex{display:flex}.gap8{gap:8px}.gap12{gap:12px}
+.mt12{margin-top:12px}.mt16{margin-top:16px}
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.sec-title{font-size:13px;font-weight:600;color:var(--text)}
+.txt-sm{font-size:11px}.txt-xs{font-size:10px}
+.txt-muted{color:var(--text2)}.txt-gold{color:var(--gold)}
+.txt-green{color:var(--green)}.txt-red{color:var(--red)}.txt-cyan{color:var(--cyan)}
+.divider{height:1px;background:var(--border);margin:12px 0}
+.info-panel{background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:9px 13px;margin-bottom:12px;font-size:11px;color:var(--text2)}
+.milestone-item{display:flex;gap:10px;padding:7px 12px;background:var(--card);border:1px solid var(--border);border-radius:6px;margin-bottom:5px}
+
+@media(max-width:600px){
+  .stat-row{grid-template-columns:1fr 1fr}
+  .hdr{flex-wrap:wrap}
+  .ind-row{gap:5px}
+  .conv-wrap{width:88px}
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <div class="hdr-title">MACRO SENTIMENT MONITOR v4</div>
+    <div class="hdr-sub" id="hdr-saved">Não salvo</div>
+  </div>
+  <div class="hdr-score">
+    <div>
+      <div class="txt-xs txt-muted">SCORE GLOBAL</div>
+      <div class="hdr-score-bar-wrap" style="margin-top:4px">
+        <div class="hdr-score-bar" id="hdr-bar"></div>
+      </div>
+    </div>
+    <div class="hdr-score-num" id="hdr-sc">—</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('dashboard')">Dashboard</div>
+  <div class="tab" onclick="switchTab('checklist')">Checklist</div>
+  <div class="tab" onclick="switchTab('historico')">Histórico</div>
+  <div class="tab" onclick="switchTab('riscos')">Riscos</div>
+  <div class="tab" onclick="switchTab('institucional')">Visão Institucional</div>
+  <div class="tab" onclick="switchTab('exportar')">Exportar</div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="pane-dashboard" class="pane active">
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-card-lbl">Score Global</div>
+      <div class="stat-card-val" id="d-sc">—</div>
+      <div class="stat-card-sub" id="d-sc-lbl">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-lbl">Votados</div>
+      <div class="stat-card-val" id="d-voted">0/51</div>
+      <div class="stat-card-sub" id="d-voted-sub">Preencha os indicadores</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-lbl">Distribuição</div>
+      <div style="display:flex;gap:7px;margin-top:4px;flex-wrap:wrap" id="d-dist">
+        <span class="txt-green">ON: 0</span>
+        <span class="txt-muted">NEU: 0</span>
+        <span class="txt-red">OFF: 0</span>
+        <span style="color:var(--text3)">SD: 0</span>
+      </div>
+      <div class="stat-card-sub" id="d-blockers"></div>
+    </div>
+  </div>
+
+  <div id="blocks-wrap"></div>
+
+  <div class="flex gap8 mt12">
+    <button class="btn btn-prim" onclick="saveSnapshot()">+ Salvar Snapshot</button>
+    <button class="btn" onclick="saveState()">Salvar Estado</button>
+    <button class="btn btn-sm btn-danger" onclick="confirmReset()">Resetar Tudo</button>
+  </div>
+</div>
+
+<!-- CHECKLIST -->
+<div id="pane-checklist" class="pane">
+  <div id="blk-warn"></div>
+  <div class="info-panel">Checklist de 6 camadas para validar entrada direcional no IBOV. Gatilhos CRIT com STATUS=OFF bloqueiam entrada mesmo com score alto.</div>
+  <div id="cl-wrap"></div>
+</div>
+
+<!-- HISTÓRICO -->
+<div id="pane-historico" class="pane">
+  <div class="sec-hdr">
+    <div class="sec-title">Histórico de Snapshots</div>
+    <button class="btn btn-sm" onclick="saveSnapshot()">+ Salvar agora</button>
+  </div>
+  <div id="hist-wrap"><div class="txt-muted txt-sm">Nenhum snapshot salvo ainda.</div></div>
+</div>
+
+<!-- RISCOS -->
+<div id="pane-riscos" class="pane">
+  <div class="info-panel">Matriz de Risco P×I (Probabilidade × Impacto, escala 1-5). Score ≥15 = vermelho / 9-14 = amarelo / &lt;9 = verde.</div>
+  <div id="risk-wrap"></div>
+</div>
+
+<!-- INSTITUCIONAL -->
+<div id="pane-institucional" class="pane">
+  <div id="inst-wrap"></div>
+</div>
+
+<!-- EXPORTAR -->
+<div id="pane-exportar" class="pane">
+  <div class="sec-hdr">
+    <div class="sec-title">Exportar Snapshot para Claude</div>
+    <div class="flex gap8">
+      <button class="btn" onclick="genExport()">Gerar</button>
+      <button class="btn btn-prim" onclick="copyExport()">Copiar</button>
+    </div>
+  </div>
+  <div class="exp-box mono" id="exp-box">Clique em "Gerar" para criar o snapshot.</div>
+</div>
+
+<!-- MODAL NOTAS -->
+<div class="modal-ov" id="note-modal" onclick="if(event.target===this)closeNote()">
+  <div class="modal">
+    <div class="modal-title" id="note-title">Notas</div>
+    <textarea id="note-ta" placeholder="Contexto, links, observações..."></textarea>
+    <div class="modal-acts">
+      <button class="btn" onclick="closeNote()">Cancelar</button>
+      <button class="btn btn-prim" onclick="saveNote()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONSTANTS ────────────────────────────────────────────────────────────────
+const SK = 'msm4';
+
+const BLOCKS = [
+  { id:'b1', title:'⚡ Volatilidade & Risco Global', inds:[
+    {id:'vix',       name:'VIX Index',             w:3, blocker:true},
+    {id:'vxn',       name:'VXN (Nasdaq Vol)',       w:2},
+    {id:'move',      name:'MOVE (Bond Vol)',        w:2},
+    {id:'fg',        name:'CNN Fear & Greed',       w:2},
+    {id:'spx',       name:'S&P 500 Trend',          w:3},
+    {id:'hy_sp',     name:'Credit Spread HY',       w:2},
+  ]},
+  { id:'b2', title:'💱 Câmbio', inds:[
+    {id:'usdbrl',    name:'USDBRL',                 w:3, blocker:true},
+    {id:'dxy',       name:'DXY Dollar Index',       w:3, blocker:true},
+    {id:'eurusd',    name:'EURUSD',                 w:2},
+    {id:'emfx',      name:'EM Currencies Index',    w:2},
+    {id:'cds',       name:'CDS Brasil 5Y',          w:3},
+    {id:'ndf1m',     name:'NDF 1M USDBRL',         w:2},
+  ]},
+  { id:'b3', title:'📈 Juros Brasil', inds:[
+    {id:'di27',      name:'DI Futuro Jan/27',       w:3, blocker:true},
+    {id:'ntnb35',    name:'NTN-B 2035 IPCA+',      w:3},
+    {id:'sw6m',      name:'Swap Selic 6m',          w:2},
+    {id:'ipca',      name:'IPCA 12m',               w:2},
+    {id:'curva',     name:'Inclinação DI10-DI2',    w:2},
+    {id:'juro_real', name:'Juro Real Ex-ante',      w:2},
+  ]},
+  { id:'b4', title:'🌊 Fluxo & Liquidez', inds:[
+    {id:'fluxo_b3',  name:'Fluxo B3 + BZQ',        w:3, blocker:true},
+    {id:'ewz_spy',   name:'EWZ vs SPY (ratio)',     w:2},
+    {id:'fl_acum',   name:'Fluxo Estrang. Acum.',   w:3},
+    {id:'m2',        name:'M2 Brasil YoY',          w:2},
+    {id:'res',       name:'Reservas BACEN',         w:1},
+  ]},
+  { id:'b5', title:'⛏️ Commodities', inds:[
+    {id:'iron',      name:'Iron Ore 62% Fe',        w:3, blocker:true},
+    {id:'wti',       name:'Petróleo WTI',           w:3},
+    {id:'cobre',     name:'Cobre LME',              w:3},
+    {id:'soja',      name:'Soja CBOT',              w:2},
+    {id:'iron_sp',   name:'Minério Spot Qingdao',   w:2},
+    {id:'gas',       name:'Gás Natural (Henry Hub)',w:1},
+  ]},
+  { id:'b6', title:'🟢 Renda Variável Brasil', inds:[
+    {id:'ibov_nv',   name:'IBOV Nível',             w:3},
+    {id:'ibov_ma',   name:'IBOV vs MA200',          w:3},
+    {id:'ibov_pl',   name:'P/L Trailing IBOV',      w:2},
+    {id:'ibov_ev',   name:'EV/EBITDA médio',        w:2},
+    {id:'ibov_dy',   name:'Dividend Yield IBOV',    w:2},
+    {id:'smll',      name:'SMLL vs IBOV',           w:1},
+  ]},
+  { id:'b7', title:'📊 Posicionamento COT — MM Net', inds:[
+    {id:'cot_wti',   name:'COT WTI — MM Net',       w:2},
+    {id:'cot_soja',  name:'COT Soja — MM Net',      w:2},
+    {id:'cot_milho', name:'COT Milho — MM Net',     w:1},
+    {id:'cot_ouro',  name:'COT Ouro — MM Net',      w:2},
+    {id:'cot_spx',   name:'COT S&P 500 — MM Net',   w:2},
+    {id:'cot_dxy',   name:'COT DXY — MM Net',       w:2},
+  ]},
+  { id:'b8', title:'🏛️ Macro Brasil', inds:[
+    {id:'pib',       name:'PIB YE Expectativa Focus',w:2},
+    {id:'bal_com',   name:'Balança Comercial 12m',  w:2},
+    {id:'fiscal',    name:'Resultado Primário',      w:2},
+    {id:'pmi',       name:'PMI Manufatura',          w:2},
+    {id:'conf',      name:'Confiança Consumidor FGV',w:1},
+    {id:'desem',     name:'Desemprego PNAD',         w:2},
+  ]},
+  { id:'b9', title:'📉 Técnico & Breadth', inds:[
+    {id:'brdth',     name:'% IBOV acima MA200',     w:2},
+    {id:'adtv',      name:'ADTV B3 14d',            w:1},
+    {id:'rsi',       name:'IBOV RSI 14d',           w:1},
+    {id:'adv_dec',   name:'Advance/Decline',         w:1},
+  ]},
+];
+
+const BLOCKER_IDS = ['vix','usdbrl','dxy','di27','fluxo_b3','iron'];
+
+const CHECKLIST_DEF = [
+  { id:'cl1', layer:'Camada 1 — Política Monetária', items:[
+    {id:'cl1a', text:'Ciclo de corte de juros iniciado ou confirmado pelo BACEN'},
+    {id:'cl1b', text:'IPCA na trajetória de convergência para a meta'},
+    {id:'cl1c', text:'Ata do COPOM sem surpresa hawkish'},
+  ]},
+  { id:'cl2', layer:'Camada 2 — Risco Global', items:[
+    {id:'cl2a', text:'VIX < 20 ou em queda',                            crit:'vix'},
+    {id:'cl2b', text:'DXY lateral ou em queda (não em rally forte)',    crit:'dxy'},
+    {id:'cl2c', text:'S&P 500 acima da MA200'},
+    {id:'cl2d', text:'HY Credit Spread sem abertura brusca'},
+  ]},
+  { id:'cl3', layer:'Camada 3 — Brasil Macro', items:[
+    {id:'cl3a', text:'DI Futuro Jan/27 estável ou em queda',            crit:'di27'},
+    {id:'cl3b', text:'USDBRL < 5,80 ou em tendência de queda',         crit:'usdbrl'},
+    {id:'cl3c', text:'CDS Brasil 5Y sem alta expressiva'},
+    {id:'cl3d', text:'Sem ruído fiscal agudo (surpresa negativa)'},
+  ]},
+  { id:'cl4', layer:'Camada 4 — Fluxo', items:[
+    {id:'cl4a', text:'Fluxo B3 + BZQ positivo ou neutro na semana',    crit:'fluxo_b3'},
+    {id:'cl4b', text:'EWZ não em underperformance vs peers EM'},
+    {id:'cl4c', text:'Fluxo estrangeiro acumulado positivo no mês'},
+  ]},
+  { id:'cl5', layer:'Camada 5 — Commodities', items:[
+    {id:'cl5a', text:'Iron Ore acima de $90 ou em tendência positiva',  crit:'iron'},
+    {id:'cl5b', text:'Petróleo WTI estável (sem colapso abaixo de $65)'},
+    {id:'cl5c', text:'Cobre sem queda brusca (proxy demanda China)'},
+  ]},
+  { id:'cl6', layer:'Camada 6 — Técnico IBOV', items:[
+    {id:'cl6a', text:'IBOV acima da MA200'},
+    {id:'cl6b', text:'RSI IBOV entre 40 e 70 (não extremo)'},
+    {id:'cl6c', text:'ADTV B3 acima da média de 14d (liquidez saudável)'},
+    {id:'cl6d', text:'Advance/Decline ratio positivo no período'},
+  ]},
+];
+
+const DEFAULT_RISKS = [
+  {id:'r1',  name:'Crise fiscal aguda BR',             desc:'Déficit acima do teto, rebaixamento de rating',       p:3,i:5},
+  {id:'r2',  name:'Recessão EUA / Hard Landing',       desc:'Fed mantém juros altos, PIB EUA contrai',            p:3,i:5},
+  {id:'r3',  name:'Rally inesperado do DXY',           desc:'DXY > 108, pressão sobre emergentes',                p:3,i:4},
+  {id:'r4',  name:'Crise China / colapso imobiliário', desc:'Deflação China, Iron Ore colapsa abaixo de $80',     p:3,i:5},
+  {id:'r5',  name:'Escalada geopolítica',              desc:'Tensão EUA-China, novo conflito, petróleo spike',    p:3,i:4},
+  {id:'r6',  name:'Inflação brasileira persistente',   desc:'IPCA > 5% YoY, BACEN retoma alta de juros',         p:4,i:4},
+  {id:'r7',  name:'Derretimento BRL (USD > 6,50)',     desc:'Crise de confiança, fluxo negativo intenso',        p:2,i:5},
+  {id:'r8',  name:'Risco político / eleitoral BR',     desc:'Mudança de política fiscal pré-eleição 2026',       p:3,i:3},
+  {id:'r9',  name:'Crise crédito corporativo BR',      desc:'Rolagem difícil, spread HY Brasil abre forte',      p:2,i:4},
+  {id:'r10', name:'Flash crash global (VIX > 50)',     desc:'Liquidação forçada, venda de EM em massa',          p:2,i:5},
+  {id:'r11', name:'Petróleo colapso (< $55 WTI)',      desc:'Crise de demanda global, Petrobras perde 30%+',     p:2,i:4},
+  {id:'r12', name:'Contágio EM (Argentina, Turquia)',  desc:'Crise de confiança global em emergentes',           p:2,i:3},
+];
+
+const INST_IBOV = [
+  {bank:'BTG Pactual',  target:195000,selic:'12.50%',view:'BULL',  up:'+17%', src:'Jun/2026'},
+  {bank:'Morgan Stanley',target:200000,selic:'13.00%',view:'BULL', up:'+20%', src:'Jun/2026'},
+  {bank:'JP Morgan',    target:195000,selic:'13.00%',view:'BULL',  up:'+17%', src:'Jun/2026'},
+  {bank:'XP Inc.',      target:185000,selic:'13.00%',view:'BULL',  up:'+11%', src:'Jun/2026'},
+  {bank:'Goldman Sachs',target:180000,selic:'13.25%',view:'NEUTRA',up:'+8%',  src:'Jun/2026'},
+  {bank:'Itaú BBA',     target:175000,selic:'13.25%',view:'NEUTRA',up:'+5%',  src:'Jun/2026'},
+  {bank:'UBS',          target:170000,selic:'14.25%',view:'BEAR',  up:'+2%',  src:'Jun/2026'},
+  {bank:'Bank of America',target:162000,selic:'14.25%',view:'BEAR',up:'-3%', src:'Jun/2026'},
+];
+const INST_SELIC = [
+  {bank:'BTG Pactual',  selic:'12.50%',mov:'5 cortes',  view:'DOVE',   src:'Jun/2026'},
+  {bank:'XP Inc.',      selic:'12.75%',mov:'4 cortes',  view:'DOVE',   src:'Jun/2026'},
+  {bank:'JP Morgan',    selic:'~13.00%',mov:'3-4 cortes',view:'DOVE',  src:'Jun/2026'},
+  {bank:'Morgan Stanley',selic:'13.00%',mov:'3 cortes', view:'DOVE',   src:'Mai/2026'},
+  {bank:'Itaú BBA',     selic:'13.00%',mov:'3 cortes',  view:'DOVE',   src:'Jun/2026'},
+  {bank:'Goldman Sachs',selic:'13.25%',mov:'2 cortes',  view:'DOVE',   src:'Abr/2026'},
+  {bank:'Citi',         selic:'13.75%',mov:'1 corte',   view:'NEUTRAL',src:'Jun/2026'},
+  {bank:'Bank of America',selic:'14.25%',mov:'HOLD',    view:'NEUTRAL',src:'Jun/2026'},
+];
+const INST_USDBRL = [
+  {bank:'Morgan Stanley',target:'5.30',view:'BULL BRL'},
+  {bank:'BTG Pactual',   target:'5.40',view:'BULL BRL'},
+  {bank:'XP Inc.',       target:'5.50',view:'BULL BRL'},
+  {bank:'JP Morgan',     target:'5.50',view:'BULL BRL'},
+  {bank:'Goldman Sachs', target:'5.60',view:'NEUTRA'},
+  {bank:'Itaú',          target:'5.70',view:'BEAR BRL'},
+];
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let S = { inds:{}, cl:{}, risks:[], hist:[] };
+
+// ─── IND MAP ─────────────────────────────────────────────────────────────────
+const IND = {};
+const ALL_IDS = [];
+for (const blk of BLOCKS) {
+  for (const ind of blk.inds) {
+    IND[ind.id] = ind;
+    ALL_IDS.push(ind.id);
+  }
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function gi(id) {
+  return S.inds[id] || {status:'NEU',sinal:'—',conv:5,note:''};
+}
+function si(id, field, val) {
+  if (!S.inds[id]) S.inds[id] = {status:'NEU',sinal:'—',conv:5,note:''};
+  S.inds[id][field] = val;
+  dbSave();
+  updateScores();
+}
+
+function calcScore(ids) {
+  let num=0,den=0;
+  for (const id of ids) {
+    const d=gi(id), w=IND[id]?.w||1;
+    if (d.status==='SD') continue;
+    den+=w;
+    if      (d.status==='ON')  num+=w*d.conv;
+    else if (d.status==='OFF') num+=w*(10-d.conv);
+    else                       num+=w*5;
+  }
+  return den===0 ? null : num/den;
+}
+
+function scColor(v) {
+  if (v>=7.5) return 'var(--green)';
+  if (v>=6)   return '#70C850';
+  if (v>=4.5) return 'var(--gold)';
+  if (v>=3)   return '#E07830';
+  return 'var(--red)';
+}
+function scLabel(v) {
+  if (v>=7.5) return 'BULL FORTE';
+  if (v>=6)   return 'BULL';
+  if (v>=4.5) return 'NEUTRO';
+  if (v>=3)   return 'BEAR';
+  return 'BEAR FORTE';
+}
+function vcls(v) {
+  if (!v) return 'vneu';
+  v=v.toUpperCase();
+  if (v.includes('BULL')||v==='DOVE') return 'vbull';
+  if (v.includes('BEAR')||v==='HAWK') return 'vbear';
+  return 'vneu';
+}
+
+// ─── RENDER BLOCKS ───────────────────────────────────────────────────────────
+function renderBlocks() {
+  const wrap = document.getElementById('blocks-wrap');
+  wrap.innerHTML = '';
+  for (const blk of BLOCKS) {
+    const ids = blk.inds.map(i=>i.id);
+    const sc = calcScore(ids);
+    const scStr = sc!==null ? sc.toFixed(1) : '—';
+    const color = sc!==null ? scColor(sc) : 'var(--text3)';
+
+    const el = document.createElement('div');
+    el.className = 'block open';
+    el.id = 'blk_'+blk.id;
+    el.innerHTML = `
+      <div class="block-hdr" onclick="toggleBlk('${blk.id}')">
+        <span class="block-arr">▶</span>
+        <span class="block-title">${blk.title}</span>
+        <span class="block-sc" id="bsc_${blk.id}" style="color:${color}">${scStr}</span>
+        <span class="block-cnt">${blk.inds.length}</span>
+      </div>
+      <div class="block-body" id="bb_${blk.id}">
+        ${blk.inds.map(ind=>rowHTML(ind)).join('')}
+      </div>`;
+    wrap.appendChild(el);
+  }
+}
+
+function rowHTML(ind) {
+  const d=gi(ind.id);
+  const wc = ind.w===3?'w3':ind.w===2?'w2':'w1';
+  const wl = ind.w===3?'P3':ind.w===2?'P2':'P1';
+  const hn = d.note && d.note.trim().length>0;
+  const statuses = ['ON','NEU','OFF','SD'];
+  const sinais = [['▲','up'],['—','flat'],['▼','dn']];
+  return `<div class="ind-row" id="row_${ind.id}">
+    <div class="ind-info">
+      <div class="ind-name">${ind.name}</div>
+      <div class="ind-meta">
+        <span class="wbadge ${wc}">${wl}</span>
+        ${ind.blocker?'<span class="crit-tag">CRIT</span>':''}
+      </div>
+    </div>
+    <div class="chips">
+      ${statuses.map(s=>`<button class="chip chip-${s.toLowerCase()} ${d.status===s?'act':''}"
+        onclick="si('${ind.id}','status','${s}');rr('${ind.id}')">${s}</button>`).join('')}
+    </div>
+    <div class="chips">
+      ${sinais.map(([sym,cls])=>`<button class="chip chip-${cls} ${d.sinal===sym?'act':''}"
+        onclick="si('${ind.id}','sinal','${sym}');rr('${ind.id}')">${sym}</button>`).join('')}
+    </div>
+    <div class="conv-wrap">
+      <span class="conv-val" id="cv_${ind.id}">${d.conv}</span>
+      <input type="range" class="cslider" min="0" max="10" value="${d.conv}"
+        oninput="si('${ind.id}','conv',+this.value);document.getElementById('cv_${ind.id}').textContent=this.value">
+    </div>
+    <button class="note-btn ${hn?'has':''}" title="${hn?'Ver nota':'Adicionar nota'}"
+      onclick="openNote('${ind.id}','${ind.name.replace(/'/g,'&#39;')}')">✎</button>
+  </div>`;
+}
+
+function rr(id) {
+  const ind=IND[id];
+  if (!ind) return;
+  const el=document.getElementById('row_'+id);
+  if (el) el.outerHTML=rowHTML(ind);
+  updateScores();
+}
+
+function toggleBlk(id) {
+  const el=document.getElementById('blk_'+id);
+  if (el) el.classList.toggle('open');
+}
+
+// ─── UPDATE SCORES ───────────────────────────────────────────────────────────
+function updateScores() {
+  const gs=calcScore(ALL_IDS);
+  const gsStr=gs!==null?gs.toFixed(1):'—';
+  const gc=gs!==null?scColor(gs):'var(--text3)';
+
+  const hsc=document.getElementById('hdr-sc');
+  if(hsc){hsc.textContent=gsStr;hsc.style.color=gc}
+  const hb=document.getElementById('hdr-bar');
+  if(hb){hb.style.width=(gs!==null?(gs/10*100):0)+'%';hb.style.background=gc}
+
+  const dsc=document.getElementById('d-sc');
+  if(dsc){dsc.textContent=gsStr;dsc.style.color=gc}
+  const dsl=document.getElementById('d-sc-lbl');
+  if(dsl) dsl.textContent=gs!==null?scLabel(gs):'—';
+
+  let on=0,neu=0,off=0,sd=0,voted=0;
+  for(const id of ALL_IDS){
+    const s=gi(id).status;
+    if(s==='ON'){on++;voted++}
+    else if(s==='NEU'){neu++;voted++}
+    else if(s==='OFF'){off++;voted++}
+    else if(s==='SD'){sd++;voted++}
+  }
+  const dv=document.getElementById('d-voted');
+  if(dv) dv.textContent=`${voted}/51`;
+  const dvs=document.getElementById('d-voted-sub');
+  if(dvs) dvs.textContent=voted===51?'Todos votados ✓':`${51-voted} pendentes`;
+  const dd=document.getElementById('d-dist');
+  if(dd) dd.innerHTML=`
+    <span class="txt-green">ON: ${on}</span>
+    <span class="txt-muted">NEU: ${neu}</span>
+    <span class="txt-red">OFF: ${off}</span>
+    <span style="color:var(--text3)">SD: ${sd}</span>`;
+
+  // block scores
+  for(const blk of BLOCKS){
+    const ids=blk.inds.map(i=>i.id);
+    const sc=calcScore(ids);
+    const el=document.getElementById('bsc_'+blk.id);
+    if(el){el.textContent=sc!==null?sc.toFixed(1):'—';el.style.color=sc!==null?scColor(sc):'var(--text3)'}
+  }
+
+  // blockers
+  const triggered=BLOCKER_IDS.filter(id=>gi(id).status==='OFF');
+  const db=document.getElementById('d-blockers');
+  if(db){
+    if(triggered.length>0) db.innerHTML=`<span class="txt-red">⚠ ${triggered.length} CRIT ativo(s)</span>`;
+    else db.innerHTML=`<span class="txt-green">✓ Sem bloqueios CRIT</span>`;
+  }
+  updateBlockerWarn(triggered);
+}
+
+// ─── CHECKLIST ───────────────────────────────────────────────────────────────
+function renderChecklist() {
+  const wrap=document.getElementById('cl-wrap');
+  wrap.innerHTML='';
+  for(const sec of CHECKLIST_DEF){
+    const div=document.createElement('div');
+    div.className='cl-sec';
+    div.innerHTML=`<div class="cl-sec-lbl">${sec.layer}</div>`;
+    for(const item of sec.items){
+      const checked=!!S.cl[item.id];
+      const isBlocked=item.crit && gi(item.crit).status==='OFF';
+      const itm=document.createElement('div');
+      itm.className=`cl-item${checked?' chk':''}${isBlocked?' blk':''}`;
+      itm.id='cli_'+item.id;
+      itm.onclick=()=>toggleCl(item.id);
+      itm.innerHTML=`<div class="cl-box">${checked?'✓':''}</div>
+        <div class="cl-text">${item.text}</div>
+        ${item.crit?'<span class="cl-crit">CRIT</span>':''}`;
+      div.appendChild(itm);
+    }
+    wrap.appendChild(div);
+  }
+}
+
+function toggleCl(id){
+  S.cl[id]=!S.cl[id];dbSave();
+  const el=document.getElementById('cli_'+id);
+  if(el){
+    el.classList.toggle('chk',!!S.cl[id]);
+    el.querySelector('.cl-box').textContent=S.cl[id]?'✓':'';
+  }
+}
+
+function updateBlockerWarn(triggered){
+  const el=document.getElementById('blk-warn');
+  if(!el) return;
+  if(triggered.length>0){
+    el.innerHTML=`<div class="blocker-warn">⛔ GATILHO CRIT ATIVO: ${triggered.map(id=>IND[id]?.name||id).join(', ')} — STATUS = OFF. Entrada direcional bloqueada.</div>`;
+  } else {
+    el.innerHTML='';
+  }
+}
+
+// ─── RISKS ───────────────────────────────────────────────────────────────────
+function renderRiscos(){
+  if(S.risks.length===0) S.risks=DEFAULT_RISKS.map(r=>({...r}));
+  const wrap=document.getElementById('risk-wrap');
+  wrap.innerHTML='';
+  const sorted=[...S.risks].sort((a,b)=>(b.p*b.i)-(a.p*a.i));
+  for(const r of sorted){
+    const sc=r.p*r.i;
+    const cls=sc>=15?'risk-hi':sc>=9?'risk-mid':'risk-lo';
+    const div=document.createElement('div');
+    div.className='risk-item';
+    div.innerHTML=`
+      <div class="risk-sc ${cls}">${sc}</div>
+      <div class="risk-info">
+        <div class="risk-name">${r.name}</div>
+        <div class="risk-desc">${r.desc}</div>
+        <div class="risk-pxi">P=${r.p} × I=${r.i}</div>
+      </div>
+      <div class="risk-ctrl">
+        <div class="risk-row"><span class="risk-lbl">P</span>
+          <input type="number" class="risk-inp" min="1" max="5" value="${r.p}"
+            onchange="setRisk('${r.id}','p',+this.value)"></div>
+        <div class="risk-row"><span class="risk-lbl">I</span>
+          <input type="number" class="risk-inp" min="1" max="5" value="${r.i}"
+            onchange="setRisk('${r.id}','i',+this.value)"></div>
+      </div>`;
+    wrap.appendChild(div);
+  }
+}
+
+function setRisk(id,field,val){
+  const r=S.risks.find(r=>r.id===id);
+  if(!r) return;
+  r[field]=Math.max(1,Math.min(5,val));
+  dbSave();renderRiscos();
+}
+
+// ─── HISTÓRICO ───────────────────────────────────────────────────────────────
+function saveSnapshot(){
+  const sc=calcScore(ALL_IDS);
+  if(sc===null){alert('Nenhum indicador votado ainda.');return}
+  const note=prompt('Nota para este snapshot (opcional):','') || '';
+  const entry={
+    id:Date.now(),
+    date:new Date().toISOString().slice(0,10),
+    time:new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
+    score:+sc.toFixed(2),
+    label:scLabel(sc),
+    note,
+    snap:JSON.parse(JSON.stringify(S.inds)),
+  };
+  S.hist.unshift(entry);
+  saveState();renderHistorico();
+  alert(`Snapshot salvo — Score: ${sc.toFixed(1)} (${scLabel(sc)})`);
+}
+
+function renderHistorico(){
+  const wrap=document.getElementById('hist-wrap');
+  if(!wrap) return;
+  if(S.hist.length===0){
+    wrap.innerHTML='<div class="txt-muted txt-sm">Nenhum snapshot salvo ainda.</div>';
+    return;
+  }
+  wrap.innerHTML='';
+  for(const e of S.hist){
+    const div=document.createElement('div');
+    div.className='hist-item';
+    div.innerHTML=`
+      <div class="hist-date">${e.date} ${e.time||''}</div>
+      <div class="hist-sc" style="color:${scColor(e.score)}">${e.score.toFixed(1)}</div>
+      <div>
+        <div class="txt-xs" style="color:${scColor(e.score)}">${e.label||''}</div>
+        <div class="hist-note">${e.note||''}</div>
+      </div>
+      <button class="hist-del" onclick="delSnap(${e.id})">✕</button>`;
+    wrap.appendChild(div);
+  }
+}
+
+function delSnap(id){
+  if(!confirm('Remover snapshot?')) return;
+  S.hist=S.hist.filter(e=>e.id!==id);
+  saveState();renderHistorico();
+}
+
+// ─── INSTITUCIONAL ───────────────────────────────────────────────────────────
+function renderInstitucional(){
+  const wrap=document.getElementById('inst-wrap');
+  if(!wrap) return;
+  wrap.innerHTML=`
+    <div class="sec-hdr"><div class="sec-title">Visão Institucional — Jun/2026</div></div>
+    <div class="info-panel">Dados de referência Jun/2026. IBOV máx intradia: <strong>199.354 pts</strong> | Selic: 14.75% | USDBRL: ~5,65</div>
+
+    <div class="sec-title" style="margin-bottom:8px">Alvos IBOV 2026 — Bancos</div>
+    <table class="itbl">
+      <thead><tr><th>Banco</th><th>Alvo IBOV</th><th>Selic YE</th><th>View</th><th>Upside</th><th>Ref.</th></tr></thead>
+      <tbody>
+        ${INST_IBOV.map(r=>`<tr>
+          <td><strong>${r.bank}</strong></td>
+          <td class="mono">${r.target.toLocaleString('pt-BR')}</td>
+          <td class="mono">${r.selic}</td>
+          <td class="${vcls(r.view)}">${r.view}</td>
+          <td class="${r.up.startsWith('-')?'txt-red':'txt-green'}">${r.up}</td>
+          <td class="txt-muted txt-xs">${r.src}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+
+    <div class="sec-title" style="margin-bottom:8px">Selic — Expectativas Fim 2026</div>
+    <table class="itbl">
+      <thead><tr><th>Banco</th><th>Selic YE</th><th>Movimento</th><th>View</th><th>Ref.</th></tr></thead>
+      <tbody>
+        ${INST_SELIC.map(r=>`<tr>
+          <td><strong>${r.bank}</strong></td>
+          <td class="mono">${r.selic}</td>
+          <td>${r.mov}</td>
+          <td class="${vcls(r.view)}">${r.view}</td>
+          <td class="txt-muted txt-xs">${r.src}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+
+    <div class="sec-title" style="margin-bottom:8px">USDBRL — Projeções YE 2026</div>
+    <table class="itbl">
+      <thead><tr><th>Banco</th><th>Alvo USD/BRL</th><th>View BRL</th></tr></thead>
+      <tbody>
+        ${INST_USDBRL.map(r=>`<tr>
+          <td><strong>${r.bank}</strong></td>
+          <td class="mono">${r.target}</td>
+          <td class="${vcls(r.view)}">${r.view}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+
+    <div class="sec-title" style="margin-bottom:8px">Contexto de Mercado — Jun/2026</div>
+    ${[
+      ['Jun/2026','IBOV máximo intradia: 199.354 pontos'],
+      ['Jun/2026','Selic atual: 14.75% (pico do ciclo de alta)'],
+      ['Jun/2026','USDBRL: ~5,65 (BRL pressionado, mas sem crise)'],
+      ['Jun/2026','Iron Ore: ~$105 (recuperação demanda China)'],
+      ['Jun/2026','VIX: ~13 (mercado global em modo risk-on)'],
+      ['Jun/2026','CDS Brasil 5Y: ~180 bps'],
+      ['Jun/2026','DI Jan/27: ~14,4% (precificando manutenção prolongada)'],
+    ].map(([d,e])=>`<div class="milestone-item">
+      <span class="mono txt-xs txt-muted" style="width:58px;flex-shrink:0">${d}</span>
+      <span style="font-size:12px">${e}</span>
+    </div>`).join('')}`;
+}
+
+// ─── EXPORT ──────────────────────────────────────────────────────────────────
+function genExport(){
+  const sc=calcScore(ALL_IDS);
+  const now=new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'});
+  const lines=[];
+  lines.push('══════════════════════════════════════════════════');
+  lines.push('MACRO SENTIMENT MONITOR v4 — SNAPSHOT');
+  lines.push(`Data/Hora: ${now} (BRT)`);
+  lines.push(`Score Global: ${sc!==null?sc.toFixed(2):'N/A'} / 10 — ${sc!==null?scLabel(sc):'—'}`);
+  lines.push('══════════════════════════════════════════════════');
+  lines.push('');
+  for(const blk of BLOCKS){
+    const ids=blk.inds.map(i=>i.id);
+    const bsc=calcScore(ids);
+    const title=blk.title.replace(/^[^ ]+ /,'');
+    lines.push(`▶ ${title} [${bsc!==null?bsc.toFixed(1):'—'}]`);
+    for(const ind of blk.inds){
+      const d=gi(ind.id);
+      const flag=ind.blocker?'[CRIT] ':'';
+      const wl=ind.w===3?'P3':ind.w===2?'P2':'P1';
+      lines.push(`  ${flag}${ind.name}: ${d.status} / ${d.sinal} / Conv:${d.conv} (${wl})`);
+      if(d.note&&d.note.trim()) lines.push(`    └ ${d.note}`);
+    }
+    lines.push('');
+  }
+  const triggered=BLOCKER_IDS.filter(id=>gi(id).status==='OFF');
+  lines.push('──────────────────────────────────────────────────');
+  lines.push(`GATILHOS CRIT ATIVOS: ${triggered.length>0?triggered.map(id=>IND[id]?.name||id).join(', '):'Nenhum'}`);
+  lines.push('');
+  lines.push('CHECKLIST:');
+  for(const sec of CHECKLIST_DEF){
+    const done=sec.items.filter(i=>S.cl[i.id]).length;
+    lines.push(`  ${sec.layer}: ${done}/${sec.items.length} ✓`);
+  }
+  lines.push('');
+  const sorted=[...S.risks].sort((a,b)=>(b.p*b.i)-(a.p*a.i));
+  lines.push('TOP RISCOS (P×I):');
+  for(const r of sorted.slice(0,5)){
+    lines.push(`  [${r.p*r.i}] ${r.name} (P=${r.p}, I=${r.i})`);
+  }
+  lines.push('══════════════════════════════════════════════════');
+  document.getElementById('exp-box').textContent=lines.join('\n');
+}
+
+function copyExport(){
+  const box=document.getElementById('exp-box');
+  if(!box||box.textContent.startsWith('Clique')) genExport();
+  navigator.clipboard.writeText(document.getElementById('exp-box').textContent)
+    .then(()=>alert('Copiado para a área de transferência!'))
+    .catch(()=>alert('Erro ao copiar. Selecione e copie manualmente.'));
+}
+
+// ─── NOTES MODAL ─────────────────────────────────────────────────────────────
+let noteId=null;
+function openNote(id,name){
+  noteId=id;
+  document.getElementById('note-title').textContent='Nota — '+name;
+  document.getElementById('note-ta').value=gi(id).note||'';
+  document.getElementById('note-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('note-ta').focus(),40);
+}
+function closeNote(){
+  document.getElementById('note-modal').classList.remove('open');
+  noteId=null;
+}
+function saveNote(){
+  if(!noteId) return;
+  si(noteId,'note',document.getElementById('note-ta').value);
+  closeNote();
+  rr(noteId);
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape') closeNote()});
+
+// ─── TAB SWITCHING ───────────────────────────────────────────────────────────
+const TAB_NAMES=['dashboard','checklist','historico','riscos','institucional','exportar'];
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',TAB_NAMES[i]===name));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+  const pane=document.getElementById('pane-'+name);
+  if(pane) pane.classList.add('active');
+  if(name==='checklist') renderChecklist();
+  if(name==='historico') renderHistorico();
+  if(name==='riscos') renderRiscos();
+  if(name==='institucional') renderInstitucional();
+}
+
+// ─── STORAGE ─────────────────────────────────────────────────────────────────
+let saveTimer=null;
+function dbSave(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(saveState,700);
+}
+function saveState(){
+  try{
+    localStorage.setItem(SK,JSON.stringify(S));
+    const ts=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const el=document.getElementById('hdr-saved');
+    if(el) el.textContent=`Salvo ${ts}`;
+  }catch(e){console.warn('save error',e)}
+}
+function loadState(){
+  try{
+    const raw=localStorage.getItem(SK);
+    if(!raw) return;
+    const saved=JSON.parse(raw);
+    if(saved.inds) S.inds=saved.inds;
+    if(saved.cl)   S.cl=saved.cl;
+    if(saved.risks&&saved.risks.length) S.risks=saved.risks;
+    if(saved.hist) S.hist=saved.hist;
+  }catch(e){console.warn('load error',e)}
+}
+function confirmReset(){
+  if(!confirm('Resetar TODOS os votos e estado?\nEsta ação não pode ser desfeita.')) return;
+  S={inds:{},cl:{},risks:DEFAULT_RISKS.map(r=>({...r})),hist:[]};
+  saveState();
+  renderBlocks();
+  updateScores();
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+loadState();
+if(S.risks.length===0) S.risks=DEFAULT_RISKS.map(r=>({...r}));
+renderBlocks();
+updateScores();
+</script>
+</body>
+</html>

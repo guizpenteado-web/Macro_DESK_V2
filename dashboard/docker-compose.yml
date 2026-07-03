@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  dashboard:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./intermarket.db:/app/intermarket.db
+    environment:
+      - TZ=America/Sao_Paulo
