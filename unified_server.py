@@ -32,6 +32,7 @@ from bs4 import BeautifulSoup
 
 BASE          = Path(__file__).resolve().parent
 DASHBOARD_DIR = BASE / "dashboard"
+BIBLIOTECA_DIR = BASE / "biblioteca"
 BREADTH_DIR   = Path(r"c:\Users\Guilherme\Documents\Market_BREADTH_ULTRA")
 MACRO_DIR     = Path(r"c:\Users\Guilherme\Documents\MacroDashboard")
 IBOV_DIR      = Path(r"c:\Users\Guilherme\Documents\IbovCalls")
@@ -209,6 +210,7 @@ _SHELL = """<!DOCTYPE html>
     --c2:       #c9a227;
     --c3:       #a78bfa;
     --c4:       #34d399;
+    --c5:       #f472b6;
     --text:     #e6edf3;
     --muted:    #8b949e;
     --border:   #21262d;
@@ -305,6 +307,12 @@ _SHELL = """<!DOCTYPE html>
     background: rgba(52,211,153,.08);
   }
   .nav-btn.active-4 .dot { opacity: 1; }
+  .nav-btn.active-8 {
+    border-color: var(--c5);
+    color: var(--c5);
+    background: rgba(244,114,182,.08);
+  }
+  .nav-btn.active-8 .dot { opacity: 1; }
   .nav-btn.active-5 { border-color: #6e7681; color: #d1d4dc; background: rgba(110,118,129,.12); }
   .nav-btn.active-6 { border-color: #6e7681; color: #d1d4dc; background: rgba(110,118,129,.12); }
   .nav-btn.active-7 { border-color: #6e7681; color: #d1d4dc; background: rgba(110,118,129,.12); }
@@ -645,7 +653,10 @@ _SHELL = """<!DOCTYPE html>
     Market Breadth
   </button>
 
-
+  <button class="nav-btn" id="btn5" onclick="show(5)">
+    <span class="dot"></span>
+    Bibliotecas
+  </button>
 
   <button class="nav-btn" id="btn-news" onclick="toggleNews()" style="margin-left:auto">
     <span style="font-size:14px">📰</span>
@@ -726,7 +737,10 @@ _SHELL = """<!DOCTYPE html>
     <div class="spinner" style="border-top-color:var(--c4)"></div>
     Carregando Market Breadth...
   </div>
-
+  <div class="loader hidden" id="loader5">
+    <div class="spinner" style="border-top-color:var(--c5)"></div>
+    Carregando Bibliotecas...
+  </div>
 
   <iframe id="f1" src="" class="visible"
           onload="loaded(1)"></iframe>
@@ -736,12 +750,14 @@ _SHELL = """<!DOCTYPE html>
           onload="loaded(3)"></iframe>
   <iframe id="f4" src="about:blank"
           onload="loaded(4)"></iframe>
+  <iframe id="f5" src="about:blank"
+          onload="loaded(5)"></iframe>
 
 </div>
 
 <script>
-  var _loaded    = {1: false, 2: false, 3: false, 4: false};
-  var _srcSet    = {1: false, 2: false, 3: false, 4: false};
+  var _loaded    = {1: false, 2: false, 3: false, 4: false, 5: false};
+  var _srcSet    = {1: false, 2: false, 3: false, 4: false, 5: false};
   var _current   = 1;
 
   var _cv = Date.now();
@@ -750,6 +766,7 @@ _SHELL = """<!DOCTYPE html>
     2: "/intermarket/?v=" + _cv,
     3: "/macro/?v=" + _cv,
     4: "/breadth/?v=" + _cv,
+    5: "/biblioteca/?v=" + _cv,
   };
 
   // Carrega iframe 1 (Intermarket) imediatamente com cache-bust
@@ -773,7 +790,7 @@ _SHELL = """<!DOCTYPE html>
       document.getElementById("f" + n).src = URLS[n];
     }
 
-    [1, 2, 3, 4].forEach(function(i) {
+    [1, 2, 3, 4, 5].forEach(function(i) {
       document.getElementById("f" + i).classList.toggle("visible", i === n);
       document.getElementById("loader" + i).classList.toggle("hidden",
         i !== n || _loaded[i]);
@@ -787,6 +804,8 @@ _SHELL = """<!DOCTYPE html>
       "nav-btn" + (n === 3 ? " active-3" : "");
     document.getElementById("btn4").className =
       "nav-btn" + (n === 4 ? " active-4" : "");
+    document.getElementById("btn5").className =
+      "nav-btn" + (n === 5 ? " active-8" : "");
     if (n === 1) {
       var today = new Date().toISOString().slice(0,10);
       localStorage.setItem("calls_last_seen", today);
@@ -1217,6 +1236,16 @@ async def proxy_macro(request: Request, path: str = "") -> Response:
 @app.api_route("/ibov/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
 async def proxy_ibov(request: Request, path: str = "") -> Response:
     return await _proxy(request, f"http://127.0.0.1:{PORT_IBOV}", "/ibov")
+
+
+@app.get("/biblioteca")
+@app.get("/biblioteca/{path:path}")
+async def biblioteca(path: str = "") -> Response:
+    # Página estática (localStorage-only, sem backend) — servida direto do disco,
+    # sempre fresca. Cópia local do artifact "Análises Macro Desk" (claude.ai
+    # bloqueia iframe de outra origem via X-Frame-Options: SAMEORIGIN, por isso
+    # não dá pra embutir o artifact remoto direto).
+    return HTMLResponse((BIBLIOTECA_DIR / "index.html").read_text(encoding="utf-8"))
 
 
 @app.get("/api/news")
