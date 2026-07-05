@@ -459,10 +459,13 @@ function applyViewport(){
 // Y-axis drag handles (TradingView-style, barra direita)
 // ────────────────────────────────────────────────────────────────
 let ydDrag = null;
+const YD_CLICK_THRESHOLD = 3; // px — abaixo disso, mouseup vira "clique" em vez de "arrastar"
 
 document.addEventListener("mousemove", e => {
   if(!ydDrag || !chart) return;
   const dy = e.clientY - ydDrag.startY;
+  if (Math.abs(dy) > YD_CLICK_THRESHOLD) ydDrag.moved = true;
+  if (!ydDrag.moved) return;
   const range = Math.abs(ydDrag.startMax - ydDrag.startMin) || 1;
   const center = (ydDrag.startMin + ydDrag.startMax) / 2;
   // arrastar para baixo = expande (factor > 1), para cima = comprime (factor < 1)
@@ -471,7 +474,30 @@ document.addEventListener("mousemove", e => {
   ydDrag.axis.setExtremes(center - nr / 2, center + nr / 2, true, false);
 });
 
-document.addEventListener("mouseup", () => { ydDrag = null; });
+document.addEventListener("mouseup", () => {
+  if (ydDrag && !ydDrag.moved) openScalePrompt(ydDrag.axis, ydDrag.label);
+  ydDrag = null;
+});
+
+// Clique (sem arrastar) no handle → digitar escala exata. Vazio = volta ao automático.
+function openScalePrompt(axis, label){
+  const ex = axis.getExtremes();
+  const curMin = ex.userMin ?? ex.dataMin;
+  const curMax = ex.userMax ?? ex.dataMax;
+  const current = (curMin != null && curMax != null)
+    ? `${+curMin.toFixed(4)},${+curMax.toFixed(4)}`
+    : "";
+  const input = prompt(`Escala de ${label}\nDigite "min,max" (ex: 90,110) ou deixe vazio para automático:`, current);
+  if (input === null) return; // cancelado
+  const trimmed = input.trim();
+  if (!trimmed) { axis.setExtremes(null, null, true, true); return; }
+  const parts = trimmed.split(",").map(s => parseFloat(s.trim()));
+  if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1]) && parts[0] < parts[1]) {
+    axis.setExtremes(parts[0], parts[1], true, true);
+  } else {
+    toast("Formato inválido. Use: min,max (ex: 90,110)", "error");
+  }
+}
 
 function addDragHandles(){
   const old = document.getElementById("yd-panel");
@@ -494,7 +520,7 @@ function addDragHandles(){
     const h = document.createElement("div");
     h.className = "yd-handle";
     h.style.borderLeftColor = meta.color;
-    h.title = meta.label + "\nArrastar ↕ para escalar\nDuplo-clique → auto";
+    h.title = meta.label + "\nArrastar ↕ para escalar\nClique para digitar min/max exatos (vazio = auto)";
 
     const lbl = document.createElement("span");
     lbl.style.color = meta.color;
@@ -506,12 +532,9 @@ function addDragHandles(){
         const ex = axis.getExtremes();
         const mn = ex.userMin ?? ex.dataMin;
         const mx = ex.userMax ?? ex.dataMax;
-        ydDrag = { axis, startY: e.clientY, startMin: mn ?? -50, startMax: mx ?? 50 };
+        ydDrag = { axis, label: meta.label, startY: e.clientY, startMin: mn ?? -50, startMax: mx ?? 50, moved: false };
         e.preventDefault();
         e.stopPropagation();
-      });
-      h.addEventListener("dblclick", () => {
-        axis.setExtremes(null, null, true, true);
       });
     }
 
