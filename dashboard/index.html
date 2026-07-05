@@ -57,8 +57,23 @@ body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFo
 #chart-container.zoom-mode .highcharts-plot-background{cursor:crosshair!important}
 
 /* ── Chart wrap ── */
-.chart-wrap{padding:12px 20px 0}
+.chart-wrap{padding:12px 20px 0;position:relative}
 #chart-container{width:100%;height:calc(100vh - 180px);min-height:480px;border-radius:6px;overflow:visible;position:relative}
+
+/* ── Chart toolbar (sobreposto, topo-centro do gráfico) ── */
+/* Fica em .chart-wrap (não em #chart-container) porque o Highcharts recria o
+   conteúdo do container a cada rebuildChart() e apagaria isso junto. */
+#chart-toolbar{
+  position:absolute; top:24px; left:50%; transform:translateX(-50%);
+  z-index:50; display:flex; gap:8px; pointer-events:none;
+}
+#chart-toolbar .chart-tool-btn{
+  pointer-events:auto; background:rgba(22,27,34,.92); border:1px solid #30363d;
+  color:#c9d1d9; cursor:pointer; padding:5px 12px; border-radius:6px; font-size:12px;
+  display:flex; align-items:center; gap:6px; transition:background .15s,border-color .15s;
+  white-space:nowrap;
+}
+#chart-toolbar .chart-tool-btn:hover{ background:#21262d; border-color:#1f6feb; }
 
 /* ── Y-axis drag handles (TradingView-style) ── */
 #yd-panel{position:absolute;right:0;display:flex;flex-direction:column;z-index:25;pointer-events:none;border-radius:0 4px 4px 0;overflow:hidden}
@@ -172,13 +187,19 @@ body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFo
     </select>
   </div>
 
-  <!-- Zoom reset -->
-  <button class="btn warning" id="btn-reset-zoom" style="display:none" onclick="resetZoom()">&#8617; Reset Zoom</button>
 </div>
 
 
 <!-- Chart -->
 <div class="chart-wrap">
+  <div id="chart-toolbar">
+    <button class="chart-tool-btn" id="btn-pan-mode" onclick="notifyPanMode()" title="Clique e arraste em qualquer lugar do gráfico para mover a visualização (horizontal e vertical)">
+      &#9995; Clique e arraste
+    </button>
+    <button class="chart-tool-btn" id="btn-reset-scale" onclick="resetAllScale()" title="Restaura zoom, posição e escala de todos os ativos (duplo-clique no gráfico faz o mesmo)">
+      &#8635; Resetar escala
+    </button>
+  </div>
   <div id="chart-container"></div>
 </div>
 
@@ -457,9 +478,22 @@ function rebuildChart(){
   applyViewport();
 }
 
-function resetZoom(){
-  if(chart){ chart.zoomOut(); }
-  document.getElementById("btn-reset-zoom").style.display="none";
+// Restaura zoom/posição do eixo X e a escala (min/max) de todos os eixos Y —
+// desfaz arrastar, rodinha do mouse e escala manual definida por clique/arrastar na alça.
+function resetAllScale(){
+  if(!chart) return;
+  const keys = ["ibov","cot","ntnb","flow","di2033","smal11","usdbrl","dxy","us10y","bcom","us_cpi_yoy"];
+  keys.forEach(k=>{
+    const axis = chart.get(META[k].axisId);
+    if(axis) axis.setExtremes(null, null, false, false);
+  });
+  chart.redraw();
+  applyViewport();
+  toast("Zoom e escala resetados", "success");
+}
+
+function notifyPanMode(){
+  toast("Clique e arraste em qualquer ponto do gráfico para mover — funciona nos dois eixos.", "info");
 }
 
 // ── Viewport: 50% de dados visíveis + margem fixa à direita (estilo MT5 Chart Shift)
@@ -502,6 +536,10 @@ document.addEventListener("mouseup", () => {
   if (ydDrag && !ydDrag.moved) openScalePrompt(ydDrag.axis, ydDrag.label);
   ydDrag = null;
 });
+
+// Duplo-clique em qualquer ponto do gráfico = mesmo reset do botão "Resetar escala".
+// Anexado direto no #chart-container (não recriado pelo Highcharts) — só uma vez.
+document.getElementById("chart-container").addEventListener("dblclick", () => resetAllScale());
 
 // Clique (sem arrastar) no handle → digitar escala exata. Vazio = volta ao automático.
 function openScalePrompt(axis, label){
