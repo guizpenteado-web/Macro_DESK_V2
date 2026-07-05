@@ -11,11 +11,6 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;min-height:100vh;overflow-x:hidden}
 
-/* ── Header ── */
-.header{background:#161b22;border-bottom:1px solid #30363d;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
-.header h1{font-size:14px;font-weight:600;color:#e6edf3;letter-spacing:.2px;white-space:nowrap}
-.header-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-
 /* ── Controls ── */
 .controls{background:#161b22;border-bottom:1px solid #30363d;padding:8px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 
@@ -113,19 +108,6 @@ body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFo
   <span class="spinner-msg" id="spinner-msg">Carregando...</span>
 </div>
 <div id="toast"></div>
-
-<!-- Header -->
-<div class="header">
-  <div class="header-right">
-    <button class="btn" onclick="collectSingle('ibov')">IBOV</button>
-    <button class="btn" onclick="collectSingle('cot')">COT</button>
-    <button class="btn" onclick="collectSingle('ntnb35')">NTN-B</button>
-    <button class="btn" onclick="collectSingle('foreign_flow')">Fluxo</button>
-    <button class="btn" onclick="collectSingle('di_rates')">DI Rates</button>
-    <button class="btn" onclick="collectSingle('br_indices')">Índices B3</button>
-    <button class="btn" onclick="collectSingle('macro_indicators')">Macro Global</button>
-  </div>
-</div>
 
 <!-- Controls -->
 <div class="controls">
@@ -701,20 +683,6 @@ async function collectAll(){
     await loadAndDraw(currentMonths);
   }catch(e){ toast("Erro na coleta: "+e.message,"error"); }
   finally{ btn.disabled=false; hideSpinner(); }
-}
-
-async function collectSingle(series){
-  showSpinner(`Coletando ${series}...`);
-  try{
-    const r=await fetch(`${API}/api/collect/trigger?series=${series}`,{method:"POST"});
-    const d=await r.json();
-    const res=d[series]||d[Object.keys(d)[0]];
-    if(res?.status==="ok"||res?.status==="partial"){
-      toast(`${series}: ${res.rows} registros`,"success");
-      await loadAndDraw(currentMonths);
-    } else { toast(`${series}: ${res?.message||"sem dados"}`,"error"); }
-  }catch(e){ toast("Erro: "+e.message,"error"); }
-  finally{ hideSpinner(); }
 }
 
 // ────────────────────────────────────────────────────────────────

@@ -326,24 +326,6 @@ _SHELL = """<!DOCTYPE html>
   }
   .nav-btn { position: relative; }
 
-  /* status pill */
-  .status-pill {
-    margin-left: auto;
-    font-size: 11px;
-    color: var(--muted);
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
-  .status-pill::before {
-    content: "";
-    display: block;
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: #3fb950;
-    box-shadow: 0 0 6px #3fb950;
-  }
-
   /* ── iframes ── */
   .frame-wrap {
     position: fixed;
@@ -664,8 +646,6 @@ _SHELL = """<!DOCTYPE html>
   </button>
 
 
-
-  <div class="status-pill">online</div>
 
   <button class="nav-btn" id="btn-news" onclick="toggleNews()" style="margin-left:auto">
     <span style="font-size:14px">📰</span>
