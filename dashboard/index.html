@@ -309,15 +309,17 @@ function buildAxes(mode){
     return true;
   });
   return filtered.map(d=>{
-    // Em modo absoluto, fixa o min/max do eixo com base no histórico COMPLETO da série
-    // (não no que está visível na janela de zoom). Sem isso, séries esparsas (ex: COT
-    // semanal, CPI YoY mensal) ficam com pouquíssimos pontos dentro da janela quando o
-    // usuário dá zoom apertado no scroll — o Highcharts então reajusta o eixo Y ao
-    // recorte cru, o que "explode"/pula de forma instável. Séries diárias raramente
-    // ficam sem pontos numa janela zoomada, por isso o bug parecia exclusivo delas.
+    // Fixa o min/max do eixo com base no histórico COMPLETO da série já normalizada
+    // pro modo atual (não no que está visível na janela de zoom). Sem isso, séries
+    // esparsas (ex: COT semanal, CPI YoY mensal) ficam com pouquíssimos pontos dentro
+    // da janela quando o usuário dá zoom apertado no scroll — o Highcharts então
+    // reajusta o eixo Y ao recorte cru, o que "explode"/pula de forma instável.
+    // Séries diárias raramente ficam sem pontos numa janela zoomada, por isso o bug
+    // parecia exclusivo das esparsas. Modo minmax já é fixo (0-100) por design.
     let absMin, absMax;
-    if (isAbs) {
-      const vals = (rawData[d.key] || []).map(p => p.value).filter(v => typeof v === "number" && !isNaN(v));
+    if (mode !== "minmax") {
+      const normed = applyNorm(rawData[d.key] || [], d.key);
+      const vals = normed.map(p => p[1]).filter(v => typeof v === "number" && !isNaN(v));
       if (vals.length) {
         const dmn = Math.min(...vals), dmx = Math.max(...vals);
         const pad = (dmx - dmn) * 0.1 || Math.abs(dmx || 1) * 0.1 || 1;
