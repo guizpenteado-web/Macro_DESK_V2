@@ -655,7 +655,7 @@ _SHELL = """<!DOCTYPE html>
 
   <button class="nav-btn" id="btn5" onclick="show(5)">
     <span class="dot"></span>
-    Bibliotecas
+    Biblioteca
   </button>
 
   <button class="nav-btn" id="btn-news" onclick="toggleNews()" style="margin-left:auto">
@@ -739,7 +739,7 @@ _SHELL = """<!DOCTYPE html>
   </div>
   <div class="loader hidden" id="loader5">
     <div class="spinner" style="border-top-color:var(--c5)"></div>
-    Carregando Bibliotecas...
+    Carregando Biblioteca...
   </div>
 
   <iframe id="f1" src="" class="visible"
