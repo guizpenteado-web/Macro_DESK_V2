@@ -53,7 +53,7 @@ body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFo
 
 /* ── Chart wrap ── */
 .chart-wrap{padding:12px 20px 0;position:relative}
-#chart-container{width:100%;height:calc(100vh - 180px);min-height:480px;border-radius:6px;overflow:visible;position:relative}
+#chart-container{width:100%;height:calc(100vh - 110px);min-height:560px;border-radius:6px;overflow:visible;position:relative}
 
 /* ── Chart toolbar (sobreposto, topo-centro do gráfico) ── */
 /* Fica em .chart-wrap (não em #chart-container) porque o Highcharts recria o
@@ -408,7 +408,7 @@ function rebuildChart(){
       backgroundColor:"#161b22",
       style:{ fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" },
       animation:false,
-      marginRight: 85,
+      marginRight: 130,
       zooming:{
         type: null,
         mouseWheel:{ enabled:true, type:"x" },
