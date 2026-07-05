@@ -81,11 +81,6 @@ body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFo
 /* ── Status bar ── */
 .status-bar{padding:7px 20px;display:flex;gap:16px;flex-wrap:wrap;border-top:1px solid #21262d}
 .status-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#8b949e}
-.status-dot{width:7px;height:7px;border-radius:50%}
-.status-dot.ok{background:#2ea043}
-.status-dot.empty{background:#f85149}
-.status-dot.loading{background:#e3b341;animation:pulse 1s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
 /* ── Spinner ── */
 .spinner-overlay{position:fixed;inset:0;background:rgba(13,17,23,.85);display:none;align-items:center;justify-content:center;z-index:1000;flex-direction:column;gap:14px}
@@ -184,12 +179,6 @@ body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFo
 
 <!-- Status bar -->
 <div class="status-bar">
-  <span class="status-item"><span class="status-dot loading" id="dot-ibov"></span><span id="lbl-ibov">IBOV: —</span></span>
-  <span class="status-item"><span class="status-dot loading" id="dot-cot"></span><span id="lbl-cot">COT: —</span></span>
-  <span class="status-item"><span class="status-dot loading" id="dot-ntnb"></span><span id="lbl-ntnb">NTN-B: —</span></span>
-  <span class="status-item"><span class="status-dot loading" id="dot-di"></span><span id="lbl-di">DI: —</span></span>
-  <span class="status-item"><span class="status-dot loading" id="dot-bri"></span><span id="lbl-bri">ETFs B3: —</span></span>
-  <span class="status-item"><span class="status-dot loading" id="dot-macro"></span><span id="lbl-macro">Macro Global: —</span></span>
   <span class="status-item" id="lbl-mode" style="color:#484f58"></span>
   <button class="btn primary" id="btn-collect" onclick="collectAll()" style="margin-left:auto;padding:3px 10px;font-size:11px">&#8635; Atualizar</button>
   <span class="status-item" id="lbl-last" style="color:#484f58"></span>
@@ -703,21 +692,6 @@ function toggleSeries(key){
 // ────────────────────────────────────────────────────────────────
 async function refreshStatus(){
   try{
-    const r=await fetch(`${API}/api/status`);
-    const d=await r.json();
-    const map=[
-      ["ibov","dot-ibov","lbl-ibov",`IBOV: ${d.ibov.rows} pts`],
-      ["cot","dot-cot","lbl-cot",`COT: ${d.cot.rows} sem.`],
-      ["ntnb35","dot-ntnb","lbl-ntnb",`NTN-B: ${d.ntnb35.rows} pts`],
-      ["di_rates","dot-di","lbl-di",`DI: ${d.di_rates?.rows||0} pts`],
-      ["br_indices","dot-bri","lbl-bri",`Índices B3: ${d.br_indices?.rows||0} pts`],
-      ["macro_indicators","dot-macro","lbl-macro",`Macro Global: ${d.macro_indicators?.rows||0} pts`],
-    ];
-    map.forEach(([k,dotId,lblId,lbl])=>{
-      const rows=d[k]?.rows??0;
-      document.getElementById(dotId).className="status-dot "+(rows>0?"ok":"empty");
-      document.getElementById(lblId).textContent=lbl;
-    });
     const now=new Date();
     document.getElementById("lbl-last").textContent=
       `Atualizado: ${now.toLocaleDateString("pt-BR")} ${now.toLocaleTimeString("pt-BR")}`;
