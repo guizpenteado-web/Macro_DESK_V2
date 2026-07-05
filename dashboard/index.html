@@ -414,7 +414,9 @@ function rebuildChart(){
         mouseWheel:{ enabled:true, type:"x" },
         resetButton:{ theme:{ display:"none" } },
       },
-      panning:{ enabled:true, type:"xy" },
+      // TradingView: arrastar o corpo do gráfico só anda no tempo (x). A escala de
+      // preço (y) só muda arrastando especificamente no eixo à direita (yd-panel).
+      panning:{ enabled:true, type:"x" },
     },
     rangeSelector:{ enabled:false },
     navigator:{
