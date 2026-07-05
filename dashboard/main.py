@@ -12,6 +12,7 @@ from decimal import InvalidOperation
 from typing import Optional
 
 import pandas as pd
+import requests
 import yfinance as yf
 from apscheduler.schedulers.background import BackgroundScheduler
 from bs4 import BeautifulSoup
@@ -81,6 +82,13 @@ def init_db():
             ifnc  REAL,
             util  REAL,
             usdbrl REAL
+        );
+        CREATE TABLE IF NOT EXISTS macro_indicators (
+            date TEXT PRIMARY KEY,
+            dxy REAL,
+            us10y REAL,
+            bcom REAL,
+            us_cpi_yoy REAL
         );
     """)
     # Add smal11 column if it doesn't exist (migration for existing DBs)
@@ -692,6 +700,83 @@ def collect_br_indices(start: str = "2016-01-01") -> dict:
         return {"status": "error", "message": str(e), "rows": 0}
 
 
+# ── Collector: Macro Global (DXY, US10Y, Bloomberg Commodity, US CPI YoY) ────
+def _fred_csv_series(series_id: str) -> dict:
+    """Download a FRED series via the no-key CSV endpoint and return {date_str: float}.
+
+    Must parse line-by-line (not pd.read_csv) — fredgraph.csv's header/date column
+    breaks pandas' date parsing, and missing observations are marked with '.'.
+    """
+    url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
+    r = requests.get(url, timeout=30)
+    r.raise_for_status()
+    result = {}
+    for line in r.text.strip().split("\n")[1:]:
+        parts = line.split(",")
+        if len(parts) == 2 and parts[1].strip() not in (".", ""):
+            try:
+                result[parts[0].strip()] = float(parts[1].strip())
+            except ValueError:
+                pass
+    return result
+
+
+def _compute_yoy_from_monthly(series: dict) -> dict:
+    """Given {date_str: level} for a monthly series (one point per month, no gaps),
+    return {date_str: pct_change_vs_12_months_ago} for dates where that's computable."""
+    dates = sorted(series.keys())
+    yoy = {}
+    for i in range(12, len(dates)):
+        prev, cur = series[dates[i - 12]], series[dates[i]]
+        if prev:
+            yoy[dates[i]] = round((cur / prev - 1) * 100, 3)
+    return yoy
+
+
+def collect_macro_indicators(start: str = "2000-01-01") -> dict:
+    """DXY (ICE US Dollar Index, Yahoo Finance), US10Y (10-Year Treasury Constant
+    Maturity Rate, FRED DGS10 — official Fed/Treasury data), Bloomberg Commodity
+    Index (via DJP — iPath ETN that tracks it; the raw ^BCOM index ticker has no
+    usable history on Yahoo Finance, only ever returns 1 day), and US CPI YoY
+    inflation rate (derived from FRED CPIAUCSL, official BLS data, no API key)."""
+    log.info("Macro Indicators: downloading DXY/US10Y/BCOM/CPI YoY...")
+    try:
+        dxy_data = _yf_close_series("DX-Y.NYB", start=start)
+        bcom_data = _yf_close_series("DJP", start=start)
+        us10y_data = _fred_csv_series("DGS10")
+        cpi_levels = _fred_csv_series("CPIAUCSL")
+        cpi_yoy = _compute_yoy_from_monthly(cpi_levels)
+
+        all_dates = set(dxy_data) | set(bcom_data) | set(us10y_data) | set(cpi_yoy)
+
+        conn = get_conn()
+        n = 0
+        for d in sorted(all_dates):
+            dxy = dxy_data.get(d)
+            us10y = us10y_data.get(d)
+            bcom = bcom_data.get(d)
+            cpi = cpi_yoy.get(d)
+            if any(v is not None for v in (dxy, us10y, bcom, cpi)):
+                conn.execute(
+                    """INSERT INTO macro_indicators (date, dxy, us10y, bcom, us_cpi_yoy)
+                       VALUES (?, ?, ?, ?, ?)
+                       ON CONFLICT(date) DO UPDATE SET
+                         dxy        = COALESCE(excluded.dxy,        dxy),
+                         us10y      = COALESCE(excluded.us10y,      us10y),
+                         bcom       = COALESCE(excluded.bcom,       bcom),
+                         us_cpi_yoy = COALESCE(excluded.us_cpi_yoy, us_cpi_yoy)""",
+                    (d, dxy, us10y, bcom, cpi),
+                )
+                n += 1
+        conn.commit()
+        conn.close()
+        log.info(f"Macro Indicators: {n} rows upserted")
+        return {"status": "ok", "rows": n}
+    except Exception as e:
+        log.error(f"Macro Indicators: {e}")
+        return {"status": "error", "message": str(e), "rows": 0}
+
+
 # ── FastAPI ───────────────────────────────────────────────────────────────────
 app = FastAPI(title="Intermarket Dashboard")
 
@@ -730,6 +815,10 @@ def _collect_all_job():
         collect_br_indices()
     except Exception as e:
         log.error("Auto-collect br_indices: %s", e)
+    try:
+        collect_macro_indicators()
+    except Exception as e:
+        log.error("Auto-collect macro_indicators: %s", e)
     log.info("=== Coleta automática diária concluída ===")
 
 
@@ -761,6 +850,7 @@ def status():
         "foreign_flow": {"rows": db_count("foreign_flow")},
         "di_rates": {"rows": db_count("di_rates")},
         "br_indices": {"rows": db_count("br_indices")},
+        "macro_indicators": {"rows": db_count("macro_indicators")},
     }
 
 
@@ -868,11 +958,16 @@ def api_all(
         "SELECT date, iblv, ibhb, idiv, smal11, usdbrl FROM br_indices WHERE date >= ? AND date <= ? ORDER BY date",
         (from_date, to_date),
     ).fetchall()
+    macro = conn.execute(
+        "SELECT date, dxy, us10y, bcom, us_cpi_yoy FROM macro_indicators WHERE date >= ? AND date <= ? ORDER BY date",
+        (from_date, to_date),
+    ).fetchall()
     conn.close()
     di2033 = [{"date": r[0], "value": r[1]} for r in di if r[1] is not None]
     di2034 = [{"date": r[0], "value": r[2]} for r in di if r[2] is not None]
     di2035 = [{"date": r[0], "value": r[3]} for r in di if r[3] is not None]
     def _bri(idx): return [{"date": r[0], "value": r[idx]} for r in bri if r[idx] is not None]
+    def _macro(idx): return [{"date": r[0], "value": r[idx]} for r in macro if r[idx] is not None]
     return {
         "from": from_date,
         "to": to_date,
@@ -888,6 +983,10 @@ def api_all(
         "divo11":  _bri(3),
         "smal11":  _bri(4),
         "usdbrl":  _bri(5),
+        "dxy":        _macro(1),
+        "us10y":      _macro(2),
+        "bcom":       _macro(3),
+        "us_cpi_yoy": _macro(4),
     }
 
 
@@ -915,6 +1014,29 @@ def api_br_indices(
     }
 
 
+@app.get("/api/macro-indicators")
+def api_macro_indicators(
+    from_date: str = Query(default="2000-01-01", alias="from"),
+    to_date: str = Query(default=date.today().isoformat(), alias="to"),
+):
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT date, dxy, us10y, bcom, us_cpi_yoy FROM macro_indicators WHERE date >= ? AND date <= ? ORDER BY date",
+        (from_date, to_date),
+    ).fetchall()
+    conn.close()
+
+    def _series(idx):
+        return [{"date": r[0], "value": r[idx]} for r in rows if r[idx] is not None]
+
+    return {
+        "dxy":        _series(1),
+        "us10y":      _series(2),
+        "bcom":       _series(3),
+        "us_cpi_yoy": _series(4),
+    }
+
+
 @app.post("/api/collect/trigger")
 def collect_trigger(series: str = Query(default="all"), full: bool = Query(default=False)):
     """
@@ -936,6 +1058,8 @@ def collect_trigger(series: str = Query(default="all"), full: bool = Query(defau
         results["foreign_flow"] = collect_foreign_flow()
     if series in ("all", "br_indices"):
         results["br_indices"] = collect_br_indices()
+    if series in ("all", "macro_indicators"):
+        results["macro_indicators"] = collect_macro_indicators()
     return results
 
 

@@ -101,15 +101,14 @@ body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFo
 
 <!-- Header -->
 <div class="header">
-  <h1>Intermarket Dashboard &mdash; IBOVESPA &middot; 6L COT &middot; NTN-B 2035 &middot; Fluxo &middot; DI1F2033</h1>
   <div class="header-right">
-    <button class="btn primary" id="btn-collect" onclick="collectAll()">&#8635; Atualizar Dados</button>
     <button class="btn" onclick="collectSingle('ibov')">IBOV</button>
     <button class="btn" onclick="collectSingle('cot')">COT</button>
     <button class="btn" onclick="collectSingle('ntnb35')">NTN-B</button>
     <button class="btn" onclick="collectSingle('foreign_flow')">Fluxo</button>
     <button class="btn" onclick="collectSingle('di_rates')">DI Rates</button>
     <button class="btn" onclick="collectSingle('br_indices')">Índices B3</button>
+    <button class="btn" onclick="collectSingle('macro_indicators')">Macro Global</button>
   </div>
 </div>
 
@@ -148,6 +147,19 @@ body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFo
     <button class="toggle-btn off" id="tog-usdbrl" onclick="toggleSeries('usdbrl')">
       <span class="toggle-dot" style="background:#22C55E"></span>USD/BRL
     </button>
+    <span style="color:#30363d;font-size:14px;margin:0 2px">|</span>
+    <button class="toggle-btn off" id="tog-dxy" onclick="toggleSeries('dxy')">
+      <span class="toggle-dot" style="background:#EC4899"></span>DXY
+    </button>
+    <button class="toggle-btn off" id="tog-us10y" onclick="toggleSeries('us10y')">
+      <span class="toggle-dot" style="background:#818CF8"></span>US10Y
+    </button>
+    <button class="toggle-btn off" id="tog-bcom" onclick="toggleSeries('bcom')">
+      <span class="toggle-dot" style="background:#F97316"></span>Bloomberg Commodity
+    </button>
+    <button class="toggle-btn off" id="tog-us_cpi_yoy" onclick="toggleSeries('us_cpi_yoy')">
+      <span class="toggle-dot" style="background:#FB7185"></span>US Inflação (CPI YoY)
+    </button>
   </div>
 
   <!-- Mode selector -->
@@ -178,8 +190,10 @@ body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFo
   <span class="status-item"><span class="status-dot loading" id="dot-flow"></span><span id="lbl-flow">Fluxo: —</span></span>
   <span class="status-item"><span class="status-dot loading" id="dot-di"></span><span id="lbl-di">DI: —</span></span>
   <span class="status-item"><span class="status-dot loading" id="dot-bri"></span><span id="lbl-bri">ETFs B3: —</span></span>
+  <span class="status-item"><span class="status-dot loading" id="dot-macro"></span><span id="lbl-macro">Macro Global: —</span></span>
   <span class="status-item" id="lbl-mode" style="color:#484f58"></span>
-  <span class="status-item" id="lbl-last" style="margin-left:auto;color:#484f58"></span>
+  <button class="btn primary" id="btn-collect" onclick="collectAll()" style="margin-left:auto;padding:3px 10px;font-size:11px">&#8635; Atualizar</button>
+  <span class="status-item" id="lbl-last" style="color:#484f58"></span>
 </div>
 
 <script>
@@ -195,10 +209,14 @@ const META = {
   di2033: { label: "DI1F2033",          color: "#F59E0B", unit: "% a.a.",     axisId: "ax-di"      },
   smal11: { label: "SMAL11 (Small Cap)", color: "#FACC15", unit: " R$",        axisId: "ax-etfs"    },
   usdbrl: { label: "USD/BRL",            color: "#22C55E", unit: " R$",        axisId: "ax-usdbrl"  },
+  dxy:    { label: "DXY (Dollar Index)", color: "#EC4899", unit: " pts",       axisId: "ax-dxy"     },
+  us10y:  { label: "US10Y (Treasury)",   color: "#818CF8", unit: "% a.a.",     axisId: "ax-us10y"   },
+  bcom:   { label: "Bloomberg Commodity",color: "#F97316", unit: " pts",       axisId: "ax-bcom"    },
+  us_cpi_yoy: { label: "US Inflação (CPI YoY)", color: "#FB7185", unit: "% a/a", axisId: "ax-cpi"   },
 };
 
-let rawData = { ibov: [], cot: [], ntnb: [], flow: [], di2033: [], smal11: [], usdbrl: [] };
-let visible  = { ibov: true, cot: false, ntnb: true, flow: true, di2033: false, smal11: false, usdbrl: false };
+let rawData = { ibov: [], cot: [], ntnb: [], flow: [], di2033: [], smal11: [], usdbrl: [], dxy: [], us10y: [], bcom: [], us_cpi_yoy: [] };
+let visible  = { ibov: true, cot: false, ntnb: true, flow: true, di2033: false, smal11: false, usdbrl: false, dxy: false, us10y: false, bcom: false, us_cpi_yoy: false };
 let chart    = null;
 let currentMonths = 0;
 
@@ -254,6 +272,10 @@ function buildAxes(mode){
     { key:"di2033",  color:"#F59E0B", label:"DI % aa", opp:true,  off:isAbs?80:0, grid:false },
     { key:"smal11",  color:"#FACC15", label:"ETFs B3", opp:false, off:0,          grid:false },
     { key:"usdbrl",  color:"#22C55E", label:"USD/BRL", opp:true,  off:isAbs?120:0,grid:false },
+    { key:"dxy",     color:"#EC4899", label:"DXY",     opp:true,  off:isAbs?160:0,grid:false },
+    { key:"us10y",   color:"#818CF8", label:"US10Y",   opp:true,  off:isAbs?200:0,grid:false },
+    { key:"bcom",    color:"#F97316", label:"BCOM",    opp:true,  off:isAbs?240:0,grid:false },
+    { key:"us_cpi_yoy", color:"#FB7185", label:"CPI YoY", opp:true, off:isAbs?280:0, grid:false },
   ];
   // ax-etfs is shared by blvb11/bhyb11/divo11/smal11 — only create it once
   const seen = new Set();
@@ -318,7 +340,7 @@ function makeTooltipFormatter(mode){
 // ────────────────────────────────────────────────────────────────
 function rebuildChart(){
   const mode = document.getElementById("mode-select").value;
-  const keys = ["ibov","cot","ntnb","flow","di2033","smal11","usdbrl"];
+  const keys = ["ibov","cot","ntnb","flow","di2033","smal11","usdbrl","dxy","us10y","bcom","us_cpi_yoy"];
 
   document.getElementById("lbl-mode").textContent =
     mode==="minmax" ? "Escala: Min-Max (0-100%)" :
@@ -464,7 +486,7 @@ function addDragHandles(){
     "top:"  + chart.plotTop    + "px;" +
     "height:" + chart.plotHeight + "px;";
 
-  const keys = ["ibov","cot","ntnb","flow","di2033","smal11","usdbrl"];
+  const keys = ["ibov","cot","ntnb","flow","di2033","smal11","usdbrl","dxy","us10y","bcom","us_cpi_yoy"];
   keys.forEach(key => {
     const meta = META[key];
     const axis = chart.get(meta.axisId);
@@ -526,6 +548,10 @@ async function loadAndDraw(months){
     rawData.di2033 = d.di2033||[];
     rawData.smal11 = d.smal11 ||[];
     rawData.usdbrl = d.usdbrl ||[];
+    rawData.dxy    = d.dxy ||[];
+    rawData.us10y  = d.us10y ||[];
+    rawData.bcom   = d.bcom ||[];
+    rawData.us_cpi_yoy = d.us_cpi_yoy ||[];
     rebuildChart();
     await refreshStatus();
     const tot=rawData.ibov.length+rawData.cot.length+rawData.ntnb.length+rawData.flow.length+rawData.di2033.length;
@@ -561,6 +587,7 @@ async function refreshStatus(){
       ["foreign_flow","dot-flow","lbl-flow",`Fluxo: ${d.foreign_flow.rows} pts`],
       ["di_rates","dot-di","lbl-di",`DI: ${d.di_rates?.rows||0} pts`],
       ["br_indices","dot-bri","lbl-bri",`Índices B3: ${d.br_indices?.rows||0} pts`],
+      ["macro_indicators","dot-macro","lbl-macro",`Macro Global: ${d.macro_indicators?.rows||0} pts`],
     ];
     map.forEach(([k,dotId,lblId,lbl])=>{
       const rows=d[k]?.rows??0;
