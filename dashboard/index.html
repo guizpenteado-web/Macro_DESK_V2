@@ -285,20 +285,38 @@ function buildAxes(mode){
     seen.add(aid);
     return true;
   });
-  return filtered.map(d=>({
-    ...base,
-    id: META[d.key].axisId,
-    gridLineWidth: d.grid ? 1 : 0,
-    opposite: d.opp,
-    offset: d.off,
-    title: { text:null },
-    labels: isAbs && visible[d.key] && (d.key === "ibov" || d.opp)
-      ? { enabled:true, style:{color:d.color,fontSize:"11px"}, formatter(){ return Highcharts.numberFormat(this.value,0,",","."); } }
-      : { enabled:false },
-    min: mode==="minmax" ? 0   : undefined,
-    max: mode==="minmax" ? 100 : undefined,
-    plotLines: (mode==="pct" && d.grid) ? [{value:0,color:"#484f58",width:1,dashStyle:"Dot"}] : [],
-  }));
+  return filtered.map(d=>{
+    // Em modo absoluto, fixa o min/max do eixo com base no histórico COMPLETO da série
+    // (não no que está visível na janela de zoom). Sem isso, séries esparsas (ex: COT
+    // semanal, CPI YoY mensal) ficam com pouquíssimos pontos dentro da janela quando o
+    // usuário dá zoom apertado no scroll — o Highcharts então reajusta o eixo Y ao
+    // recorte cru, o que "explode"/pula de forma instável. Séries diárias raramente
+    // ficam sem pontos numa janela zoomada, por isso o bug parecia exclusivo delas.
+    let absMin, absMax;
+    if (isAbs) {
+      const vals = (rawData[d.key] || []).map(p => p.value).filter(v => typeof v === "number" && !isNaN(v));
+      if (vals.length) {
+        const dmn = Math.min(...vals), dmx = Math.max(...vals);
+        const pad = (dmx - dmn) * 0.1 || Math.abs(dmx || 1) * 0.1 || 1;
+        absMin = dmn - pad;
+        absMax = dmx + pad;
+      }
+    }
+    return {
+      ...base,
+      id: META[d.key].axisId,
+      gridLineWidth: d.grid ? 1 : 0,
+      opposite: d.opp,
+      offset: d.off,
+      title: { text:null },
+      labels: isAbs && visible[d.key] && (d.key === "ibov" || d.opp)
+        ? { enabled:true, style:{color:d.color,fontSize:"11px"}, formatter(){ return Highcharts.numberFormat(this.value,0,",","."); } }
+        : { enabled:false },
+      min: mode==="minmax" ? 0   : absMin,
+      max: mode==="minmax" ? 100 : absMax,
+      plotLines: (mode==="pct" && d.grid) ? [{value:0,color:"#484f58",width:1,dashStyle:"Dot"}] : [],
+    };
+  });
 }
 
 function getAxisId(mode, key){
