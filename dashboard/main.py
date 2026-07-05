@@ -722,14 +722,20 @@ def _fred_csv_series(series_id: str) -> dict:
 
 
 def _compute_yoy_from_monthly(series: dict) -> dict:
-    """Given {date_str: level} for a monthly series (one point per month, no gaps),
-    return {date_str: pct_change_vs_12_months_ago} for dates where that's computable."""
-    dates = sorted(series.keys())
+    """Given {date_str: level} for a monthly series (YYYY-MM-01 keys), return
+    {date_str: pct_change_vs_same_month_prior_year}. Looks up the exact same
+    calendar month one year back (not "12 positions back in the sorted list")
+    — FRED series can have a missing month (e.g. CPIAUCNS has no 2025-10-01,
+    likely the Oct/2025 government shutdown delaying data collection), and an
+    index-based lookback silently drifts out of alignment for every date past
+    a gap."""
     yoy = {}
-    for i in range(12, len(dates)):
-        prev, cur = series[dates[i - 12]], series[dates[i]]
+    for d, cur in series.items():
+        year, month, day = d.split("-")
+        prev_date = f"{int(year) - 1}-{month}-{day}"
+        prev = series.get(prev_date)
         if prev:
-            yoy[dates[i]] = round((cur / prev - 1) * 100, 3)
+            yoy[d] = round((cur / prev - 1) * 100, 3)
     return yoy
 
 
@@ -738,13 +744,18 @@ def collect_macro_indicators(start: str = "2000-01-01") -> dict:
     Maturity Rate, FRED DGS10 — official Fed/Treasury data), Bloomberg Commodity
     Index (via DJP — iPath ETN that tracks it; the raw ^BCOM index ticker has no
     usable history on Yahoo Finance, only ever returns 1 day), and US CPI YoY
-    inflation rate (derived from FRED CPIAUCSL, official BLS data, no API key)."""
+    inflation rate (derived from FRED CPIAUCNS, official BLS data, no API key).
+    CPIAUCNS (NOT seasonally adjusted) on purpose — the headline "12-month
+    percent change" BLS actually publishes in its press releases is computed
+    on the NSA series, not CPIAUCSL (seasonally adjusted, meant for MoM
+    comparisons). Using SA data here would silently diverge from the number
+    everyone else reports as "the US inflation rate"."""
     log.info("Macro Indicators: downloading DXY/US10Y/BCOM/CPI YoY...")
     try:
         dxy_data = _yf_close_series("DX-Y.NYB", start=start)
         bcom_data = _yf_close_series("DJP", start=start)
         us10y_data = _fred_csv_series("DGS10")
-        cpi_levels = _fred_csv_series("CPIAUCSL")
+        cpi_levels = _fred_csv_series("CPIAUCNS")
         cpi_yoy = _compute_yoy_from_monthly(cpi_levels)
 
         all_dates = set(dxy_data) | set(bcom_data) | set(us10y_data) | set(cpi_yoy)
