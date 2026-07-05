@@ -215,6 +215,8 @@ const META = {
   us_cpi_yoy: { label: "US Inflação (CPI YoY)", color: "#FB7185", unit: "% a/a", axisId: "ax-cpi"   },
 };
 
+// COT é semanal, CPI YoY é mensal — todo o resto é diário. Ver comentário no "step" abaixo.
+const LOW_FREQ_KEYS = new Set(["cot", "us_cpi_yoy"]);
 let rawData = { ibov: [], cot: [], ntnb: [], flow: [], di2033: [], smal11: [], usdbrl: [], dxy: [], us10y: [], bcom: [], us_cpi_yoy: [] };
 let visible  = { ibov: true, cot: false, ntnb: true, flow: true, di2033: false, smal11: false, usdbrl: false, dxy: false, us10y: false, bcom: false, us_cpi_yoy: false };
 let chart    = null;
@@ -374,6 +376,10 @@ function rebuildChart(){
     visible: visible[k],
     lineWidth: k==="ibov" ? 2 : 1.5,
     dashStyle: "Solid",
+    // Séries de baixa frequência (semanal/mensal) parecem "quebradas" com retas
+    // diagonais ligando pontos distantes quando o zoom fica apertado — step
+    // mantém o valor constante até o próximo dado real, sem inventar inclinação.
+    step: LOW_FREQ_KEYS.has(k) ? "left" : undefined,
     marker:{ enabled:false, states:{hover:{enabled:true,radius:3}} },
     states:{ hover:{ lineWidthPlus:0 } },
     tooltip:{ valueDecimals:2 },
