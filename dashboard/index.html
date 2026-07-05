@@ -499,21 +499,83 @@ let ydDrag = null;
 const YD_CLICK_THRESHOLD = 3; // px — abaixo disso, mouseup vira "clique" em vez de "arrastar"
 
 document.addEventListener("mousemove", e => {
-  if(!ydDrag || !chart) return;
-  const dy = e.clientY - ydDrag.startY;
-  if (Math.abs(dy) > YD_CLICK_THRESHOLD) ydDrag.moved = true;
-  if (!ydDrag.moved) return;
-  const range = Math.abs(ydDrag.startMax - ydDrag.startMin) || 1;
-  const center = (ydDrag.startMin + ydDrag.startMax) / 2;
-  // arrastar para baixo = expande (factor > 1), para cima = comprime (factor < 1)
-  const factor = Math.pow(1.004, dy);
-  const nr = range * factor;
-  ydDrag.axis.setExtremes(center - nr / 2, center + nr / 2, true, false);
+  if(ydDrag && chart){
+    const dy = e.clientY - ydDrag.startY;
+    if (Math.abs(dy) > YD_CLICK_THRESHOLD) ydDrag.moved = true;
+    if (ydDrag.moved) {
+      const range = Math.abs(ydDrag.startMax - ydDrag.startMin) || 1;
+      const center = (ydDrag.startMin + ydDrag.startMax) / 2;
+      // arrastar para baixo = expande (factor > 1), para cima = comprime (factor < 1)
+      const factor = Math.pow(1.004, dy);
+      const nr = range * factor;
+      ydDrag.axis.setExtremes(center - nr / 2, center + nr / 2, true, false);
+    }
+  }
+  if(lineDrag && chart){
+    const dy = e.clientY - lineDrag.startClientY;
+    if (Math.abs(dy) > LINE_DRAG_THRESHOLD) lineDrag.moved = true;
+    if (lineDrag.moved) {
+      // Mesma lógica de "arrastar" das alças, mas desloca (pan) em vez de reescalar:
+      // o ponto agarrado da linha acompanha o cursor, sem mudar o tamanho do range.
+      const range = lineDrag.startMax - lineDrag.startMin;
+      const deltaValue = (dy / lineDrag.plotHeight) * range;
+      lineDrag.axis.setExtremes(lineDrag.startMin + deltaValue, lineDrag.startMax + deltaValue, true, false);
+    }
+  }
 });
 
 document.addEventListener("mouseup", () => {
   if (ydDrag && !ydDrag.moved) openScalePrompt(ydDrag.axis, ydDrag.label);
   ydDrag = null;
+  lineDrag = null;
+});
+
+// ────────────────────────────────────────────────────────────────
+// Clicar diretamente na linha de um ativo e arrastar pra cima/baixo —
+// desloca só aquele ativo (seu próprio eixo Y), sem mexer nos outros.
+// ────────────────────────────────────────────────────────────────
+let lineDrag = null;
+const LINE_DRAG_THRESHOLD = 3; // px
+const LINE_HIT_PX = 10; // tolerância de distância pra considerar "clicou na linha"
+
+function findHitSeries(plotX, plotY){
+  let best = null, bestDist = LINE_HIT_PX;
+  chart.series.forEach(s => {
+    if (!s.visible || !s.points || s.points.length < 1) return;
+    const xValue = s.xAxis.toValue(plotX, true);
+    let p1 = null, p2 = null;
+    for (let i = 0; i < s.points.length - 1; i++) {
+      if (s.points[i].x <= xValue && s.points[i+1].x >= xValue) { p1 = s.points[i]; p2 = s.points[i+1]; break; }
+    }
+    if (!p1) {
+      let nearest = s.points[0], minD = Infinity;
+      s.points.forEach(pt => { const d = Math.abs(pt.x - xValue); if (d < minD) { minD = d; nearest = pt; } });
+      p1 = p2 = nearest;
+    }
+    const yValue = (p1 === p2 || p1.x === p2.x) ? p1.y : p1.y + (p2.y - p1.y) * (xValue - p1.x) / (p2.x - p1.x);
+    const pixelY = s.yAxis.toPixels(yValue, true);
+    const dist = Math.abs(pixelY - plotY);
+    if (dist < bestDist) { bestDist = dist; best = s; }
+  });
+  return best;
+}
+
+document.getElementById("chart-container").addEventListener("mousedown", e => {
+  if (!chart) return;
+  if (e.target.closest("#yd-panel") || e.target.closest("#chart-toolbar")) return;
+  const rect = chart.container.getBoundingClientRect();
+  const plotX = e.clientX - rect.left - chart.plotLeft;
+  const plotY = e.clientY - rect.top - chart.plotTop;
+  if (plotX < 0 || plotY < 0 || plotX > chart.plotWidth || plotY > chart.plotHeight) return;
+  const hitSeries = findHitSeries(plotX, plotY);
+  if (!hitSeries) return; // fora de qualquer linha — deixa o arrastar padrão do gráfico agir
+  const axis = hitSeries.yAxis;
+  const ex = axis.getExtremes();
+  const mn = ex.userMin ?? ex.min ?? ex.dataMin;
+  const mx = ex.userMax ?? ex.max ?? ex.dataMax;
+  lineDrag = { axis, startClientY: e.clientY, startMin: mn, startMax: mx, plotHeight: axis.len, moved: false };
+  e.preventDefault();
+  e.stopPropagation();
 });
 
 // Duplo-clique em qualquer ponto do gráfico = mesmo reset do botão "Resetar escala".
