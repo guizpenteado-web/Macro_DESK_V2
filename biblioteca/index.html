@@ -170,6 +170,16 @@
   }
   #dm-fs-btn:hover { background:var(--accent2); transform:scale(1.05); box-shadow:0 6px 26px rgba(232,160,32,.8); }
   #dm-fs-btn .fs-icon { font-size:16px; line-height:1; }
+  #dm-delete-btn {
+    position:absolute; top:64px; right:12px; z-index:20;
+    background:var(--red); border:none; border-radius:28px;
+    color:#fff; padding:13px 28px; cursor:pointer; font-size:15px; font-weight:700;
+    display:flex; align-items:center; gap:8px;
+    box-shadow:0 4px 20px rgba(224,56,72,.6);
+    transition:background .15s,transform .15s,box-shadow .15s; white-space:nowrap;
+  }
+  #dm-delete-btn:hover { background:#ff5468; transform:scale(1.05); box-shadow:0 6px 26px rgba(224,56,72,.8); }
+  #dm-delete-btn .del-icon { font-size:16px; line-height:1; }
   #cinema-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.97); z-index:9999; flex-direction:column; align-items:center; justify-content:center; }
   #cinema-overlay.open { display:flex; }
   #cinema-close { position:absolute; top:14px; right:18px; background:rgba(14,20,32,.85); border:1px solid var(--border); color:var(--text); padding:5px 14px; border-radius:4px; cursor:pointer; font-size:13px; z-index:1; transition:background .12s; }
@@ -194,7 +204,18 @@
   .dm-close-btn:hover { color:var(--text); background:var(--surf2); }
   .dm-tag-el { font-size:16px; color:var(--accent2); }
   #dm-title { font-size:22px; font-weight:700; line-height:1.35; }
+  .dm-edit-trigger { align-self:flex-start; background:var(--surf2); border:1px solid var(--border); border-radius:14px; color:var(--text2); font-size:12px; padding:5px 12px; cursor:pointer; display:flex; align-items:center; gap:5px; transition:background .12s,border-color .12s,color .12s; }
+  .dm-edit-trigger:hover { background:var(--surf3); border-color:var(--accent); color:var(--text); }
   #dm-text { font-size:16px; color:var(--text2); line-height:1.75; white-space:pre-wrap; }
+  #dm-text.editing { outline:1px dashed var(--accent); background:var(--surf2); border-radius:4px; padding:8px; cursor:text; }
+  #dm-edit-toolbar { display:none; gap:4px; align-items:center; margin-top:-4px; }
+  #dm-edit-toolbar .dm-edit-action { border:none; border-radius:14px; padding:6px 14px; font-size:12.5px; font-weight:700; cursor:pointer; margin-left:4px; }
+  #dm-edit-toolbar .dm-edit-action.save { background:var(--green); color:#000; }
+  #dm-edit-toolbar .dm-edit-action.cancel { background:var(--surf2); border:1px solid var(--border); color:var(--text2); }
+  #dm-edit-toolbar .dm-edit-action.addmedia { background:var(--surf2); border:1px solid var(--border); color:var(--text2); }
+  #dm-edit-toolbar .dm-edit-action.addmedia:hover { border-color:var(--accent); color:var(--text); }
+  #dm-edit-toolbar .dm-edit-action.removemedia { background:var(--surf2); border:1px solid var(--border); color:var(--red); }
+  #dm-edit-toolbar .dm-edit-action.removemedia:hover { border-color:var(--red); background:rgba(224,56,72,.12); }
   .dm-divider { height:1px; background:var(--border); }
   .dm-footer { display:flex; align-items:center; gap:8px; margin-top:auto; padding-top:8px; }
   .dm-author-row { display:flex; align-items:center; gap:7px; }
@@ -307,10 +328,10 @@
   <button class="tab-btn" data-section="Smallcaps">Smallcaps <span class="tab-count" id="cnt-Smallcaps">0</span></button>
   <button class="tab-btn" data-section="ETFs Alternativos">ETFs Alternativos <span class="tab-count" id="cnt-ETFs Alternativos">0</span></button>
   <button class="tab-btn" data-section="Tecnologia">Tecnologia <span class="tab-count" id="cnt-Tecnologia">0</span></button>
-  <button class="tab-btn" data-section="Outros">Outros <span class="tab-count" id="cnt-Outros">0</span></button>
   <button class="tab-btn" data-section="Watchlist">Watchlist <span class="tab-count" id="cnt-Watchlist">0</span></button>
   <button class="tab-btn" data-section="Momentum">Momentum <span class="tab-count" id="cnt-Momentum">0</span></button>
   <button class="tab-btn" data-section="Setores">Setores <span class="tab-count" id="cnt-Setores">0</span></button>
+  <button class="tab-btn" data-section="Outros">Outros <span class="tab-count" id="cnt-Outros">0</span></button>
 </div>
 
 <!-- SEARCH BAR -->
@@ -331,8 +352,9 @@
         <button class="subtab-btn" data-kw="VIX">VIX</button>
         <button class="subtab-btn" data-kw="DXY">DXY</button>
         <button class="subtab-btn" data-kw="DIFUT">DIFUT</button>
-        <button class="subtab-btn" data-kw="Crypto">Crypto</button>
         <button class="subtab-btn" data-kw="USDBRL">USDBRL</button>
+        <button class="subtab-btn" data-kw="IBOV">IBOV</button>
+        <button class="subtab-btn" data-kw="Crypto">Crypto</button>
       </div>
       <div class="subtab-row" id="commodities-subtabs" style="display:none">
         <button class="subtab-btn active" data-kw="">Tudo</button>
@@ -404,6 +426,16 @@
       <div class="dm-tag-el" id="dm-tag"></div>
       <h2 id="dm-title"></h2>
       <div id="dm-text"></div>
+      <div class="rt-toolbar" id="dm-edit-toolbar">
+        <button type="button" class="rt-btn" data-cmd="bold" title="Negrito"><b>B</b></button>
+        <button type="button" class="rt-btn" data-cmd="italic" title="Itálico"><i>I</i></button>
+        <button type="button" class="rt-btn" data-cmd="underline" title="Sublinhado"><u>S</u></button>
+        <button type="button" class="dm-edit-action addmedia" id="dm-edit-addmedia">+ Imagem/Vídeo</button>
+        <button type="button" class="dm-edit-action removemedia" id="dm-edit-removemedia">&#128465; Remover mídia atual</button>
+        <input type="file" id="dm-edit-media-input" accept="image/*,video/*" multiple style="display:none">
+        <button type="button" class="dm-edit-action save" id="dm-edit-save">Salvar</button>
+        <button type="button" class="dm-edit-action cancel" id="dm-edit-cancel">Cancelar</button>
+      </div>
       <div class="dm-divider"></div>
       <div class="dm-footer">
         <div class="dm-author-row">
@@ -453,7 +485,7 @@
           <option>Financeiro</option><option>Imobiliário</option><option>Utilities</option><option>Saúde</option>
           <option>Agro</option><option>Smallcaps</option>
           <option>ETFs Alternativos</option><option>Tecnologia</option>
-          <option>Outros</option><option>Watchlist</option><option>Momentum</option><option>Setores</option>
+          <option>Watchlist</option><option>Momentum</option><option>Setores</option><option>Outros</option>
         </select>
       </div>
       <div id="f-subcat-row" style="display:none">
@@ -648,7 +680,7 @@ let chatMsgs    = loadChat();
 let currentSection = 'Macro';
 let subKw          = '';
 const SUBTABS_BY_SECTION = { 'Macro':'macro-subtabs', 'Commodities':'commodities-subtabs', 'Financeiro':'financeiro-subtabs', 'Utilities':'utilities-subtabs', 'Tecnologia':'tecnologia-subtabs', 'ETFs Alternativos':'etfs-subtabs', 'Imobiliário':'imobiliario-subtabs' };
-const SUBCATS_BY_SECTION = { 'Macro':['US10Y','VIX','DXY','DIFUT','Crypto','USDBRL'], 'Commodities':['Petróleo','Ouro','Prata','Cobre'], 'Financeiro':['Bancos','Seguradoras'], 'Utilities':['Energia','Saneamento'], 'Tecnologia':['MAG7'], 'ETFs Alternativos':['Terras Raras','Metais Preciosos','Energia Limpa'], 'Imobiliário':['Construção','Shoppings'] };
+const SUBCATS_BY_SECTION = { 'Macro':['US10Y','VIX','DXY','DIFUT','USDBRL','IBOV','Crypto'], 'Commodities':['Petróleo','Ouro','Prata','Cobre'], 'Financeiro':['Bancos','Seguradoras'], 'Utilities':['Energia','Saneamento'], 'Tecnologia':['MAG7'], 'ETFs Alternativos':['Terras Raras','Metais Preciosos','Energia Limpa'], 'Imobiliário':['Construção','Shoppings'] };
 function syncSubcatField(section) {
   const row = document.getElementById('f-subcat-row');
   const sel = document.getElementById('f-subcat');
@@ -683,7 +715,7 @@ if (bc) bc.onmessage = e => {
   if (e.data==='chat') { chatMsgs=loadChat(); renderChat(); }
 };
 
-const ALL_SECTIONS = ['Macro','Commodities','Materials','Financeiro','Imobiliário','Utilities','Saúde','Agro','Smallcaps','ETFs Alternativos','Tecnologia','Outros','Watchlist','Momentum','Setores'];
+const ALL_SECTIONS = ['Macro','Commodities','Materials','Financeiro','Imobiliário','Utilities','Saúde','Agro','Smallcaps','ETFs Alternativos','Tecnologia','Watchlist','Momentum','Setores','Outros'];
 
 document.querySelectorAll('.tab-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
@@ -849,7 +881,7 @@ function renderPosts() {
   if (!posts.length) {
     grid.innerHTML = searchQuery
       ? `<div class="empty-state"><div class="es-icon">&#128269;</div>Nenhuma análise encontrada para<br>"${escHtml(searchInput.value.trim())}"</div>`
-      : `<div class="empty-state"><div class="es-icon">&#128202;</div>Nenhuma análise nesta seção.<br>Use o botão + para publicar.</div>`;
+      : '';
     return;
   }
   grid.innerHTML = posts.map(p=>cardHTML(p)).join('');
@@ -922,7 +954,6 @@ async function openDetail(postId) {
     <button class="dm-react-btn${dmLiked?' liked':''}" onclick="reactDetail('likes')">${dmLiked?'&#10084;':'&#9825;'} <span id="dr-likes">${post.likes||0}</span></button>
     <span class="dm-stat">&#128065; <span id="dr-views">${post.views||0}</span></span>
     <button class="dm-react-btn" onclick="toggleComments()">&#128172; <span id="dr-comments">${postCommentCount(post.id)}</span></button>
-    <button class="dm-react-btn" onclick="deletePost(${post.id})" style="color:var(--red);border-color:var(--red)">&#128465; Excluir</button>
   `;
 
   const hasMedia = post.media && post.media.length > 0;
@@ -1072,6 +1103,119 @@ window.deletePost = function(pid) {
 window.toggleComments = function() {
   document.getElementById('dm-cmt-text').focus();
 };
+
+window.startEditText = function() {
+  const pass = prompt('Digite a senha para editar este texto:');
+  if (pass === null) return;
+  if (pass !== DELETE_PASSWORD) { alert('Senha incorreta.'); return; }
+  const el = document.getElementById('dm-text');
+  el.contentEditable = 'true';
+  el.classList.add('editing');
+  el.focus();
+  document.getElementById('dm-edit-toolbar').style.display = 'flex';
+  document.getElementById('dm-edit-trigger').style.display = 'none';
+};
+function saveEditText() {
+  if (!detailPost) return;
+  const el = document.getElementById('dm-text');
+  const newText = sanitizeRichText(el.innerHTML);
+  detailPost.text = newText;
+  const idx = allPosts.findIndex(p=>p.id===detailPost.id);
+  if (idx !== -1) allPosts[idx].text = newText;
+  savePosts(allPosts);
+  el.contentEditable = 'false';
+  el.classList.remove('editing');
+  document.getElementById('dm-edit-toolbar').style.display = 'none';
+  document.getElementById('dm-edit-trigger').style.display = 'flex';
+  renderAll();
+  if (bc) bc.postMessage('post');
+}
+function cancelEditText() {
+  const el = document.getElementById('dm-text');
+  el.innerHTML = sanitizeRichText(detailPost ? detailPost.text : '');
+  el.contentEditable = 'false';
+  el.classList.remove('editing');
+  document.getElementById('dm-edit-toolbar').style.display = 'none';
+  document.getElementById('dm-edit-trigger').style.display = 'flex';
+}
+document.getElementById('dm-edit-save').addEventListener('click', e=>{ e.stopPropagation(); saveEditText(); });
+document.getElementById('dm-edit-cancel').addEventListener('click', e=>{ e.stopPropagation(); cancelEditText(); });
+document.querySelectorAll('#dm-edit-toolbar .rt-btn').forEach(btn=>{
+  btn.addEventListener('mousedown', e=>e.preventDefault());
+  btn.addEventListener('click', e=>{
+    e.stopPropagation();
+    document.getElementById('dm-text').focus();
+    document.execCommand(btn.dataset.cmd, false, null);
+  });
+});
+
+async function addMediaToPost(pid, files) {
+  const idx = allPosts.findIndex(p=>p.id===pid);
+  if (idx === -1 || !files.length) return;
+  const post = allPosts[idx];
+  post.media = post.media || [];
+  for (const f of Array.from(files)) {
+    const isVideo = f.type.startsWith('video/');
+    try {
+      const permKey = `post_${pid}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      await idbPut(permKey, f);
+      if (isVideo) {
+        const thumbSrc = await videoThumb(f);
+        post.media.push({src:null, thumbSrc, type:'video', name:f.name, dbKey:permKey});
+      } else {
+        post.media.push({src:null, thumbSrc:null, type:'image', name:f.name, dbKey:permKey});
+      }
+    } catch(e) { console.warn('Erro ao adicionar mídia:', f.name, e); }
+  }
+  savePosts(allPosts);
+  detailPost = post;
+  const gallery = document.getElementById('dm-gallery');
+  gallery.style.display = 'flex';
+  await showDetailMedia(post.media.length - 1);
+  updateNavBtns();
+  renderAll();
+  if (bc) bc.postMessage('post');
+}
+document.getElementById('dm-edit-addmedia').addEventListener('click', e=>{ e.stopPropagation(); document.getElementById('dm-edit-media-input').click(); });
+document.getElementById('dm-edit-media-input').addEventListener('change', async e=>{
+  e.stopPropagation();
+  if (detailPost && e.target.files.length) await addMediaToPost(detailPost.id, e.target.files);
+  e.target.value = '';
+});
+
+async function removeMediaFromPost(pid, mediaIdx) {
+  const idx = allPosts.findIndex(p=>p.id===pid);
+  if (idx === -1) return;
+  const post = allPosts[idx];
+  if (!post.media || !post.media[mediaIdx]) return;
+  if (!confirm('Remover esta mídia do post? Essa ação não pode ser desfeita.')) return;
+  const removed = post.media[mediaIdx];
+  if (removed.dbKey) await idbDel(removed.dbKey).catch(()=>{});
+  post.media.splice(mediaIdx, 1);
+  if (post.thumbDbKey && post.thumbDbKey === removed.dbKey) post.thumbDbKey = null;
+  if (post.thumbIsVideo && removed.type === 'video' && post.thumbSrc === removed.thumbSrc) {
+    post.thumbIsVideo = false; post.thumbSrc = null;
+  }
+  savePosts(allPosts);
+  detailPost = post;
+  const gallery = document.getElementById('dm-gallery');
+  if (!post.media.length) {
+    gallery.style.display = 'none';
+    document.getElementById('dm-media-wrap').innerHTML = '';
+    document.getElementById('dm-vid-badge').style.display = 'none';
+    document.getElementById('dm-dots').innerHTML = '';
+  } else {
+    await showDetailMedia(Math.min(mediaIdx, post.media.length-1));
+    updateNavBtns();
+  }
+  renderAll();
+  if (bc) bc.postMessage('post');
+}
+document.getElementById('dm-edit-removemedia').addEventListener('click', e=>{
+  e.stopPropagation();
+  if (!detailPost || !detailPost.media || !detailPost.media.length) { alert('Este post não tem mídia para remover.'); return; }
+  removeMediaFromPost(detailPost.id, detailMediaIdx);
+});
 
 window.openDetailComments = function(postId) {
   openDetail(postId);

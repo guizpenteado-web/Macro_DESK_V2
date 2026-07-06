@@ -769,21 +769,15 @@ _SHELL = """<!DOCTYPE html>
     5: "/biblioteca/?v=" + _cv,
   };
 
-  // Carrega iframe 1 (Intermarket) imediatamente com cache-bust
-  (function() {
-    _srcSet[1] = true;
-    document.getElementById("f1").src = URLS[1];
-  })();
-
   function loaded(n) {
     if (!_srcSet[n]) return;
     _loaded[n] = true;
     document.getElementById("loader" + n).classList.add("hidden");
   }
 
-  function show(n) {
-    if (n === _current) return;
+  function applyTab(n) {
     _current = n;
+    localStorage.setItem("hub_active_tab", n);
 
     if (!_srcSet[n]) {
       _srcSet[n] = true;
@@ -812,6 +806,18 @@ _SHELL = """<!DOCTYPE html>
       document.getElementById("call-badge").style.display = "none";
     }
   }
+
+  function show(n) {
+    if (n === _current) return;
+    applyTab(n);
+  }
+
+  // Restaura a última aba visitada ao atualizar a página, em vez de sempre abrir em IBOV Calls
+  (function() {
+    var saved = parseInt(localStorage.getItem("hub_active_tab"), 10);
+    var initial = (saved >= 1 && saved <= 5) ? saved : 1;
+    applyTab(initial);
+  })();
 
   // ── News Panel ──
   var _newsOpen = false;
