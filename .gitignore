@@ -17,6 +17,9 @@ server_err.txt
 *.db
 *.sqlite
 
+# Dados da Biblioteca (posts reais do usuário, mídias e chave de API) — nunca no git
+biblioteca/data/
+
 # Arquivos de configuração local do Claude
 .claude/
 

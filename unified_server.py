@@ -1169,6 +1169,23 @@ _SHELL = """<!DOCTYPE html>
 
 app = FastAPI(title="Macro Desk")
 
+# CORS liberado: o artifact "Análises Macro Desk" roda em claude.ai (origem diferente
+# desta) e precisa poder chamar a API da Biblioteca aqui hospedada. Não há autenticação
+# nem dados sensíveis de terceiros neste servidor pessoal, então liberar geral é aceitável.
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+sys.path.insert(0, str(BIBLIOTECA_DIR))
+from biblioteca_api import router as biblioteca_api_router  # noqa: E402
+
+app.include_router(biblioteca_api_router)
+
 
 @app.get("/", response_class=HTMLResponse)
 def shell() -> str:

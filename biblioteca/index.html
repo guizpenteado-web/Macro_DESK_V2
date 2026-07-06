@@ -20,6 +20,8 @@
   .brand { font-size:18px; font-weight:700; color:#e6edf3; white-space:nowrap; flex-shrink:0; letter-spacing:1.5px; text-transform:uppercase; }
   .brand span { color:var(--text2); font-size:14px; font-weight:400; margin-left:8px; }
   .spacer { flex:1; }
+  #export-data-btn { background:var(--surf2); border:1px solid var(--border); border-radius:4px; color:var(--text2); font-size:12px; padding:6px 12px; cursor:pointer; white-space:nowrap; transition:border-color .12s,color .12s; }
+  #export-data-btn:hover { border-color:var(--accent); color:var(--text); }
   .meta { font-size:12px; color:var(--text3); font-family:Consolas,"Courier New",monospace; letter-spacing:.04em; }
   .meta strong { color:var(--green); margin-right:3px; }
   #live-dot { width:7px; height:7px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; flex-shrink:0; }
@@ -312,6 +314,7 @@
 <div id="topbar">
   <div class="brand">Macro Desk <span>/ Biblioteca</span></div>
   <div class="spacer"></div>
+  <button id="export-data-btn" title="Baixar backup de todos os posts e mídias deste navegador">&#11015; Exportar dados</button>
 </div>
 
 <!-- TAB BAR -->
@@ -564,6 +567,36 @@ function relTime(ts) {
 }
 function isNew(ts) { return Date.now() - ts < 86400e3; }
 
+// API_BASE: vazio nesta cópia porque ela é servida pelo mesmo backend (mesma origem).
+// A cópia do artifact claude.ai usa uma URL absoluta (ngrok) pra chamar o mesmo servidor.
+const API_BASE = '';
+
+// Ações de escrita (publicar, curtir, comentar, chat, editar, apagar) exigem uma
+// senha guardada só em sessionStorage (nunca no HTML/JS servido) — pede uma vez por
+// aba via prompt() e reusa daí em diante. Sem isso, quem só descobrir a URL pública
+// (ngrok) não consegue escrever/apagar nada, só ler.
+const WRITE_KEY_STORAGE = 'mdash_write_key';
+let writeKey = sessionStorage.getItem(WRITE_KEY_STORAGE) || null;
+async function authedFetch(url, options = {}) {
+  if (!writeKey) {
+    const pass = prompt('Digite a senha para habilitar ações de escrita (publicar, curtir, comentar, editar, apagar) nesta aba:');
+    if (pass === null) throw new Error('Ação cancelada.');
+    writeKey = pass;
+    sessionStorage.setItem(WRITE_KEY_STORAGE, pass);
+  }
+  const headers = { ...(options.headers || {}), 'X-Api-Key': writeKey };
+  const res = await fetch(url, { ...options, headers });
+  if (res.status === 401) {
+    writeKey = null;
+    sessionStorage.removeItem(WRITE_KEY_STORAGE);
+    alert('Senha incorreta.');
+    throw new Error('Senha incorreta.');
+  }
+  return res;
+}
+
+// IndexedDB só é mantido para permitir migrar dados antigos (de antes do backend real)
+// através do botão "Exportar dados" — nada abaixo escreve mais em IDB.
 const IDB_NAME = 'mdash_media_v1';
 let _db = null;
 async function openDB() {
@@ -573,16 +606,6 @@ async function openDB() {
     req.onupgradeneeded = e => e.target.result.createObjectStore('blobs', { keyPath: 'key' });
     req.onsuccess = e => res(e.target.result);
     req.onerror   = rej;
-  });
-}
-async function idbPut(key, fileOrBlob) {
-  const db = await openDB();
-  const mimeType = fileOrBlob.type || 'video/mp4';
-  const blob = fileOrBlob instanceof Blob ? fileOrBlob : new Blob([fileOrBlob], { type: mimeType });
-  return new Promise((res, rej) => {
-    const tx = db.transaction('blobs', 'readwrite');
-    tx.objectStore('blobs').put({ key, blob, mimeType });
-    tx.oncomplete = res; tx.onerror = rej;
   });
 }
 async function idbGet(key) {
@@ -596,38 +619,6 @@ async function idbGet(key) {
       res(b && r.mimeType && b.type !== r.mimeType ? new Blob([b], { type: r.mimeType }) : (b || null));
     };
     req.onerror = rej;
-  });
-}
-async function idbDel(key) {
-  const db = await openDB();
-  return new Promise((res, rej) => {
-    const tx = db.transaction('blobs','readwrite');
-    tx.objectStore('blobs').delete(key);
-    tx.oncomplete = res; tx.onerror = rej;
-  });
-}
-async function idbRename(oldKey, newKey) {
-  const blob = await idbGet(oldKey);
-  if (blob) { await idbPut(newKey, blob); await idbDel(oldKey); }
-}
-
-async function compressImage(file, maxW=1600, quality=0.88) {
-  return new Promise((res) => {
-    const reader = new FileReader();
-    reader.onload = ev => {
-      const img = new Image();
-      img.onerror = () => res(ev.target.result);
-      img.onload = () => {
-        let w = img.naturalWidth, h = img.naturalHeight;
-        if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
-        const c = document.createElement('canvas');
-        c.width = w; c.height = h;
-        c.getContext('2d').drawImage(img, 0, 0, w, h);
-        res(c.toDataURL('image/jpeg', quality));
-      };
-      img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
   });
 }
 async function videoThumb(file) {
@@ -649,34 +640,15 @@ async function videoThumb(file) {
   });
 }
 
+// Chaves antigas (localStorage/IndexedDB) — mantidas só de referência para o botão
+// "Exportar dados" conseguir ler dados de posts criados antes do backend real existir.
 const POSTS_KEY = 'mdash_posts_v7';
 const CHAT_KEY  = 'mdash_chat_v7';
+const COMMENTS_KEY = 'mdash_cmt_v4';
 const DRAFT_KEY = 'mdash_draft_v1';
-function tryLS(k, v) { try { localStorage.setItem(k, v); return true; } catch(e) { return false; } }
-function loadPosts() {
-  try { return JSON.parse(localStorage.getItem(POSTS_KEY) || 'null') || []; }
-  catch(e) { return []; }
-}
-function savePosts(posts) {
-  if (!tryLS(POSTS_KEY, JSON.stringify(posts))) {
-    // Thumbnails agora são pequenos (~15-30KB) — tenta preservar todos
-    const stripped = posts.map(p => ({...p, media:[]}));
-    if (!tryLS(POSTS_KEY, JSON.stringify(stripped))) {
-      // Último recurso: remove também os thumbnails
-      const minimal = posts.map(p => ({...p, media:[], thumbSrc:null}));
-      tryLS(POSTS_KEY, JSON.stringify(minimal));
-    }
-  }
-}
-function loadChat() {
-  try { return JSON.parse(localStorage.getItem(CHAT_KEY) || 'null') || []; }
-  catch(e) { return []; }
-}
-function saveChat(msgs) { tryLS(CHAT_KEY, JSON.stringify(msgs.slice(-100))); }
 
-
-let allPosts    = loadPosts();
-let chatMsgs    = loadChat();
+let allPosts    = [];
+let chatMsgs    = [];
 let currentSection = 'Macro';
 let subKw          = '';
 const SUBTABS_BY_SECTION = { 'Macro':'macro-subtabs', 'Commodities':'commodities-subtabs', 'Financeiro':'financeiro-subtabs', 'Utilities':'utilities-subtabs', 'Tecnologia':'tecnologia-subtabs', 'ETFs Alternativos':'etfs-subtabs', 'Imobiliário':'imobiliario-subtabs' };
@@ -691,34 +663,30 @@ function syncSubcatField(section) {
 }
 let pendingFiles   = [];
 let thumbIdx       = 0;
-let nextPostId = Math.max(0, ...allPosts.map(p=>p.id)) + 1;
-let nextChatId = Math.max(0, ...chatMsgs.map(m=>m.id)) + 1;
 
-// Rastreia object URLs criados para thumbnails dos cards — revogados antes de cada re-render
-const cardBlobUrls = new Set();
-function revokeBlobUrls() { cardBlobUrls.forEach(u => URL.revokeObjectURL(u)); cardBlobUrls.clear(); }
-async function fillCardThumbs() {
-  for (const img of document.querySelectorAll('.card-thumb img[data-idb-key]')) {
-    const blob = await idbGet(img.dataset.idbKey).catch(() => null);
-    if (blob) {
-      const url = URL.createObjectURL(blob);
-      cardBlobUrls.add(url);
-      img.src = url;
-      img.style.opacity = '1';
-    }
-  }
+async function loadPostsFromServer() {
+  try {
+    const res = await fetch(`${API_BASE}/api/biblioteca/posts`);
+    allPosts = res.ok ? await res.json() : [];
+  } catch(e) { allPosts = []; }
+}
+async function loadChatFromServer(section) {
+  try {
+    const res = await fetch(`${API_BASE}/api/biblioteca/chat?section=${encodeURIComponent(section)}`);
+    chatMsgs = res.ok ? await res.json() : [];
+  } catch(e) { chatMsgs = []; }
 }
 
 const bc = window.BroadcastChannel ? new BroadcastChannel('mdash_v4') : null;
-if (bc) bc.onmessage = e => {
-  if (e.data==='post') { allPosts=loadPosts(); renderAll(); }
-  if (e.data==='chat') { chatMsgs=loadChat(); renderChat(); }
+if (bc) bc.onmessage = async e => {
+  if (e.data==='post') { await loadPostsFromServer(); renderAll(); }
+  if (e.data==='chat') { await loadChatFromServer(currentSection); renderChat(); }
 };
 
 const ALL_SECTIONS = ['Macro','Commodities','Materials','Financeiro','Imobiliário','Utilities','Saúde','Agro','Smallcaps','ETFs Alternativos','Tecnologia','Watchlist','Momentum','Setores','Outros'];
 
 document.querySelectorAll('.tab-btn').forEach(btn=>{
-  btn.addEventListener('click',()=>{
+  btn.addEventListener('click', async ()=>{
     clearSearch();
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
@@ -735,6 +703,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     titleEl.style.display = activeSubtabsId ? 'none' : '';
     document.getElementById('posts-area').scrollTop = 0;
     renderPosts();
+    await loadChatFromServer(currentSection);
     renderChat();
   });
 });
@@ -777,19 +746,14 @@ function clearSearch() {
 }
 
 function cardHTML(p) {
-  const thumb = p.thumbSrc;
-  // Para imagens novas: thumbSrc é null, usar thumbDbKey (ou primeiro media.dbKey) via IDB
-  const thumbKey = !thumb && (p.thumbDbKey || (p.media && p.media[0] && p.media[0].dbKey));
+  const thumb = p.thumbUrl ? (p.thumbIsVideo ? p.thumbUrl : `${API_BASE}${p.thumbUrl}`) : null;
   const mediaCount = p.media ? p.media.length : 0;
   const alreadyLiked = likedPosts.has(p.id);
 
   let topSection = '';
-  if (thumb || thumbKey) {
-    const imgAttrs = thumb
-      ? `src="${escHtml(thumb)}"`
-      : `data-idb-key="${escHtml(thumbKey)}" src="" style="opacity:0;transition:opacity .25s"`;
+  if (thumb) {
     topSection = `<div class="card-thumb">
-      <img ${imgAttrs} alt="" loading="lazy">
+      <img src="${escHtml(thumb)}" alt="" loading="lazy">
       <div class="card-thumb-overlay"></div>
       ${p.thumbIsVideo ? `<div class="play-overlay"><div class="play-circle"><svg viewBox="0 0 24 24" fill="#F0B830"><path d="M8 5v14l11-7z"/></svg></div></div>` : ''}
       ${isNew(p.ts) ? `<div class="badge-novo">Novo</div>` : ''}
@@ -821,7 +785,7 @@ function cardHTML(p) {
         <div class="c-reactions">
           <button class="c-react-btn${alreadyLiked?' liked':''}" onclick="event.stopPropagation();react(${p.id},'likes',this)">${alreadyLiked?'&#10084;':'&#9825;'} ${p.likes||0}</button>
           <span class="c-react-btn" style="cursor:default;pointer-events:none;opacity:.7">&#128065; ${p.views||0}</span>
-          <button class="c-react-btn" onclick="event.stopPropagation();openDetailComments(${p.id})">&#128172; ${postCommentCount(p.id)}</button>
+          <button class="c-react-btn" onclick="event.stopPropagation();openDetailComments(${p.id})">&#128172; ${p.comments||0}</button>
           <button class="c-react-btn" onclick="event.stopPropagation();deletePost(${p.id})" title="Deletar">&#128465;</button>
         </div>
       </div>
@@ -833,23 +797,24 @@ const LIKED_KEY = 'mdash_liked_v1';
 let likedPosts = new Set((() => { try { return JSON.parse(localStorage.getItem(LIKED_KEY) || '[]'); } catch(e) { return []; } })());
 function saveLikedPosts() { try { localStorage.setItem(LIKED_KEY, JSON.stringify([...likedPosts])); } catch(e) {} }
 
-window.react = function(pid, type, btn) {
-  if (type === 'likes') {
-    if (likedPosts.has(pid)) return; // já curtiu — só uma vez por post
-    likedPosts.add(pid);
-    saveLikedPosts();
-  }
-  const post = allPosts.find(p=>p.id===pid);
-  if (!post) return;
-  post[type] = (post[type]||0) + 1;
-  savePosts(allPosts);
+window.react = async function(pid, type, btn) {
+  if (type !== 'likes' || likedPosts.has(pid)) return; // já curtiu — só uma vez por post/navegador
+  likedPosts.add(pid);
+  saveLikedPosts();
+  try {
+    const res = await authedFetch(`${API_BASE}/api/biblioteca/posts/${pid}/like`, {method:'POST'});
+    if (res.ok) {
+      const {likes} = await res.json();
+      const post = allPosts.find(p=>p.id===pid);
+      if (post) post.likes = likes;
+    }
+  } catch(e) {}
   renderAll();
   if (bc) bc.postMessage('post');
 };
 
 function renderAll() { updateCounts(); renderPosts(); }
 function renderPosts() {
-  revokeBlobUrls();
   const grid = document.getElementById('posts-grid');
   const titleEl = document.getElementById('section-title');
   let posts;
@@ -888,7 +853,6 @@ function renderPosts() {
   grid.querySelectorAll('.post-card').forEach(card=>{
     card.addEventListener('click', ()=>openDetail(+card.dataset.id));
   });
-  fillCardThumbs();
 }
 
 function exactTime(ts) {
@@ -901,26 +865,28 @@ function renderChat() {
   const wrap = document.getElementById('chat-messages');
   const titleEl = document.getElementById('chat-title');
   if (titleEl) titleEl.textContent = currentSection + ' — Chat ao vivo';
-  const msgs = chatMsgs.filter(m => (m.sector || 'Geral') === currentSection);
-  wrap.innerHTML = msgs.map(m=>`
+  wrap.innerHTML = chatMsgs.map(m=>`
     <div class="cm">
-      <div class="cm-av" style="background:${hashColor(m.name)}">${initial(m.name)}</div>
+      <div class="cm-av" style="background:${hashColor(m.author)}">${initial(m.author)}</div>
       <div>
-        <span class="cm-name">${escHtml(m.name)}</span>
+        <span class="cm-name">${escHtml(m.author)}</span>
         <span class="cm-time">${exactTime(m.ts)}</span>
         <div class="cm-text">${escHtml(m.text)}</div>
       </div>
     </div>`).join('');
   wrap.scrollTop = wrap.scrollHeight;
 }
-function sendChat() {
+async function sendChat() {
   const name = document.getElementById('chat-name-in').value.trim()||'Anônimo';
   const text = document.getElementById('chat-msg-in').value.trim();
   if (!text) return;
-  chatMsgs.push({id:nextChatId++, name, text, ts:Date.now(), sector:currentSection});
-  saveChat(chatMsgs);
   document.getElementById('chat-msg-in').value = '';
-  renderChat();
+  try {
+    const fd = new FormData();
+    fd.append('section', currentSection); fd.append('author', name); fd.append('text', text);
+    const res = await authedFetch(`${API_BASE}/api/biblioteca/chat`, {method:'POST', body:fd});
+    if (res.ok) { chatMsgs.push(await res.json()); renderChat(); }
+  } catch(e) {}
   if (bc) bc.postMessage('chat');
 }
 document.getElementById('chat-send').addEventListener('click',sendChat);
@@ -928,16 +894,16 @@ document.getElementById('chat-msg-in').addEventListener('keydown',e=>{ if(e.key=
 
 let detailPost = null;
 let detailMediaIdx = 0;
-let detailVideoUrls = [];
 
 async function openDetail(postId) {
   const post = allPosts.find(p=>p.id===postId);
   if (!post) return;
   detailPost = post;
   detailMediaIdx = 0;
-  detailVideoUrls = [];
-  post.views = (post.views||0) + 1;
-  savePosts(allPosts);
+  try {
+    const res = await fetch(`${API_BASE}/api/biblioteca/posts/${postId}/view`, {method:'POST'});
+    if (res.ok) post.views = (await res.json()).views;
+  } catch(e) {}
 
   document.getElementById('dm-tag').textContent    = post.section;
   document.getElementById('dm-title').textContent  = post.title;
@@ -953,7 +919,7 @@ async function openDetail(postId) {
   rxEl.innerHTML = `
     <button class="dm-react-btn${dmLiked?' liked':''}" onclick="reactDetail('likes')">${dmLiked?'&#10084;':'&#9825;'} <span id="dr-likes">${post.likes||0}</span></button>
     <span class="dm-stat">&#128065; <span id="dr-views">${post.views||0}</span></span>
-    <button class="dm-react-btn" onclick="toggleComments()">&#128172; <span id="dr-comments">${postCommentCount(post.id)}</span></button>
+    <button class="dm-react-btn" onclick="toggleComments()">&#128172; <span id="dr-comments">${post.comments||0}</span></button>
   `;
 
   const hasMedia = post.media && post.media.length > 0;
@@ -968,22 +934,24 @@ async function openDetail(postId) {
   }
 
   document.getElementById('detail-overlay').classList.add('open');
+  await loadCommentsForDetail();
   renderComments();
 }
 
-window.reactDetail = function(type) {
-  if (!detailPost || type === 'views') return;
-  if (type === 'likes') {
-    if (likedPosts.has(detailPost.id)) return; // já curtiu — só uma vez por post
-    likedPosts.add(detailPost.id);
-    saveLikedPosts();
-    const btn = document.querySelector('#dm-reactions .dm-react-btn');
-    if (btn) { btn.classList.add('liked'); btn.innerHTML = btn.innerHTML.replace('&#9825;', '&#10084;'); }
-  }
-  detailPost[type] = (detailPost[type]||0) + 1;
-  const el = document.getElementById('dr-'+type);
-  if (el) el.textContent = detailPost[type];
-  savePosts(allPosts);
+window.reactDetail = async function(type) {
+  if (!detailPost || type !== 'likes' || likedPosts.has(detailPost.id)) return;
+  likedPosts.add(detailPost.id);
+  saveLikedPosts();
+  const btn = document.querySelector('#dm-reactions .dm-react-btn');
+  if (btn) { btn.classList.add('liked'); btn.innerHTML = btn.innerHTML.replace('&#9825;', '&#10084;'); }
+  try {
+    const res = await authedFetch(`${API_BASE}/api/biblioteca/posts/${detailPost.id}/like`, {method:'POST'});
+    if (res.ok) {
+      detailPost.likes = (await res.json()).likes;
+      const el = document.getElementById('dr-likes');
+      if (el) el.textContent = detailPost.likes;
+    }
+  } catch(e) {}
   renderAll();
   if (bc) bc.postMessage('post');
 };
@@ -1003,42 +971,17 @@ async function showDetailMedia(idx) {
     vidBadge.style.display = 'none';
     const img = document.createElement('img');
     img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;';
-    // Tenta carregar imagem em alta resolução do IndexedDB; fallback para thumbnail
-    if (m.dbKey) {
-      let blob = null;
-      try { blob = await idbGet(m.dbKey); } catch(e) {}
-      if (blob) {
-        const url = URL.createObjectURL(blob);
-        detailVideoUrls.push(url);  // reutiliza mecanismo de cleanup
-        img.src = url;
-      } else {
-        img.src = m.src || m.thumbSrc || '';
-      }
-    } else {
-      img.src = m.src || m.thumbSrc || '';
-    }
+    img.src = `${API_BASE}${m.url}`;
     wrap.appendChild(img);
   } else if (m.type === 'video') {
     vidBadge.style.display = 'block';
-    if (!m.dbKey) {
-      wrap.innerHTML = `<div style="color:var(--text3);text-align:center;padding:48px 20px;font-size:12px">Vídeo sem chave de armazenamento.</div>`;
-      return;
-    }
-    let blob;
-    try { blob = await idbGet(m.dbKey); } catch(e) { blob = null; }
-    if (!blob) {
-      wrap.innerHTML = `<div style="color:var(--text3);text-align:center;padding:48px 20px;font-size:12px">Vídeo não encontrado.<br>Reimporte o arquivo.</div>`;
-      return;
-    }
-    const url = URL.createObjectURL(blob);
-    detailVideoUrls.push(url);
     const vid = document.createElement('video');
     vid.controls = true;
     vid.preload = 'auto';
     if (m.thumbSrc) vid.poster = m.thumbSrc;
     vid.style.cssText = 'width:100%;height:100%;background:#000;object-fit:contain;display:block;';
     wrap.appendChild(vid);
-    vid.src = url;
+    vid.src = `${API_BASE}${m.url}`;
     vid.muted = false;
     vid.volume = 1;
     vid.play().catch(() => { vid.muted = true; vid.play().catch(()=>{}); });
@@ -1071,30 +1014,26 @@ document.getElementById('dm-next').addEventListener('click', ()=>{
 function closeDetail() {
   const vid = document.querySelector('#dm-media-wrap video');
   if (vid) { vid.pause(); vid.src=''; }
-  detailVideoUrls.forEach(u=>URL.revokeObjectURL(u));
-  detailVideoUrls = [];
   document.getElementById('detail-overlay').classList.remove('open');
   detailPost = null;
 }
 
-const COMMENTS_KEY = 'mdash_cmt_v4';
-let allComments = (()=>{ try{ return JSON.parse(localStorage.getItem(COMMENTS_KEY)||'{}'); }catch(e){ return {}; } })();
-function saveAllComments() { try{ localStorage.setItem(COMMENTS_KEY,JSON.stringify(allComments)); }catch(e){} }
-function postCommentCount(pid) { return (allComments[pid]||[]).length; }
+let detailComments = [];
+async function loadCommentsForDetail() {
+  if (!detailPost) { detailComments = []; return; }
+  try {
+    const res = await fetch(`${API_BASE}/api/biblioteca/posts/${detailPost.id}/comments`);
+    detailComments = res.ok ? await res.json() : [];
+  } catch(e) { detailComments = []; }
+}
 
-const DELETE_PASSWORD = '2288';
-window.deletePost = function(pid) {
-  const pass = prompt('Digite a senha para deletar este post:');
-  if (pass === null) return;
-  if (pass !== DELETE_PASSWORD) { alert('Senha incorreta.'); return; }
+window.deletePost = async function(pid) {
   if (!confirm('Tem certeza que deseja deletar este post? Essa ação não pode ser desfeita.')) return;
-  const post = allPosts.find(p=>p.id===pid);
-  if (!post) return;
-  (post.media||[]).forEach(m => { if (m.dbKey) idbDel(m.dbKey).catch(()=>{}); });
+  try {
+    const res = await authedFetch(`${API_BASE}/api/biblioteca/posts/${pid}`, {method:'DELETE'});
+    if (!res.ok) throw new Error('Falha ao deletar');
+  } catch(e) { alert('Erro ao deletar: ' + e.message); return; }
   allPosts = allPosts.filter(p=>p.id!==pid);
-  delete allComments[pid];
-  saveAllComments();
-  savePosts(allPosts);
   if (detailPost && detailPost.id===pid) closeDetail();
   renderAll();
   if (bc) bc.postMessage('post');
@@ -1105,28 +1044,33 @@ window.toggleComments = function() {
 };
 
 window.startEditText = function() {
-  const pass = prompt('Digite a senha para editar este texto:');
-  if (pass === null) return;
-  if (pass !== DELETE_PASSWORD) { alert('Senha incorreta.'); return; }
   const el = document.getElementById('dm-text');
   el.contentEditable = 'true';
   el.classList.add('editing');
   el.focus();
   document.getElementById('dm-edit-toolbar').style.display = 'flex';
-  document.getElementById('dm-edit-trigger').style.display = 'none';
+  const trig = document.getElementById('dm-edit-trigger');
+  if (trig) trig.style.display = 'none';
 };
-function saveEditText() {
+async function saveEditText() {
   if (!detailPost) return;
   const el = document.getElementById('dm-text');
   const newText = sanitizeRichText(el.innerHTML);
-  detailPost.text = newText;
-  const idx = allPosts.findIndex(p=>p.id===detailPost.id);
-  if (idx !== -1) allPosts[idx].text = newText;
-  savePosts(allPosts);
+  try {
+    const fd = new FormData(); fd.append('text', newText);
+    const res = await authedFetch(`${API_BASE}/api/biblioteca/posts/${detailPost.id}/text`, {method:'PATCH', body:fd});
+    if (res.ok) {
+      const updated = await res.json();
+      detailPost.text = updated.text;
+      const idx = allPosts.findIndex(p=>p.id===detailPost.id);
+      if (idx !== -1) allPosts[idx].text = updated.text;
+    }
+  } catch(e) { alert('Erro ao salvar: ' + e.message); }
   el.contentEditable = 'false';
   el.classList.remove('editing');
   document.getElementById('dm-edit-toolbar').style.display = 'none';
-  document.getElementById('dm-edit-trigger').style.display = 'flex';
+  const trig = document.getElementById('dm-edit-trigger');
+  if (trig) trig.style.display = 'flex';
   renderAll();
   if (bc) bc.postMessage('post');
 }
@@ -1136,7 +1080,8 @@ function cancelEditText() {
   el.contentEditable = 'false';
   el.classList.remove('editing');
   document.getElementById('dm-edit-toolbar').style.display = 'none';
-  document.getElementById('dm-edit-trigger').style.display = 'flex';
+  const trig = document.getElementById('dm-edit-trigger');
+  if (trig) trig.style.display = 'flex';
 }
 document.getElementById('dm-edit-save').addEventListener('click', e=>{ e.stopPropagation(); saveEditText(); });
 document.getElementById('dm-edit-cancel').addEventListener('click', e=>{ e.stopPropagation(); cancelEditText(); });
@@ -1150,24 +1095,24 @@ document.querySelectorAll('#dm-edit-toolbar .rt-btn').forEach(btn=>{
 });
 
 async function addMediaToPost(pid, files) {
-  const idx = allPosts.findIndex(p=>p.id===pid);
-  if (idx === -1 || !files.length) return;
-  const post = allPosts[idx];
-  post.media = post.media || [];
+  if (!files.length) return;
+  let post = null;
   for (const f of Array.from(files)) {
     const isVideo = f.type.startsWith('video/');
     try {
-      const permKey = `post_${pid}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-      await idbPut(permKey, f);
+      const fd = new FormData();
+      fd.append('file', f);
       if (isVideo) {
         const thumbSrc = await videoThumb(f);
-        post.media.push({src:null, thumbSrc, type:'video', name:f.name, dbKey:permKey});
-      } else {
-        post.media.push({src:null, thumbSrc:null, type:'image', name:f.name, dbKey:permKey});
+        if (thumbSrc) fd.append('thumb_src', thumbSrc);
       }
+      const res = await authedFetch(`${API_BASE}/api/biblioteca/posts/${pid}/media`, {method:'POST', body:fd});
+      if (res.ok) post = await res.json();
     } catch(e) { console.warn('Erro ao adicionar mídia:', f.name, e); }
   }
-  savePosts(allPosts);
+  if (!post) return;
+  const idx = allPosts.findIndex(p=>p.id===pid);
+  if (idx !== -1) allPosts[idx] = post;
   detailPost = post;
   const gallery = document.getElementById('dm-gallery');
   gallery.style.display = 'flex';
@@ -1184,19 +1129,17 @@ document.getElementById('dm-edit-media-input').addEventListener('change', async 
 });
 
 async function removeMediaFromPost(pid, mediaIdx) {
-  const idx = allPosts.findIndex(p=>p.id===pid);
-  if (idx === -1) return;
-  const post = allPosts[idx];
-  if (!post.media || !post.media[mediaIdx]) return;
+  if (!detailPost || !detailPost.media[mediaIdx]) return;
   if (!confirm('Remover esta mídia do post? Essa ação não pode ser desfeita.')) return;
-  const removed = post.media[mediaIdx];
-  if (removed.dbKey) await idbDel(removed.dbKey).catch(()=>{});
-  post.media.splice(mediaIdx, 1);
-  if (post.thumbDbKey && post.thumbDbKey === removed.dbKey) post.thumbDbKey = null;
-  if (post.thumbIsVideo && removed.type === 'video' && post.thumbSrc === removed.thumbSrc) {
-    post.thumbIsVideo = false; post.thumbSrc = null;
-  }
-  savePosts(allPosts);
+  const mediaId = detailPost.media[mediaIdx].id;
+  let post;
+  try {
+    const res = await authedFetch(`${API_BASE}/api/biblioteca/posts/${pid}/media/${mediaId}`, {method:'DELETE'});
+    if (!res.ok) throw new Error('Falha ao remover mídia');
+    post = await res.json();
+  } catch(e) { alert('Erro ao remover mídia: ' + e.message); return; }
+  const idx = allPosts.findIndex(p=>p.id===pid);
+  if (idx !== -1) allPosts[idx] = post;
   detailPost = post;
   const gallery = document.getElementById('dm-gallery');
   if (!post.media.length) {
@@ -1223,7 +1166,7 @@ window.openDetailComments = function(postId) {
 
 function renderComments() {
   if (!detailPost) return;
-  const list = allComments[detailPost.id] || [];
+  const list = detailComments;
   const el = document.getElementById('dm-comments-list');
   document.getElementById('dm-cmt-count').textContent = list.length;
   const drCmt = document.getElementById('dr-comments');
@@ -1246,7 +1189,7 @@ function renderComments() {
   el.scrollTop = 0;
 }
 
-function submitComment() {
+async function submitComment() {
   if (!detailPost) return;
   const name = document.getElementById('dm-cmt-name').value.trim()
              || document.getElementById('chat-name-in').value.trim()
@@ -1254,15 +1197,19 @@ function submitComment() {
   const textEl = document.getElementById('dm-cmt-text');
   const text = textEl.value.trim();
   if (!text) { textEl.focus(); return; }
-  if (!allComments[detailPost.id]) allComments[detailPost.id] = [];
-  allComments[detailPost.id].push({ id: Date.now(), author: name, text, ts: Date.now() });
-  saveAllComments();
-  detailPost.comments = allComments[detailPost.id].length;
-  savePosts(allPosts);
-  textEl.value = '';
-  renderComments();
-  renderAll();
-  if (bc) bc.postMessage('post');
+  try {
+    const fd = new FormData(); fd.append('author', name); fd.append('text', text);
+    const res = await authedFetch(`${API_BASE}/api/biblioteca/posts/${detailPost.id}/comments`, {method:'POST', body:fd});
+    if (!res.ok) throw new Error('Falha ao comentar');
+    detailComments.push(await res.json());
+    detailPost.comments = detailComments.length;
+    const idx = allPosts.findIndex(p=>p.id===detailPost.id);
+    if (idx !== -1) allPosts[idx].comments = detailComments.length;
+    textEl.value = '';
+    renderComments();
+    renderAll();
+    if (bc) bc.postMessage('post');
+  } catch(e) { alert('Erro ao comentar: ' + e.message); }
 }
 document.getElementById('dm-cmt-send').addEventListener('click', submitComment);
 document.getElementById('dm-cmt-text').addEventListener('keydown', e=>{
@@ -1383,8 +1330,7 @@ postOverlay.addEventListener('click',e=>{ if(e.target===postOverlay) closeCreate
 
 function closeCreate() {
   postOverlay.classList.remove('open');
-  // Limpa entradas temporárias no IDB (imagens e vídeos cancelados)
-  pendingFiles.forEach(f => { if (f.dbKey) idbDel(f.dbKey).catch(()=>{}); });
+  pendingFiles.forEach(f => { if (f.previewUrl) URL.revokeObjectURL(f.previewUrl); });
   pendingFiles=[]; thumbIdx=0;
   // Título/texto NÃO são limpos aqui: preservados como rascunho caso o fechamento seja acidental.
   document.getElementById('f-pin').checked=false;
@@ -1448,15 +1394,9 @@ async function handleFiles(files) {
     try {
       if (isVideo) {
         const thumbSrc = await videoThumb(f);
-        const tempKey = `tmp_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-        await idbPut(tempKey, f);
-        pendingFiles.push({src:null, thumbSrc, type:'video', name:f.name, dbKey:tempKey});
+        pendingFiles.push({file:f, thumbSrc, type:'video', name:f.name});
       } else {
-        // Imagem original em alta qualidade no IndexedDB; previewSrc só para o formulário (não salvo)
-        const previewSrc = await compressImage(f, 600, 0.7);
-        const tempKey = `tmp_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-        await idbPut(tempKey, f);
-        pendingFiles.push({src:null, thumbSrc:null, previewSrc, type:'image', name:f.name, dbKey:tempKey});
+        pendingFiles.push({file:f, thumbSrc:null, previewUrl:URL.createObjectURL(f), type:'image', name:f.name});
       }
     } catch(e) { console.warn('File error:',f.name,e); }
   }
@@ -1471,7 +1411,7 @@ function renderPreviews() {
   if (!pendingFiles.length) { wrap.innerHTML=''; return; }
   wrap.innerHTML = pendingFiles.map((f,i)=>{
     const isThumb = i===thumbIdx;
-    const previewData = f.thumbSrc || f.previewSrc;
+    const previewData = f.thumbSrc || f.previewUrl;
     const preview = previewData
       ? `<img src="${escHtml(previewData)}" alt="${escHtml(f.name)}">`
       : `<div class="up-vid-lbl">&#127916;<span>${escHtml(f.name.slice(0,10))}</span></div>`;
@@ -1488,11 +1428,11 @@ function renderPreviews() {
     });
   });
   wrap.querySelectorAll('.up-rm').forEach(btn=>{
-    btn.addEventListener('click',async e=>{
+    btn.addEventListener('click',e=>{
       e.stopPropagation();
       const i=+btn.dataset.idx;
       const f=pendingFiles[i];
-      if(f.dbKey) await idbDel(f.dbKey).catch(()=>{});
+      if(f.previewUrl) URL.revokeObjectURL(f.previewUrl);
       pendingFiles.splice(i,1);
       if(thumbIdx>=pendingFiles.length) thumbIdx=Math.max(0,pendingFiles.length-1);
       renderPreviews();
@@ -1513,48 +1453,101 @@ document.getElementById('btn-publish').addEventListener('click', async ()=>{
     document.getElementById('f-title').focus(); return;
   }
   const author = document.getElementById('chat-name-in').value.trim() || 'Guilherme';
-  const pid = nextPostId++;
 
   pubBtn.disabled=true; pubStatus.textContent='Salvando…';
-  const media = [];
-  for (let i=0; i<pendingFiles.length; i++) {
-    const f = pendingFiles[i];
-    let dbKey = null;
-    if (f.dbKey) {  // imagens E vídeos vão pro IDB
-      const permKey = `post_${pid}_${i}`;
-      await idbRename(f.dbKey, permKey).catch(()=>{});
-      dbKey = permKey;
+  try {
+    const fd = new FormData();
+    fd.append('section', section); fd.append('subcat', subcat);
+    fd.append('title', title); fd.append('text', text);
+    fd.append('author', author); fd.append('pinned', pinned ? 'true' : 'false');
+    const createRes = await authedFetch(`${API_BASE}/api/biblioteca/posts`, {method:'POST', body:fd});
+    if (!createRes.ok) throw new Error('Falha ao criar post');
+    let post = await createRes.json();
+
+    // Envia o arquivo escolhido como thumbnail primeiro — o backend usa a primeira
+    // mídia enviada como thumbnail padrão do card.
+    const ordered = pendingFiles.slice();
+    if (thumbIdx > 0 && ordered[thumbIdx]) ordered.unshift(ordered.splice(thumbIdx,1)[0]);
+    for (const f of ordered) {
+      const mfd = new FormData();
+      mfd.append('file', f.file);
+      if (f.thumbSrc) mfd.append('thumb_src', f.thumbSrc);
+      const mres = await authedFetch(`${API_BASE}/api/biblioteca/posts/${post.id}/media`, {method:'POST', body:mfd});
+      if (mres.ok) post = await mres.json();
     }
-    media.push({src:f.src, thumbSrc:f.thumbSrc, type:f.type, name:f.name, dbKey});
+
+    allPosts.unshift(post);
+    clearDraftFields();
+    closeCreate();
+    currentSection=section;
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.section===section));
+    document.getElementById('section-title').textContent=section;
+    document.getElementById('posts-area').scrollTop=0;
+    renderAll();
+    if(bc) bc.postMessage('post');
+  } catch(e) {
+    errBanner.textContent = 'Erro ao publicar: ' + e.message;
+    errBanner.style.display = 'block';
+  } finally {
+    pubBtn.disabled=false; pubStatus.textContent='';
   }
-
-  const thumbFile = pendingFiles[thumbIdx];
-  const thumbIsVideo = thumbFile ? thumbFile.type === 'video' : false;
-  const thumbSrc = (thumbFile && thumbIsVideo) ? (thumbFile.thumbSrc || null) : null;
-  // thumbDbKey usa media[thumbIdx].dbKey — chave PERMANENTE já renomeada pelo loop acima
-  // (thumbFile.dbKey seria a chave temp, já deletada pelo idbRename)
-  const thumbDbKey = (!thumbIsVideo && media[thumbIdx]) ? media[thumbIdx].dbKey : null;
-
-  const post = {
-    id:pid, section, subcat, title, text, author,
-    ts:Date.now(), views:1, likes:0, comments:0,
-    pinned, media, thumbSrc, thumbIsVideo, thumbDbKey,
-  };
-  allPosts.unshift(post);
-  savePosts(allPosts);
-  clearDraftFields();
-  closeCreate();
-  currentSection=section;
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.section===section));
-  document.getElementById('section-title').textContent=section;
-  document.getElementById('posts-area').scrollTop=0;
-  renderAll();
-  if(bc) bc.postMessage('post');
 });
 
-document.getElementById('macro-subtabs').style.display = 'flex';
-renderAll();
-renderChat();
+async function exportAllData() {
+  const btn = document.getElementById('export-data-btn');
+  const originalLabel = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Exportando…';
+  try {
+    const posts = JSON.parse(localStorage.getItem(POSTS_KEY) || '[]');
+    const comments = JSON.parse(localStorage.getItem(COMMENTS_KEY) || '{}');
+    const chat = JSON.parse(localStorage.getItem(CHAT_KEY) || '[]');
+    const liked = JSON.parse(localStorage.getItem(LIKED_KEY) || '[]');
+
+    function blobToDataURL(blob) {
+      return new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = () => res(reader.result);
+        reader.onerror = rej;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    const postsOut = [];
+    for (const p of posts) {
+      const mediaOut = [];
+      for (const m of (p.media || [])) {
+        let dataUrl = null;
+        if (m.dbKey) {
+          try { const blob = await idbGet(m.dbKey); if (blob) dataUrl = await blobToDataURL(blob); } catch(e) {}
+        }
+        mediaOut.push({ type:m.type, name:m.name, thumbSrc:m.thumbSrc||null, dataUrl });
+      }
+      postsOut.push({ ...p, media: mediaOut });
+    }
+
+    const bundle = { exportedAt: Date.now(), exportedFrom: location.href, posts: postsOut, comments, chat, liked };
+    const blob = new Blob([JSON.stringify(bundle)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `biblioteca_export_${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  } catch(e) {
+    alert('Erro ao exportar: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = originalLabel;
+  }
+}
+document.getElementById('export-data-btn').addEventListener('click', exportAllData);
+
+async function bootstrap() {
+  document.getElementById('macro-subtabs').style.display = 'flex';
+  await loadPostsFromServer();
+  renderAll();
+  await loadChatFromServer(currentSection);
+  renderChat();
+}
+bootstrap();
 </script>
 
 </body></html>
