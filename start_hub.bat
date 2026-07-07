@@ -12,12 +12,13 @@ echo.
 cd /d "%~dp0"
 
 REM Libera portas caso estejam ocupadas por instancias anteriores
-echo  Liberando portas 8000, 8010, 8011, 8012 e 8013...
+echo  Liberando portas 8000, 8010, 8011, 8012, 8013 e 8014...
 for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":8000 " 2^>nul') do taskkill /PID %%p /F >nul 2>&1
 for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":8010 " 2^>nul') do taskkill /PID %%p /F >nul 2>&1
 for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":8011 " 2^>nul') do taskkill /PID %%p /F >nul 2>&1
 for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":8012 " 2^>nul') do taskkill /PID %%p /F >nul 2>&1
 for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":8013 " 2^>nul') do taskkill /PID %%p /F >nul 2>&1
+for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":8014 " 2^>nul') do taskkill /PID %%p /F >nul 2>&1
 timeout /t 2 /nobreak >nul
 
 REM Inicia ngrok em background (janela minimizada)
