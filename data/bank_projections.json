@@ -1,0 +1,474 @@
+{
+  "_instrucoes": "Atualizar manualmente quando os bancos revisarem targets. Verificar fontes listadas abaixo.",
+  "last_updated": "2026-07-06",
+
+  "macro_snapshot": {
+    "fed_rate": {
+      "value": "3.50% – 3.75%",
+      "low": 3.50,
+      "high": 3.75,
+      "decision": "HOLD",
+      "decision_date": "2026-06-17",
+      "next_meeting": "2026-07-29",
+      "fomc_probability_hold": 68.0,
+      "fomc_probability_cut": 32.0,
+      "source": "Federal Reserve / CME FedWatch",
+      "chair": "Kevin Warsh"
+    },
+    "cpi": {
+      "yoy": 4.2,
+      "mom": 0.5,
+      "period": "Mai/2026",
+      "release_date": "2026-06-10",
+      "next_release": "2026-07-14",
+      "source": "BLS - Bureau of Labor Statistics"
+    },
+    "core_cpi": {
+      "yoy": 2.9,
+      "mom": 0.2,
+      "period": "Mai/2026",
+      "release_date": "2026-06-10",
+      "next_release": "2026-07-14",
+      "source": "BLS - Bureau of Labor Statistics"
+    },
+    "nfp": {
+      "value": 57,
+      "unemployment": 4.2,
+      "period": "Jun/2026",
+      "release_date": "2026-07-02",
+      "next_release": "2026-08-07",
+      "revision_prior": 129,
+      "revision_prior_note": "Mai/2026 revisado de 172k → 129k",
+      "source": "BLS - Bureau of Labor Statistics"
+    }
+  },
+
+  "sp500_targets": [
+    {
+      "bank": "Goldman Sachs",
+      "target": 8000,
+      "analyst": "David Kostin",
+      "rationale": "EPS 2026: $340 (+24% YoY). IA responsável por ~50% do crescimento de ganhos. Múltiplo ~21x earnings.",
+      "view": "BULLISH",
+      "date_published": "2026-05",
+      "source_url": "https://www.goldmansachs.com/insights/articles/s-and-p-500-forecast-to-climb-as-earnings-growth-powers-stocks-higher"
+    },
+    {
+      "bank": "Citi",
+      "target": 8100,
+      "analyst": "Scott Chronert",
+      "rationale": "EPS 2026: $350. Bull=8.300 | Base=7.700 | Bear=5.700. Transição de AI Enablers para AI Adopters.",
+      "view": "BULLISH",
+      "date_published": "2026-Q2",
+      "source_url": "https://www.thestreet.com/investing/citi-quietly-resets-sp-500-price-target-for-the-rest-of-2026"
+    },
+    {
+      "bank": "JP Morgan",
+      "target": 7800,
+      "analyst": "Dubravko Lakos-Bujas",
+      "rationale": "EPS 2026: $350 (+29% YoY). Superciclo de IA com crescimento 13-15% ao ano pelos próximos 2 anos.",
+      "view": "BULLISH",
+      "date_published": "2026-Q2",
+      "source_url": "https://www.jpmorgan.com/insights/global-research/outlook/market-outlook"
+    },
+    {
+      "bank": "Morgan Stanley",
+      "target": 8000,
+      "target_12m": 8300,
+      "analyst": "Mike Wilson",
+      "rationale": "EPS 2026: $339 (+23%). Q1 earnings surpreendeu em +27% (2x esperado). Target fim-2026: 8.000. Target 12 meses: 8.300. Drivers: adoção de IA, suporte fiscal, CapEx broadening. Múltiplo 20.5x EPS forward de $404.",
+      "view": "BULLISH",
+      "date_published": "2026-05-13",
+      "source_url": "https://www.bloomberg.com/news/articles/2026-05-13/morgan-stanley-hikes-s-p-500-target-to-8-300-on-earnings-boom"
+    },
+    {
+      "bank": "Bank of America",
+      "target": 7100,
+      "analyst": "Savita Subramanian",
+      "rationale": "Target implica -3.4% de downside do nível atual (~7.354). 7 de 10 indicadores de bear market ativados em mai/2026 (alta histórica). EPS +14%, mas contração de P/E cancela os ganhos. Preocupações com consumidor, monetização de IA e liquidez.",
+      "view": "BEARISH",
+      "date_published": "2026-06",
+      "source_url": "https://www.cnbc.com/2025/12/15/bofas-savita-subramanian-says-sp-500-will-rise-to-just-7100-in-2026.html"
+    },
+    {
+      "bank": "Nomura",
+      "target": null,
+      "analyst": "N/D",
+      "rationale": "Target específico de S&P 500 não localizado em fontes públicas para 2026.",
+      "view": "N/D",
+      "date_published": null,
+      "source_url": null
+    }
+  ],
+
+  "fed_rate_views": [
+    {
+      "bank": "FOMC Dot Plot",
+      "end_2026_low": 3.75,
+      "end_2026_high": 4.00,
+      "end_2026_label": "3.75%–4.00%",
+      "cuts_hikes": 1,
+      "cuts_hikes_label": "1 alta (mediana)",
+      "view": "HAWK",
+      "rationale": "Dot plot jun/2026: mediana em 3.8%, alta desde 3.4% de março. 9 membros projetam ao menos uma alta; 8 em hold; 1 corte. Inflação headline 2026 revisada para 3.6% (choque de energia — guerra Irã).",
+      "date_published": "2026-06-17",
+      "source_url": "https://www.federalreserve.gov/monetarypolicy/fomcprojtabl20260617.htm"
+    },
+    {
+      "bank": "JP Morgan",
+      "end_2026_low": 3.50,
+      "end_2026_high": 3.75,
+      "end_2026_label": "3.50%–3.75%",
+      "cuts_hikes": 0,
+      "cuts_hikes_label": "HOLD",
+      "view": "NEUTRAL",
+      "rationale": "Fed em hold pelo resto de 2026. Inflação persistente impede cortes. Próximo movimento: possível alta em 2027 se core PCE não ceder.",
+      "date_published": "2026-06",
+      "source_url": "https://finance.yahoo.com/news/j-p-morgan-predicts-fed-035700750.html"
+    },
+    {
+      "bank": "Goldman Sachs",
+      "end_2026_low": 3.50,
+      "end_2026_high": 3.75,
+      "end_2026_label": "3.50%–3.75%",
+      "cuts_hikes": 0,
+      "cuts_hikes_label": "HOLD",
+      "view": "NEUTRAL",
+      "rationale": "Cortes empurrados para jun e dez/2027. Tariff inflation + choque de petróleo (guerra Irã) + demanda de IA mantêm core PCE acima de 3% durante todo 2026.",
+      "date_published": "2026-06",
+      "source_url": "https://www.goldmansachs.com/insights/articles/the-outlook-for-fed-rate-cuts-in-2026"
+    },
+    {
+      "bank": "Morgan Stanley",
+      "end_2026_low": 3.50,
+      "end_2026_high": 3.75,
+      "end_2026_label": "3.50%–3.75%",
+      "cuts_hikes": 0,
+      "cuts_hikes_label": "HOLD",
+      "view": "NEUTRAL",
+      "rationale": "Sem ajuste de taxa antes do fim de 2026. Cortes adiados para 2027 junto com JPMorgan e Barclays. Dot plot hawkish de jun/2026 reforça o cenário de pausa prolongada.",
+      "date_published": "2026-06",
+      "source_url": "https://www.advisorperspectives.com/dshort/updates/2026/06/18/feds-interest-rate-decision-june-17-2026"
+    },
+    {
+      "bank": "Citi",
+      "end_2026_low": 3.50,
+      "end_2026_high": 3.75,
+      "end_2026_label": "3.50%–3.75%",
+      "cuts_hikes": 0,
+      "cuts_hikes_label": "HOLD",
+      "view": "NEUTRAL",
+      "rationale": "Primeiro corte empurrado para além de 2026. Core PCE fim-2026 projetado em 3.6% — acima da meta. Ambiente de alta do petróleo (conflito Irã) retira espaço para afrouxamento.",
+      "date_published": "2026-06",
+      "source_url": "https://bingx.com/en/flash-news/post/fed-holds-rates-at-to-as-citi-pushes-first-cut-to-october"
+    },
+    {
+      "bank": "Bank of America",
+      "end_2026_low": 4.25,
+      "end_2026_high": 4.50,
+      "end_2026_label": "4.25%–4.50%",
+      "cuts_hikes": 3,
+      "cuts_hikes_label": "3 altas",
+      "view": "HAWK",
+      "rationale": "Outlier hawkish: 3 altas de 25 bps (set, out, dez). Core PCE potencialmente em 3.5%. Warsh (Fed chair) sinaliza tolerância zero com inflação acima de 3%.",
+      "date_published": "2026-06",
+      "source_url": "https://fortune.com/2026/06/22/fed-rate-hikes-outlook-sticky-inflation-kevin-warsh-job-growth-oil-prices/"
+    }
+  ],
+
+  "brazil_macro": {
+    "ipca": {
+      "yoy": 4.72,
+      "mom": 0.58,
+      "period": "Mai/2026",
+      "meta": 3.0,
+      "teto": 4.5,
+      "projecao_fim_2026": 5.33,
+      "next_release": "2026-07-09",
+      "source": "IBGE"
+    },
+    "selic": {
+      "value": 14.25,
+      "value_label": "14.25% a.a.",
+      "decision": "HOLD",
+      "decision_date": "2026-06-18",
+      "next_meeting": "4–5 ago/2026",
+      "source": "Banco Central do Brasil"
+    },
+    "copom_views": [
+      {
+        "bank": "Focus BCB",
+        "selic_fim_2026": 14.00,
+        "selic_label": "14.00%",
+        "movimento": "1 corte",
+        "view": "NEUTRAL",
+        "rationale": "Mediana do Focus 29/jun/2026 (Banco Central). IPCA 2026 projetado em 5.33% — acima do teto de 4.5%. Selic 2027 em 12.00%. Corte de 25bps esperado para 4T/2026.",
+        "date_published": "2026-06-29"
+      },
+      {
+        "bank": "Itaú BBA",
+        "selic_fim_2026": 13.75,
+        "selic_label": "13.75%",
+        "movimento": "2 cortes",
+        "view": "DOVE",
+        "rationale": "Perda de momentum da atividade deve abrir espaço para ciclo de cortes a partir de ago/2026. Selic terminal revisto para baixo em jun/2026."
+      },
+      {
+        "bank": "XP",
+        "selic_fim_2026": 14.00,
+        "selic_label": "14.00%",
+        "movimento": "1 corte",
+        "view": "NEUTRAL",
+        "rationale": "IPCA persistente acima do teto impede cortes agressivos. Único corte de 25bps esperado em dez/2026, condicionado à desaceleração da inflação."
+      },
+      {
+        "bank": "Santander",
+        "selic_fim_2026": 14.00,
+        "selic_label": "14.00%",
+        "movimento": "1 corte",
+        "view": "DOVE",
+        "rationale": "Revisou IPCA 2026 para 4.5%+. Espera 1 corte gradual de 25bps em 4T/2026 se atividade desacelerar."
+      },
+      {
+        "bank": "BTG Pactual",
+        "selic_fim_2026": 14.25,
+        "selic_label": "14.25%",
+        "movimento": "HOLD",
+        "view": "NEUTRAL",
+        "rationale": "Manter Selic em 14.25% até fim de 2026. IPCA projetado em 5.3% no ano — acima do teto impede qualquer flexibilização."
+      },
+      {
+        "bank": "Goldman Sachs",
+        "selic_fim_2026": 13.25,
+        "selic_label": "13.25%",
+        "movimento": "2 cortes",
+        "view": "DOVE",
+        "rationale": "Goldman projeta 2 cortes de 25bps, com Selic encerrando 2026 em 13,25%. Choque do petróleo e deterioração de expectativas de inflação limitam ritmo de afrouxamento. Selic terminal de 10,75% apenas ao fim de 2027. [Fonte: abr/2026]",
+        "date_published": "2026-04",
+        "source_url": "https://www.bloomberglinea.com.br/brasil/goldman-eleva-projecao-da-selic-para-1325-em-2026-diante-do-choque-do-petroleo/"
+      },
+      {
+        "bank": "Citi",
+        "selic_fim_2026": 13.75,
+        "selic_label": "13.75%",
+        "movimento": "1 corte",
+        "view": "NEUTRAL",
+        "rationale": "Citi elevou projeção para 13,75% em 2026 (antes 13,25%) citando deterioração das expectativas de inflação. Último corte do ciclo esperado para set/2026. Selic fecha 2027 em 11,75%. [Fonte: jun/2026]",
+        "date_published": "2026-06",
+        "source_url": "https://br.investing.com/news/economy-news/citi-eleva-a-1375-projecao-de-selic-no-final-de-2026-citando-deterioracao-de-expectativas-para-inflacao-1952497"
+      },
+      {
+        "bank": "Morgan Stanley",
+        "selic_fim_2026": 13.00,
+        "selic_label": "13.00%",
+        "movimento": "3 cortes",
+        "view": "DOVE",
+        "rationale": "Morgan Stanley projeta Selic em 13% ao fim de 2026 e 10,5% ao fim de 2027. Espera ciclo gradual de cortes de 25bps a partir de ago/2026. Vê Brasil em posição 'protegida' dentro dos emergentes. Eleitoral 2026 é o principal risco. [Fonte: mai/2026]",
+        "date_published": "2026-05",
+        "source_url": "https://neofeed.com.br/economia/brasil-protegido-abre-caminho-para-selic-a-12-diz-economista-chefe-do-morgan-stanley/en/"
+      },
+      {
+        "bank": "BofA",
+        "selic_fim_2026": 14.25,
+        "selic_label": "14.25%",
+        "movimento": "HOLD",
+        "view": "NEUTRAL",
+        "rationale": "BofA revisou Selic para 14,25% ao fim de 2026 (antes 13,25%) em jun/2026. Rebaixou Brasil para neutro. Apenas um corte foi possível antes de pausa prolongada. Juros altos por mais tempo. Preferência por bancos resilientes. [Fonte: jun/2026]",
+        "date_published": "2026-06-10",
+        "source_url": "https://www.estadao.com.br/einvestidor/cenarios-e-mercado/bofa-corta-brasil-para-neutro-e-ve-selic-mais-alta-por-mais-tempo/"
+      },
+      {
+        "bank": "JP Morgan",
+        "selic_fim_2026": 13.00,
+        "selic_label": "~13.00%",
+        "movimento": "3-4 cortes",
+        "view": "DOVE",
+        "rationale": "JP Morgan projetava ciclo agressivo de 3,5pp de cortes (jan/2026), mas revisou upward com deterioração macro. Estimativa atual ~13% fim 2026 (dado mais recente disponível). Mantém overweight Brasil e Ibovespa a 190k. [Fonte: jan-abr/2026]",
+        "date_published": "2026-01",
+        "source_url": "https://valorinternacional.globo.com/markets/news/2026/01/22/emerging-market-flows-could-bring-25bn-to-brazil-jp-morgan-says.ghtml"
+      }
+    ]
+  },
+
+  "ibov_targets_2026": [
+    {
+      "bank": "Morgan Stanley",
+      "target": 200000,
+      "view": "BULL",
+      "rationale": "Overweight Brasil. Target fim-2026: 200k. Target meados-2027: 240k (+33%). Drivers: cortes Selic, fluxo estrangeiro US$25bi, eleições 2026 como catalisador."
+    },
+    {
+      "bank": "BofA",
+      "target": 210000,
+      "view": "NEUTRAL",
+      "rationale": "Elevou para 210k em abr/2026. Rebaixou Brasil para neutro (marketweight) em jun/2026 citando Selic 14,25% por mais tempo. Target em revisão."
+    },
+    {
+      "bank": "XP",
+      "target": 200000,
+      "view": "BULL",
+      "rationale": "Cortou de 205k → 200k em 01/jul/2026. Alta dos juros reais longos e saída de R$ 8,8bi de estrangeiros em junho pesaram na revisão. Cenário otimista: 259k; pessimista: 158k.",
+      "date_published": "2026-07-01",
+      "source_url": "https://www.moneytimes.com.br/cenario-para-o-ibovespa-piorou-xp-corta-preco-alvo-em-2026-veja-nova-projecao-e-acoes-recomendadas-apsa/"
+    },
+    {
+      "bank": "JP Morgan",
+      "target": 190000,
+      "view": "BULL",
+      "rationale": "Overweight Brasil. Cenários eleitorais binários: otimista 230k, pessimista 120k. Fluxo de emergentes pode trazer US$25bi ao Brasil."
+    },
+    {
+      "bank": "Itaú BBA",
+      "target": 185000,
+      "view": "BULL",
+      "rationale": "Reitera 185k condicionado à âncora fiscal e ao início do ciclo de cortes. Bull case: 253k. Bear case: 122k. Valuation atrativo é o pilar principal."
+    },
+    {
+      "bank": "BTG Pactual",
+      "target": 186000,
+      "view": "BULL",
+      "rationale": "Target 186k para fim-2026. Overweight acima do benchmark. Valuation 'reconhecidamente baixo'. IPCA projetado em 5.3% com Selic em 14.25% até fim do ano. Carteira 10SIM defensiva (jun/2026).",
+      "date_published": "2026-06"
+    },
+    {
+      "bank": "Goldman Sachs",
+      "target": 215000,
+      "view": "BULL",
+      "rationale": "Reitera overweight Brasil dentro do portfólio de emergentes. Ações negociam a ~8x P/L forward — historicamente compatível com início de ciclo de queda de juros. Prefere bancos defensivos, utilities, telecom, construtoras de baixa renda. Alvo 215k em 12 meses.",
+      "date_published": "2026-07-01",
+      "source_url": "https://www.infomoney.com.br/mercados/goldman-ve-acoes-brasileiras-baratas-e-reitera-compra-para-brasil-entre-emergentes/"
+    },
+    {
+      "bank": "Citi",
+      "target": null,
+      "view": "BULL",
+      "rationale": "Overweight na região. Ibovespa a 8,3x P/L — 'significativamente mais barato' (média histórica 10,5x). Sem target numérico específico publicado."
+    }
+  ],
+
+  "commodity_targets": {
+    "_nota": "Atualizado Jul/2026 via hierarquia TIER-1→TIER-2→TIER-3. TIER-1: jpmorgan.com/insights (pag. individuais por commodity), kitco.com (BofA/GS), investing.com (Citi). TIER-3: zawya.com (MS oil), Reuters, CNBC.",
+    "_precos_referencia": "Gold $4,174/oz | Silver $62.27/oz | Cobre COMEX ~$6.20/lb | WTI $68.78/bbl (Jul/03-04/2026)",
+    "ouro": {
+      "unit": "USD/oz",
+      "preco_atual": 4174,
+      "bank_targets": [
+        {"bank": "Goldman Sachs", "target": 4900, "view": "BULL",    "rationale": "Cortou de $5.400→$4.900 (20/jun/26). Fade de ETF flows asiáticos + remoção de cortes do Fed em 2026. Suporte: BCs emergentes comprando +1.000 ton/ano. Kitco 30/jun/26.", "date": "2026-06"},
+        {"bank": "JP Morgan",     "target": 4500, "view": "BULL",    "rationale": "Cortou de $6.000→$4.500 (03/jul/26) — corte de 25%. Q3/26: $4.300 | Q4/26: $4.500. Demanda mais fraca que o esperado em setores-chave. Mantém viés bullish de longo prazo (compras de BCs + demanda física seguem sustentando alta para 2027). jpmorgan.com (pág. oficial gold-prices).", "date": "2026-07"},
+        {"bank": "BofA",          "target": 6000, "view": "BULL",    "rationale": "12-month target $6.000, média 2026 $5.093. Dívida EUA >$39 tri + BCs diversificando reservas. Incerteza de política EUA sustenta demanda por reserva de valor. Kitco 01/mai/26.", "date": "2026-05"},
+        {"bank": "Morgan Stanley","target": 5200, "view": "BULL",    "rationale": "Cortou de $5.700→$5.200 para 2H26. Queda de ~25% do ATH muda o tom. Recupera conforme BCs e ETFs retomam compras e Fed eventualmente corta. morganstanley.com midyear.", "date": "2026-06"},
+        {"bank": "Citi",          "target": 4000, "view": "NEUTRAL", "rationale": "Target 0-3 meses cortado de $4.300→$4.000 (jun/26). Fed hawkish + inflação persistente. Target para fim de 2026 não publicado publicamente. Múltiplos veículos TIER-3.", "date": "2026-06"}
+      ]
+    },
+    "prata": {
+      "unit": "USD/oz",
+      "preco_atual": 62.27,
+      "bank_targets": [
+        {"bank": "JP Morgan",     "target": 85, "view": "BULL", "rationale": "Q4/26: $85/oz | Q1: $84 | Q2: $75 | Q3: $80. Média anual 2026: $81 (+102% vs 2025 avg $40). Demanda solar + déficit físico. Ratio Au/Ag >60:1. jpmorgan.com (pág. oficial silver-prices).", "date": "2026-Q1"},
+        {"bank": "BofA",          "target": 86, "view": "BULL", "rationale": "Média 2026: $85.93/oz (+15% vs est. anterior de $75). Demanda solar e EV sustentam déficit estrutural de oferta. Near-term fraqueza esperada, outlook bullish. Kitco 01/mai/26.", "date": "2026-05"},
+        {"bank": "Goldman Sachs", "target": 90, "view": "BULL", "rationale": "Média 2026: $85-100/oz. Déficit estrutural de oferta. Transição energética (solar, EV). Ratio Au/Ag historicamente elevado abre espaço de catch-up vs ouro. Mai/26.", "date": "2026-05"}
+      ]
+    },
+    "petroleo_wti": {
+      "unit": "USD/barril",
+      "preco_atual": 68.78,
+      "bank_targets": [
+        {"bank": "Goldman Sachs", "target": 76, "view": "BULL",    "rationale": "Q4/26 Brent $80 → WTI ~$76 (cortou de $90 após deal EUA-Irã, jun/26). Normalização do Hormuz em jul/26. Upside: Brent $115+ se ceasefire falhar. Reuters/Investing.com.", "date": "2026-06"},
+        {"bank": "Morgan Stanley","target": 71, "view": "NEUTRAL", "rationale": "Q3/Q4 Brent $75 → WTI ~$71 (cortou de $90/$80, jul/26). Hormuz normalizou mais rápido que esperado. Surplus global 4.8M bpd sinaliza pressão em 2027. Zawya/Reuters.", "date": "2026-07"},
+        {"bank": "Citi",          "target": 66, "view": "BEAR",    "rationale": "Q4/26 Brent $70 → WTI ~$66 (cortou após deal EUA-Irã). OPEC+ retoma produção com reabertura do Hormuz. Excesso de oferta estrutural retorna. TheStreet/Investing.com.", "date": "2026-07"},
+        {"bank": "JP Morgan",     "target": 76, "view": "BEAR",    "rationale": "Q3/26 Brent $86 (WTI ~$82) | Q4/26 Brent $80 (WTI ~$76), saindo o ano a ~$78 Brent. Revisão de jun/26 após normalização do Estreito de Ormuz e retomada OPEC+. Demanda global fraca pressionada por high-for-longer Fed. Investing.com/TheStreet.", "date": "2026-06"}
+      ]
+    },
+    "cobre": {
+      "unit": "USD/lb (COMEX)",
+      "preco_atual": 6.17,
+      "bank_targets": [
+        {"bank": "Citi",          "target": 6.80, "view": "BULL",    "rationale": "Virou bullish (01/jun/26): LME $15.000/ton (~$6.80/lb) em 1 ano. Near-term jul/26: $14.500/ton. Tese: tarifas EUA + déficit de mina (scrap e produção underperform) + China restocking. Investing.com/CNBC.", "date": "2026-06"},
+        {"bank": "Goldman Sachs", "target": 6.23, "view": "NEUTRAL", "rationale": "Year-end LME $13.735/ton (~$6.23/lb, jun/26). Oferta mais apertada (Grasberg + Kamoa-Kakula). Déficit ex-EUA 640K ton. Tarifas EUA (30/jun) podem levar COMEX >$14k/ton. TradingView/Reuters.", "date": "2026-06"},
+        {"bank": "JP Morgan",     "target": 5.67, "view": "BEAR",    "rationale": "Q4/26: LME $12.500/ton (~$5.67/lb) | Q3: $13.000 | Q2: $13.500. Alta do petróleo reduz PIB global (-0.16% p/ cada 10%), cortando demanda por cobre. COMEX com prêmio vs LME por tarifas. jpmorgan.com (oficial).", "date": "2026-06"},
+        {"bank": "BofA",          "target": 5.13, "view": "BEAR",    "rationale": "Média 2026: LME $11.313/ton (~$5.13/lb). Forecast de abr/26, anterior ao rali de +27% do cobre. 2027 revisado para $13.501/ton. Revisão mid-2026 pendente de publicação.", "date": "2026-04"},
+        {"bank": "Morgan Stanley","target": 4.83, "view": "BEAR",    "rationale": "Base case dez/25: LME $10.650/ton (~$4.83/lb) | Bull case: $12.780/ton. Estimativa anterior ao rali de +27%. Déficit projetado de 590K ton em 2026 (22-year low). Revisão mid-year pendente.", "date": "2025-12"}
+      ]
+    }
+  },
+
+  "pesquisas_eleitorais_2026": {
+    "_nota": "Eleição presidencial brasileira — outubro 2026. Fontes: Datafolha (TIER-1) e Quaest (TIER-1). Atualizado jul/2026.",
+    "_nivel_atual": "Ibovespa: 174.070 pts (03/jul/2026) | S&P 500: ~7.483 pts (01/jul/2026) | USD/BRL: R$ 5,168 (03/jul/2026)",
+    "institutos": [
+      {
+        "instituto": "Datafolha",
+        "data_coleta": "2026-06-17/19",
+        "data_divulgacao": "2026-06-20",
+        "amostra": 2004,
+        "margem_erro": 2,
+        "metodo": "Presencial",
+        "nivel_confianca": 95,
+        "primeiro_turno": [
+          {"candidato": "Lula", "partido": "PT", "pct": 41},
+          {"candidato": "Flávio Bolsonaro", "partido": "PL", "pct": 31},
+          {"candidato": "Ronaldo Caiado", "partido": "PSD", "pct": 3},
+          {"candidato": "Renan Santos", "partido": "Missão", "pct": 3},
+          {"candidato": "Romeu Zema", "partido": "Novo", "pct": 2},
+          {"candidato": "Aécio Neves", "partido": "PSDB", "pct": 2}
+        ],
+        "segundo_turno": [
+          {"cenario": "Lula vs Flávio Bolsonaro", "lula": 47, "oponente": 43, "vencedor": "Lula"},
+          {"cenario": "Lula vs Caiado", "lula": 47, "oponente": 41, "vencedor": "Lula"},
+          {"cenario": "Lula vs Zema", "lula": 48, "oponente": 39, "vencedor": "Lula"}
+        ],
+        "resumo": "Lula lidera em todos os cenários de segundo turno. Vantagem menor contra Flávio (47-43, margem 4pp dentro do MoE).",
+        "source_url": "https://datafolha.folha.uol.com.br"
+      },
+      {
+        "instituto": "Quaest",
+        "data_coleta": "2026-06 (Genial/Quaest)",
+        "data_divulgacao": "2026-06-10",
+        "amostra": 11646,
+        "margem_erro": 2,
+        "metodo": "Presencial (nacional + estadual)",
+        "nivel_confianca": 95,
+        "primeiro_turno": [
+          {"candidato": "Lula", "partido": "PT", "pct": 39},
+          {"candidato": "Flávio Bolsonaro", "partido": "PL", "pct": 29}
+        ],
+        "segundo_turno": [
+          {"cenario": "Lula vs Flávio Bolsonaro", "lula": 44, "oponente": 38, "vencedor": "Lula"}
+        ],
+        "_nota_regional": "destaques_regionais abaixo são da coleta anterior (21-28/abr/2026) — pesquisa Genial/Quaest de 10/jun/2026 não teve novo corte estadual localizado nas fontes públicas consultadas.",
+        "destaques_regionais": [
+          {"estado": "São Paulo", "lider": "Flávio Bolsonaro", "margem": "+12"},
+          {"estado": "Rio de Janeiro", "lider": "Flávio Bolsonaro", "margem": "+13"},
+          {"estado": "Rio Grande do Sul", "lider": "Flávio Bolsonaro", "margem": "+30"},
+          {"estado": "Paraná", "lider": "Flávio Bolsonaro", "margem": "+20"},
+          {"estado": "Goiás", "lider": "Ronaldo Caiado", "margem": "à frente de ambos"},
+          {"estado": "Minas Gerais", "lider": "Lula", "margem": "+3 (empate técnico)"},
+          {"estado": "Pará", "lider": "Lula", "margem": "+7"},
+          {"estado": "Bahia", "lider": "Lula", "margem": "+33"},
+          {"estado": "Pernambuco", "lider": "Lula", "margem": "+34"},
+          {"estado": "Ceará", "lider": "Lula", "margem": "+28"}
+        ],
+        "resumo": "Pesquisa nacional de 10/jun/2026: Lula 39% vs Flávio 29% no 1º turno; 44%-38% no 2º turno. Regionalmente (corte estadual de abr/2026): Lula domina Nordeste e Norte, oposição (Flávio) lidera Sul e Rio; SP e RJ são campos de batalha decisivos.",
+        "source_url": "https://quaest.com.br"
+      },
+      {
+        "instituto": "AtlasIntel",
+        "data_coleta": "2026-06-26/30",
+        "data_divulgacao": "2026-07-01",
+        "amostra": 4999,
+        "margem_erro": 1,
+        "metodo": "Online (coleta massiva)",
+        "nivel_confianca": 95,
+        "primeiro_turno": [
+          {"candidato": "Lula", "partido": "PT", "pct": 46.6},
+          {"candidato": "Flávio Bolsonaro", "partido": "PL", "pct": 39.7}
+        ],
+        "segundo_turno": [
+          {"cenario": "Lula vs Flávio Bolsonaro", "lula": 48.8, "oponente": 42.3, "vencedor": "Lula"}
+        ],
+        "resumo": "Lula lidera em 1T com 46,6% vs Flávio 39,7%. No 2T: 48,8% vs 42,3% (margem 6,5pp). Lula com +6pp de média em 7 institutos desde final de maio.",
+        "source_url": "https://atlasintel.com.br"
+      }
+    ]
+  }
+}

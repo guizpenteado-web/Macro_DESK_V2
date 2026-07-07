@@ -1,0 +1,8 @@
+fastapi==0.115.5
+uvicorn==0.32.1
+pandas==2.2.3
+yfinance==0.2.54
+plotly==5.24.1
+requests==2.32.3
+apscheduler==3.10.4
+fredapi==0.5.2

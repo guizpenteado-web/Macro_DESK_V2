@@ -1,0 +1,5 @@
+{
+  "fred_api_key": "",
+  "server_port": 8002,
+  "notes": "fred_api_key e opcional. Obtenha gratuitamente em https://fred.stlouisfed.org/docs/api/api_key.html. Sem ele, dados macro vem do BLS (CPI/NFP) e de valores manuais configurados em data/bank_projections.json"
+}
