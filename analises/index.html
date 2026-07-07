@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Análises — Macro Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080C12;--card:#0E1420;--card2:#131B28;--border:#1E2A3A;
+  --gold:#E8A020;--cyan:#20C8D8;--green:#28C870;--red:#E03848;
+  --purple:#A848E0;--text:#C8D8E8;--text2:#7A8A9A;--text3:#4A5A6A;
+  --fn:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  --fm:'JetBrains Mono','Cascadia Code','Consolas','SF Mono',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--fn);font-size:13px;line-height:1.4;min-height:100vh}
+
+/* HDR */
+.hdr{background:var(--card);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
+.hdr-dot{width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px #E8A02055;flex-shrink:0}
+.hdr-group{flex:1}
+.hdr-title{font-size:14px;font-weight:700;color:var(--gold);letter-spacing:.5px}
+.hdr-sub{font-family:var(--fm);font-size:10px;color:var(--text3);margin-top:1px}
+.hdr-right{display:flex;align-items:center;gap:14px}
+.hdr-date{font-family:var(--fm);font-size:11px;color:var(--text2)}
+.hdr-badge{font-size:9px;letter-spacing:.8px;text-transform:uppercase;padding:3px 8px;border-radius:4px;border:1px solid var(--border);color:var(--text3)}
+
+/* TABS */
+.tabs{display:flex;background:var(--card);border-bottom:1px solid var(--border);padding:0 20px;overflow-x:auto}
+.tab{padding:9px 16px;cursor:pointer;font-size:12px;font-weight:500;color:var(--text2);border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s,border-color .15s;user-select:none}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+.tab:hover:not(.active){color:var(--text)}
+
+/* PANES */
+.pane{display:none;padding:14px 20px;max-width:1200px;margin:0 auto}
+.pane.active{display:block}
+
+/* STAT ROW */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+@media(max-width:720px){.stat-row{grid-template-columns:repeat(2,1fr)}}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:11px 14px}
+.stat-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin-bottom:4px}
+.stat-val{font-family:var(--fm);font-size:20px;font-weight:700;margin-bottom:6px}
+.stat-chips{display:flex;gap:4px;flex-wrap:wrap}
+
+/* CHIPS */
+.chip{padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .12s;background:none}
+.chip-bull{border-color:var(--green);color:var(--green)}
+.chip-bull.act{background:var(--green);color:#000}
+.chip-bear{border-color:var(--red);color:var(--red)}
+.chip-bear.act{background:var(--red);color:#fff}
+.chip-neu{border-color:var(--text2);color:var(--text2)}
+.chip-neu.act{background:var(--text2);color:#000}
+
+/* CONVICTION */
+.conv-wrap{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;gap:24px}
+.conv-score-area{text-align:center;min-width:80px}
+.conv-score{font-family:var(--fm);font-size:52px;font-weight:700;line-height:1;color:var(--gold);transition:color .3s}
+.conv-score-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin-top:3px}
+.conv-right{flex:1}
+.conv-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.conv-rlbl{font-size:10px;color:var(--text2);width:70px;flex-shrink:0}
+.slider{flex:1;height:4px;-webkit-appearance:none;appearance:none;background:var(--border);border-radius:2px;outline:none;cursor:pointer}
+.slider::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--gold);cursor:pointer}
+.conv-num{font-family:var(--fm);font-size:12px;font-weight:700;color:var(--gold);width:18px;text-align:right}
+.conv-chips{display:flex;gap:6px;margin-top:4px}
+
+/* BLOCK */
+.block{background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden}
+.block-hdr{padding:9px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;user-select:none}
+.block-hdr:hover{background:var(--card2)}
+.block-arr{font-size:9px;color:var(--text3);transition:transform .2s;flex-shrink:0}
+.block.open .block-arr{transform:rotate(90deg)}
+.block-title{font-size:12px;font-weight:600;flex:1}
+.block-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.block-dot.bull{background:var(--green)}
+.block-dot.bear{background:var(--red)}
+.block-dot.gold{background:var(--gold)}
+.block-dot.cyan{background:var(--cyan)}
+.block-badge{font-size:9px;padding:2px 6px;border-radius:3px;background:var(--card2);font-family:var(--fm);color:var(--text2)}
+.block-body{display:none;border-top:1px solid var(--border);padding:12px 14px}
+.block.open .block-body{display:block}
+
+/* TEXTAREA */
+textarea{width:100%;min-height:90px;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--fn);font-size:12px;padding:10px 12px;resize:vertical;outline:none;transition:border-color .15s;line-height:1.6}
+textarea:focus{border-color:var(--gold)}
+textarea::placeholder{color:var(--text3)}
+
+/* DRIVER LIST */
+.driver-list{list-style:none;margin-bottom:8px}
+.driver-item{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)}
+.driver-item:last-child{border-bottom:none}
+.driver-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.driver-dot.bull{background:var(--green)}
+.driver-dot.bear{background:var(--red)}
+.driver-text{flex:1;font-size:12px;color:var(--text)}
+.driver-del{background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:0;line-height:1}
+.driver-del:hover{color:var(--red)}
+.add-row{display:flex;gap:8px;margin-top:10px}
+.add-inp{flex:1;background:var(--card2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;padding:6px 10px;outline:none;font-family:var(--fn)}
+.add-inp:focus{border-color:var(--gold)}
+.add-inp::placeholder{color:var(--text3)}
+.btn-sm{background:none;border:1px solid var(--border);border-radius:5px;color:var(--text2);font-size:11px;padding:5px 10px;cursor:pointer;transition:all .12s;white-space:nowrap}
+.btn-sm:hover{border-color:var(--gold);color:var(--gold)}
+
+/* CHECKLIST */
+.cl-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--card2);border:1px solid var(--border);border-radius:6px;margin-bottom:5px;cursor:pointer;transition:border-color .12s}
+.cl-item:hover{border-color:var(--text3)}
+.cl-item.chk{border-color:var(--green)}
+.cl-box{width:15px;height:15px;border:2px solid var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;transition:all .12s}
+.cl-item.chk .cl-box{background:var(--green);border-color:var(--green);color:#000}
+.cl-text{flex:1;font-size:12px}
+
+/* CALLS */
+.calls-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.sec-lbl{font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.8px}
+.btn-gold{background:none;border:1px solid var(--gold);border-radius:5px;color:var(--gold);font-size:12px;padding:5px 14px;cursor:pointer;transition:all .12s}
+.btn-gold:hover{background:var(--gold);color:#000}
+.calls-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+@media(max-width:600px){.calls-stats{grid-template-columns:repeat(2,1fr)}}
+.cs-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 14px;text-align:center}
+.cs-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin-bottom:4px}
+.cs-val{font-family:var(--fm);font-size:18px;font-weight:700}
+
+.tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:8px}
+table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+thead th{background:var(--card2);color:var(--text3);padding:8px 12px;text-align:left;font-size:10px;letter-spacing:.8px;text-transform:uppercase;font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--border)}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:rgba(255,255,255,.018)}
+td{padding:8px 12px;color:var(--text2);white-space:nowrap}
+td.hi{color:var(--text);font-weight:500}
+
+.badge{display:inline-block;padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700;font-family:var(--fm)}
+.badge-long{background:rgba(40,200,112,.12);color:var(--green)}
+.badge-short{background:rgba(224,56,72,.12);color:var(--red)}
+.badge-open{background:rgba(232,160,32,.12);color:var(--gold)}
+.badge-win{background:rgba(40,200,112,.12);color:var(--green)}
+.badge-loss{background:rgba(224,56,72,.12);color:var(--red)}
+.badge-canc{background:rgba(122,138,154,.1);color:var(--text3)}
+.badge-wait{background:rgba(32,200,216,.1);color:var(--cyan)}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-bg.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;width:100%;max-width:480px}
+.modal-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.modal-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:0}
+.modal-close:hover{color:var(--red)}
+.form-row{margin-bottom:10px}
+.form-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px}
+.form-inp{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;padding:7px 10px;outline:none;font-family:var(--fn)}
+.form-inp:focus{border-color:var(--gold)}
+.form-inp::placeholder{color:var(--text3)}
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.form-select{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;padding:7px 10px;outline:none;cursor:pointer}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+.btn-cancel{background:none;border:1px solid var(--border);border-radius:5px;color:var(--text2);font-size:12px;padding:6px 14px;cursor:pointer;transition:all .12s}
+.btn-cancel:hover{border-color:var(--text2)}
+.btn-save{background:var(--gold);border:none;border-radius:5px;color:#000;font-size:12px;font-weight:600;padding:6px 18px;cursor:pointer;transition:opacity .12s}
+.btn-save:hover{opacity:.85}
+
+/* DIARY */
+.diary-editor{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px}
+.diary-top{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.diary-date{background:var(--card2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;padding:6px 10px;outline:none;font-family:var(--fm);width:140px}
+.diary-date:focus{border-color:var(--gold)}
+.diary-ttl{flex:1;min-width:160px;background:var(--card2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;padding:6px 10px;outline:none;font-family:var(--fn)}
+.diary-ttl:focus{border-color:var(--gold)}
+.diary-ttl::placeholder{color:var(--text3)}
+.diary-save{background:none;border:1px solid var(--gold);border-radius:5px;color:var(--gold);font-size:12px;padding:6px 14px;cursor:pointer;transition:all .12s;margin-top:8px}
+.diary-save:hover{background:var(--gold);color:#000}
+
+.entry{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px}
+.entry-top{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.entry-date{font-family:var(--fm);font-size:10px;color:var(--gold)}
+.entry-title{font-size:12px;font-weight:600;flex:1}
+.entry-del{background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:0}
+.entry-del:hover{color:var(--red)}
+.entry-body{font-size:12px;color:var(--text2);line-height:1.65;white-space:pre-wrap}
+
+.empty-state{text-align:center;padding:40px 20px;color:var(--text3);font-size:12px}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-dot"></div>
+  <div class="hdr-group">
+    <div class="hdr-title">ANÁLISES</div>
+    <div class="hdr-sub">Macro Desk · Workspace de Pesquisa</div>
+  </div>
+  <div class="hdr-right">
+    <span class="hdr-date" id="hdr-date"></span>
+    <span class="hdr-badge">PRIVADO</span>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab(0)">Cenário Macro</div>
+  <div class="tab" onclick="switchTab(1)">Calls</div>
+  <div class="tab" onclick="switchTab(2)">Diário</div>
+</div>
+
+<!-- TAB 0 — CENÁRIO -->
+<div class="pane active" id="pane-0">
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-lbl">IBOV</div>
+      <div class="stat-val" id="sc-ibov" style="color:var(--text2)">—</div>
+      <div class="stat-chips" id="chips-ibov">
+        <button class="chip chip-bull" onclick="setChip('ibov','bull',this)">BULL</button>
+        <button class="chip chip-neu"  onclick="setChip('ibov','neu',this)">NEUTRO</button>
+        <button class="chip chip-bear" onclick="setChip('ibov','bear',this)">BEAR</button>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-lbl">S&amp;P 500</div>
+      <div class="stat-val" id="sc-sp" style="color:var(--text2)">—</div>
+      <div class="stat-chips" id="chips-sp">
+        <button class="chip chip-bull" onclick="setChip('sp','bull',this)">BULL</button>
+        <button class="chip chip-neu"  onclick="setChip('sp','neu',this)">NEUTRO</button>
+        <button class="chip chip-bear" onclick="setChip('sp','bear',this)">BEAR</button>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-lbl">USD / BRL</div>
+      <div class="stat-val" id="sc-dol" style="color:var(--text2)">—</div>
+      <div class="stat-chips" id="chips-dol">
+        <button class="chip chip-bull" onclick="setChip('dol','bull',this)">ALTA</button>
+        <button class="chip chip-neu"  onclick="setChip('dol','neu',this)">LATERAL</button>
+        <button class="chip chip-bear" onclick="setChip('dol','bear',this)">QUEDA</button>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-lbl">Selic / Fed</div>
+      <div class="stat-val" id="sc-juro" style="color:var(--text2)">—</div>
+      <div class="stat-chips" id="chips-juro">
+        <button class="chip chip-bear" onclick="setChip('juro','bear',this)">HAWKISH</button>
+        <button class="chip chip-neu"  onclick="setChip('juro','neu',this)">NEUTRO</button>
+        <button class="chip chip-bull" onclick="setChip('juro','bull',this)">DOVISH</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="conv-wrap">
+    <div class="conv-score-area">
+      <div class="conv-score" id="conv-score">5</div>
+      <div class="conv-score-lbl">Convicção</div>
+    </div>
+    <div class="conv-right">
+      <div class="conv-row">
+        <span class="conv-rlbl">Intensidade</span>
+        <input type="range" class="slider" id="conv-slider" min="0" max="10" value="5" oninput="updateConv(this.value)">
+        <span class="conv-num" id="conv-num">5</span>
+      </div>
+      <div class="conv-chips" id="conv-chips">
+        <button class="chip chip-bull" onclick="setConvDir('COMPRADO',this)">▲ COMPRADO</button>
+        <button class="chip chip-neu"  onclick="setConvDir('NEUTRO',this)">◆ NEUTRO</button>
+        <button class="chip chip-bear" onclick="setConvDir('VENDIDO',this)">▼ VENDIDO</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="block open" id="b-tese">
+    <div class="block-hdr" onclick="toggleBlock('b-tese')">
+      <span class="block-dot gold"></span>
+      <span class="block-title">Tese Principal</span>
+      <span class="block-arr">▶</span>
+    </div>
+    <div class="block-body">
+      <textarea id="ta-tese" placeholder="Descreva o cenário macro e a tese central do seu posicionamento..." oninput="save('tese',this.value)"></textarea>
+    </div>
+  </div>
+
+  <div class="block open" id="b-bull">
+    <div class="block-hdr" onclick="toggleBlock('b-bull')">
+      <span class="block-dot bull"></span>
+      <span class="block-title">Drivers Bullish</span>
+      <span class="block-badge" id="cnt-bull">0</span>
+      <span class="block-arr">▶</span>
+    </div>
+    <div class="block-body">
+      <ul class="driver-list" id="list-bull"></ul>
+      <div class="add-row">
+        <input class="add-inp" id="inp-bull" placeholder="Adicionar driver bullish..." onkeydown="if(event.key==='Enter')addDriver('bull')">
+        <button class="btn-sm" onclick="addDriver('bull')">+ Adicionar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="block open" id="b-bear">
+    <div class="block-hdr" onclick="toggleBlock('b-bear')">
+      <span class="block-dot bear"></span>
+      <span class="block-title">Riscos &amp; Drivers Bearish</span>
+      <span class="block-badge" id="cnt-bear">0</span>
+      <span class="block-arr">▶</span>
+    </div>
+    <div class="block-body">
+      <ul class="driver-list" id="list-bear"></ul>
+      <div class="add-row">
+        <input class="add-inp" id="inp-bear" placeholder="Adicionar risco ou driver bearish..." onkeydown="if(event.key==='Enter')addDriver('bear')">
+        <button class="btn-sm" onclick="addDriver('bear')">+ Adicionar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="block" id="b-gate">
+    <div class="block-hdr" onclick="toggleBlock('b-gate')">
+      <span class="block-dot cyan"></span>
+      <span class="block-title">Gatilhos de Confirmação / Invalidação</span>
+      <span class="block-arr">▶</span>
+    </div>
+    <div class="block-body">
+      <div id="cl-list"></div>
+      <div class="add-row" style="margin-top:8px">
+        <input class="add-inp" id="inp-gate" placeholder="Adicionar gatilho...">
+        <button class="btn-sm" onclick="addGatilho()">+ Adicionar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="block" id="b-watch">
+    <div class="block-hdr" onclick="toggleBlock('b-watch')">
+      <span class="block-dot" style="background:var(--purple)"></span>
+      <span class="block-title">Variáveis a Monitorar</span>
+      <span class="block-arr">▶</span>
+    </div>
+    <div class="block-body">
+      <textarea id="ta-watch" placeholder="Ex: CDS Brasil, DXY, yield 10y Treasury, CRB Index, fluxo estrangeiro semanal..." oninput="save('watch',this.value)"></textarea>
+    </div>
+  </div>
+
+</div>
+
+<!-- TAB 1 — CALLS -->
+<div class="pane" id="pane-1">
+  <div class="calls-top">
+    <span class="sec-lbl">Calls &amp; Trade Ideas</span>
+    <button class="btn-gold" onclick="openModal()">＋ Nova Call</button>
+  </div>
+
+  <div class="calls-stats">
+    <div class="cs-card">
+      <div class="cs-lbl">Abertas</div>
+      <div class="cs-val" id="cs-open" style="color:var(--gold)">0</div>
+    </div>
+    <div class="cs-card">
+      <div class="cs-lbl">Fechadas</div>
+      <div class="cs-val" id="cs-closed">0</div>
+    </div>
+    <div class="cs-card">
+      <div class="cs-lbl">Win Rate</div>
+      <div class="cs-val" id="cs-wr">—</div>
+    </div>
+    <div class="cs-card">
+      <div class="cs-lbl">P&amp;L Total</div>
+      <div class="cs-val" id="cs-pnl">—</div>
+    </div>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Ativo</th><th>Direção</th><th>Entrada</th>
+          <th>Alvo</th><th>Stop</th><th>R/R</th>
+          <th>Data</th><th>Status</th><th>Resultado</th>
+          <th>Nota</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="calls-body">
+        <tr><td colspan="11" class="empty-state">Nenhuma call registrada.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- TAB 2 — DIÁRIO -->
+<div class="pane" id="pane-2">
+  <div class="diary-editor">
+    <div class="sec-lbl" style="margin-bottom:10px">Nova Entrada</div>
+    <div class="diary-top">
+      <input type="date" class="diary-date" id="d-date">
+      <input type="text" class="diary-ttl" id="d-title" placeholder="Título da análise...">
+    </div>
+    <textarea id="d-body" placeholder="Escreva sua análise, observações do mercado, fluxo, macro..." style="min-height:130px"></textarea>
+    <br>
+    <button class="diary-save" onclick="saveEntry()">Salvar Entrada</button>
+  </div>
+  <div class="sec-lbl" style="margin-bottom:8px">Histórico</div>
+  <div id="entries-list"></div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <div class="modal-title">
+      Nova Call
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="form-row">
+      <div class="form-lbl">Ativo</div>
+      <input class="form-inp" id="f-ativo" placeholder="Ex: IBOV, PETR4, S&P500...">
+    </div>
+    <div class="form-row-2">
+      <div>
+        <div class="form-lbl">Direção</div>
+        <select class="form-select" id="f-dir">
+          <option value="LONG">LONG ▲</option>
+          <option value="SHORT">SHORT ▼</option>
+        </select>
+      </div>
+      <div>
+        <div class="form-lbl">Status</div>
+        <select class="form-select" id="f-status">
+          <option value="ABERTA">Aberta</option>
+          <option value="AGUARDANDO">Aguardando</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row-2">
+      <div>
+        <div class="form-lbl">Entrada</div>
+        <input class="form-inp" id="f-entry" placeholder="0.00" type="number" step="0.01">
+      </div>
+      <div>
+        <div class="form-lbl">Data</div>
+        <input class="form-inp" id="f-date" type="date">
+      </div>
+    </div>
+    <div class="form-row-2">
+      <div>
+        <div class="form-lbl">Alvo</div>
+        <input class="form-inp" id="f-alvo" placeholder="0.00" type="number" step="0.01">
+      </div>
+      <div>
+        <div class="form-lbl">Stop</div>
+        <input class="form-inp" id="f-stop" placeholder="0.00" type="number" step="0.01">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-lbl">Nota</div>
+      <input class="form-inp" id="f-nota" placeholder="Tese resumida da call...">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-save" onclick="saveCall()">Salvar Call</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const LS=k=>JSON.parse(localStorage.getItem('analises_'+k)||'null');
+const SS=(k,v)=>localStorage.setItem('analises_'+k,JSON.stringify(v));
+const save=(k,v)=>SS(k,v);
+
+(function(){
+  const d=new Date();
+  const opts={weekday:'short',day:'2-digit',month:'short',year:'numeric'};
+  document.getElementById('hdr-date').textContent=d.toLocaleDateString('pt-BR',opts).replace('.','/').toUpperCase();
+  const pad=n=>String(n).padStart(2,'0');
+  const ds=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  document.getElementById('d-date').value=ds;
+  document.getElementById('f-date').value=ds;
+})();
+
+function switchTab(i){
+  document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('active',i===j));
+  document.querySelectorAll('.pane').forEach((p,j)=>p.classList.toggle('active',i===j));
+}
+function toggleBlock(id){document.getElementById(id).classList.toggle('open')}
+
+const chipColors={bull:'#28C870',neu:'#7A8A9A',bear:'#E03848',ALTA:'#28C870',LATERAL:'#7A8A9A',QUEDA:'#E03848',HAWKISH:'#E03848',DOVISH:'#28C870'};
+const chipLabels={bull:'BULL',neu:'NEUTRO',bear:'BEAR',ALTA:'ALTA',LATERAL:'LATERAL',QUEDA:'QUEDA',HAWKISH:'HAWKISH',DOVISH:'DOVISH'};
+const valMap={ibov:'sc-ibov',sp:'sc-sp',dol:'sc-dol',juro:'sc-juro'};
+
+function setChip(asset,val,el){
+  document.getElementById('chips-'+asset).querySelectorAll('.chip').forEach(c=>c.classList.remove('act'));
+  el.classList.add('act');
+  const sc=document.getElementById(valMap[asset]);
+  sc.textContent=chipLabels[val]||val;sc.style.color=chipColors[val]||'var(--text2)';
+  SS('chip_'+asset,val);
+}
+function setConvDir(val,el){
+  document.querySelectorAll('#conv-chips .chip').forEach(c=>c.classList.remove('act'));
+  el.classList.add('act');SS('conv_dir',val);
+}
+function updateConv(v){
+  const n=parseInt(v);
+  document.getElementById('conv-score').textContent=n;
+  document.getElementById('conv-num').textContent=n;
+  document.getElementById('conv-score').style.color=n>=7?'#28C870':n>=4?'#E8A020':'#E03848';
+  SS('conv_val',n);
+}
+
+function renderDrivers(type){
+  const list=LS('drivers_'+type)||[];
+  document.getElementById('cnt-'+type).textContent=list.length;
+  document.getElementById('list-'+type).innerHTML=list.map((t,i)=>`
+    <li class="driver-item">
+      <span class="driver-dot ${type}"></span>
+      <span class="driver-text">${esc(t)}</span>
+      <button class="driver-del" onclick="removeDriver('${type}',${i})">✕</button>
+    </li>`).join('');
+}
+function addDriver(type){
+  const inp=document.getElementById('inp-'+type);const txt=inp.value.trim();if(!txt)return;
+  const list=LS('drivers_'+type)||[];list.push(txt);SS('drivers_'+type,list);inp.value='';renderDrivers(type);
+}
+function removeDriver(type,i){const list=LS('drivers_'+type)||[];list.splice(i,1);SS('drivers_'+type,list);renderDrivers(type)}
+
+function renderGatilhos(){
+  const items=LS('gatilhos')||[];
+  document.getElementById('cl-list').innerHTML=items.map((g,i)=>`
+    <div class="cl-item${g.done?' chk':''}" onclick="toggleGatilho(${i})">
+      <div class="cl-box">${g.done?'✓':''}</div>
+      <span class="cl-text">${esc(g.text)}</span>
+      <button class="driver-del" onclick="event.stopPropagation();removeGatilho(${i})">✕</button>
+    </div>`).join('');
+}
+function addGatilho(){
+  const inp=document.getElementById('inp-gate');const txt=inp.value.trim();if(!txt)return;
+  const items=LS('gatilhos')||[];items.push({text:txt,done:false});SS('gatilhos',items);inp.value='';renderGatilhos();
+}
+function toggleGatilho(i){const items=LS('gatilhos')||[];items[i].done=!items[i].done;SS('gatilhos',items);renderGatilhos()}
+function removeGatilho(i){const items=LS('gatilhos')||[];items.splice(i,1);SS('gatilhos',items);renderGatilhos()}
+
+let calls=LS('calls')||[];
+function renderCalls(){
+  const body=document.getElementById('calls-body');
+  if(!calls.length){body.innerHTML='<tr><td colspan="11" class="empty-state">Nenhuma call registrada.</td></tr>';updateCallStats();return}
+  body.innerHTML=calls.map((c,i)=>{
+    const dir=c.dir==='LONG'?'<span class="badge badge-long">LONG ▲</span>':'<span class="badge badge-short">SHORT ▼</span>';
+    const rr=(c.entry&&c.alvo&&c.stop)?calcRR(c):'—';
+    const stat=statusBadge(c.status);
+    const res=c.resultado!=null?`<span style="color:${c.resultado>=0?'var(--green)':'var(--red)'}">R$ ${c.resultado.toLocaleString('pt-BR')}</span>`:'—';
+    return `<tr>
+      <td class="hi">${esc(c.ativo)}</td><td>${dir}</td>
+      <td style="font-family:var(--fm)">${c.entry||'—'}</td>
+      <td style="font-family:var(--fm)">${c.alvo||'—'}</td>
+      <td style="font-family:var(--fm)">${c.stop||'—'}</td>
+      <td style="font-family:var(--fm);color:var(--cyan)">${rr}</td>
+      <td>${c.date||'—'}</td><td>${stat}</td><td>${res}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis">${esc(c.nota||'')}</td>
+      <td><button class="driver-del" onclick="removeCall(${i})">✕</button></td>
+    </tr>`;
+  }).join('');
+  updateCallStats();
+}
+function calcRR(c){
+  const e=parseFloat(c.entry),a=parseFloat(c.alvo),s=parseFloat(c.stop);
+  if(isNaN(e)||isNaN(a)||isNaN(s)||e===s)return '—';
+  return Math.abs((a-e)/(e-s)).toFixed(1)+'R';
+}
+function statusBadge(s){
+  const m={'ABERTA':'badge-open','FECHADA WIN':'badge-win','FECHADA LOSS':'badge-loss','CANCELADA':'badge-canc','AGUARDANDO':'badge-wait'};
+  return `<span class="badge ${m[s]||'badge-wait'}">${s}</span>`;
+}
+function updateCallStats(){
+  const open=calls.filter(c=>c.status==='ABERTA'||c.status==='AGUARDANDO').length;
+  const wins=calls.filter(c=>c.status==='FECHADA WIN').length;
+  const losses=calls.filter(c=>c.status==='FECHADA LOSS').length;
+  const closed=wins+losses;const wr=closed?Math.round(wins/closed*100)+'%':'—';
+  const pnl=calls.reduce((a,c)=>a+(c.resultado||0),0);
+  document.getElementById('cs-open').textContent=open;
+  document.getElementById('cs-closed').textContent=closed;
+  document.getElementById('cs-wr').textContent=wr;
+  document.getElementById('cs-wr').style.color=wr==='—'?'var(--text2)':parseInt(wr)>=50?'var(--green)':'var(--red)';
+  document.getElementById('cs-pnl').textContent=pnl?'R$ '+pnl.toLocaleString('pt-BR'):'—';
+  document.getElementById('cs-pnl').style.color=!pnl?'var(--text2)':pnl>=0?'var(--green)':'var(--red)';
+}
+function openModal(){document.getElementById('modal').classList.add('open')}
+function closeModal(){document.getElementById('modal').classList.remove('open')}
+function saveCall(){
+  const ativo=document.getElementById('f-ativo').value.trim();
+  if(!ativo){document.getElementById('f-ativo').focus();return}
+  calls.push({ativo,dir:document.getElementById('f-dir').value,
+    entry:document.getElementById('f-entry').value,alvo:document.getElementById('f-alvo').value,
+    stop:document.getElementById('f-stop').value,date:document.getElementById('f-date').value,
+    status:document.getElementById('f-status').value,nota:document.getElementById('f-nota').value,resultado:null});
+  SS('calls',calls);closeModal();renderCalls();
+  ['f-ativo','f-entry','f-alvo','f-stop','f-nota'].forEach(id=>document.getElementById(id).value='');
+}
+function removeCall(i){if(confirm('Remover call?')){calls.splice(i,1);SS('calls',calls);renderCalls()}}
+
+let entries=LS('diary')||[];
+function renderEntries(){
+  const el=document.getElementById('entries-list');
+  if(!entries.length){el.innerHTML='<div class="empty-state">Nenhuma entrada ainda.</div>';return}
+  el.innerHTML=[...entries].reverse().map((e,ri)=>{
+    const i=entries.length-1-ri;
+    return `<div class="entry">
+      <div class="entry-top">
+        <span class="entry-date">${e.date||''}</span>
+        <span class="entry-title">${esc(e.title||'Sem título')}</span>
+        <button class="entry-del" onclick="removeEntry(${i})">✕</button>
+      </div>
+      <div class="entry-body">${esc(e.body||'')}</div>
+    </div>`;
+  }).join('');
+}
+function saveEntry(){
+  const body=document.getElementById('d-body').value.trim();if(!body)return;
+  entries.push({date:document.getElementById('d-date').value,title:document.getElementById('d-title').value.trim()||'Análise',body});
+  SS('diary',entries);document.getElementById('d-body').value='';document.getElementById('d-title').value='';renderEntries();
+}
+function removeEntry(i){if(confirm('Remover entrada?')){entries.splice(i,1);SS('diary',entries);renderEntries()}}
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+(function restore(){
+  ['tese','watch'].forEach(k=>{const v=LS(k);if(v)document.getElementById('ta-'+k).value=v});
+  const cv=LS('conv_val');if(cv!=null){document.getElementById('conv-slider').value=cv;updateConv(cv)}
+  const cd=LS('conv_dir');
+  if(cd)document.querySelectorAll('#conv-chips .chip').forEach(b=>{if(b.textContent.includes(cd))b.classList.add('act')});
+  ['ibov','sp','dol','juro'].forEach(a=>{
+    const v=LS('chip_'+a);if(!v)return;
+    const g=document.getElementById('chips-'+a);
+    g.querySelectorAll('.chip').forEach(c=>{
+      if(c.getAttribute('onclick')&&c.getAttribute('onclick').includes(`'${v}'`)){
+        c.classList.add('act');
+        const sc=document.getElementById(valMap[a]);
+        sc.textContent=chipLabels[v]||v;sc.style.color=chipColors[v]||'var(--text2)';
+      }
+    });
+  });
+  renderDrivers('bull');renderDrivers('bear');renderGatilhos();renderCalls();renderEntries();
+})();
+
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal()});
+</script>
+</body>
+</html>

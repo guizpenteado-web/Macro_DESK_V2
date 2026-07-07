@@ -126,6 +126,9 @@ body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFo
     <button class="toggle-btn" id="tog-ntnb" onclick="toggleSeries('ntnb')">
       <span class="toggle-dot" style="background:#B44FFF"></span>NTN-B 2035 PU
     </button>
+    <button class="toggle-btn" id="tog-flow" onclick="toggleSeries('flow')">
+      <span class="toggle-dot" style="background:#FF4444"></span>Fluxo Estrang.
+    </button>
     <button class="toggle-btn off" id="tog-di2033" onclick="toggleSeries('di2033')">
       <span class="toggle-dot" style="background:#F59E0B"></span>DI1F2033
     </button>
@@ -193,6 +196,7 @@ const META = {
   ibov:   { label: "IBOVESPA",          color: "#00BFFF", unit: " pts",       axisId: "ax-ibov"    },
   cot:    { label: "6L COT (Asset Mgr)",color: "#E0E0E0", unit: " contratos", axisId: "ax-cot"     },
   ntnb:   { label: "NTN-B 2035 PU",     color: "#B44FFF", unit: " R$",        axisId: "ax-ntnb"    },
+  flow:   { label: "Fluxo Estrang.",     color: "#FF4444", unit: " R$ mi",     axisId: "ax-flow"    },
   di2033: { label: "DI1F2033",          color: "#F59E0B", unit: "% a.a.",     axisId: "ax-di"      },
   smal11: { label: "SMAL11 (Small Cap)", color: "#FACC15", unit: " R$",        axisId: "ax-etfs"    },
   usdbrl: { label: "USD/BRL",            color: "#22C55E", unit: " R$",        axisId: "ax-usdbrl"  },
@@ -204,8 +208,8 @@ const META = {
 
 // COT é semanal, CPI YoY é mensal — todo o resto é diário. Ver comentário no "step" abaixo.
 const LOW_FREQ_KEYS = new Set(["cot", "us_cpi_yoy"]);
-let rawData = { ibov: [], cot: [], ntnb: [], di2033: [], smal11: [], usdbrl: [], dxy: [], us10y: [], bcom: [], us_cpi_yoy: [] };
-let visible  = { ibov: true, cot: false, ntnb: true, di2033: false, smal11: false, usdbrl: false, dxy: false, us10y: false, bcom: false, us_cpi_yoy: false };
+let rawData = { ibov: [], cot: [], ntnb: [], flow: [], di2033: [], smal11: [], usdbrl: [], dxy: [], us10y: [], bcom: [], us_cpi_yoy: [] };
+let visible  = { ibov: true, cot: false, ntnb: true, flow: true, di2033: false, smal11: false, usdbrl: false, dxy: false, us10y: false, bcom: false, us_cpi_yoy: false };
 let chart    = null;
 let currentMonths = 0;
 
@@ -257,13 +261,14 @@ function buildAxes(mode){
     { key:"ibov",    color:"#00BFFF", label:"IBOV",    opp:false, off:0,           grid:true  },
     { key:"cot",     color:"#E0E0E0", label:"COT",     opp:true,  off:0,          grid:false },
     { key:"ntnb",    color:"#B44FFF", label:"NTN-B",   opp:false, off:0,          grid:false },
-    { key:"di2033",  color:"#F59E0B", label:"DI % aa", opp:true,  off:isAbs?40:0, grid:false },
+    { key:"flow",    color:"#FF4444", label:"FLUXO",   opp:true,  off:isAbs?40:0, grid:false },
+    { key:"di2033",  color:"#F59E0B", label:"DI % aa", opp:true,  off:isAbs?80:0, grid:false },
     { key:"smal11",  color:"#FACC15", label:"ETFs B3", opp:false, off:0,          grid:false },
-    { key:"usdbrl",  color:"#22C55E", label:"USD/BRL", opp:true,  off:isAbs?80:0, grid:false },
-    { key:"dxy",     color:"#EC4899", label:"DXY",     opp:true,  off:isAbs?120:0,grid:false },
-    { key:"us10y",   color:"#818CF8", label:"US10Y",   opp:true,  off:isAbs?160:0,grid:false },
-    { key:"bcom",    color:"#F97316", label:"BCOM",    opp:true,  off:isAbs?200:0,grid:false },
-    { key:"us_cpi_yoy", color:"#FB7185", label:"CPI YoY", opp:true, off:isAbs?240:0, grid:false },
+    { key:"usdbrl",  color:"#22C55E", label:"USD/BRL", opp:true,  off:isAbs?120:0, grid:false },
+    { key:"dxy",     color:"#EC4899", label:"DXY",     opp:true,  off:isAbs?160:0,grid:false },
+    { key:"us10y",   color:"#818CF8", label:"US10Y",   opp:true,  off:isAbs?200:0,grid:false },
+    { key:"bcom",    color:"#F97316", label:"BCOM",    opp:true,  off:isAbs?240:0,grid:false },
+    { key:"us_cpi_yoy", color:"#FB7185", label:"CPI YoY", opp:true, off:isAbs?280:0, grid:false },
   ];
   // ax-etfs is shared by blvb11/bhyb11/divo11/smal11 — only create it once
   const seen = new Set();
@@ -299,7 +304,7 @@ function buildAxes(mode){
       opposite: d.opp,
       offset: d.off,
       title: { text:null },
-      labels: isAbs && visible[d.key] && (d.key === "ibov" || d.opp)
+      labels: isAbs && visible[d.key] && d.key !== "flow" && (d.key === "ibov" || d.opp)
         ? { enabled:true, style:{color:d.color,fontSize:"11px"}, formatter(){ return Highcharts.numberFormat(this.value,0,",","."); } }
         : { enabled:false },
       min: mode==="minmax" ? 0   : absMin,
@@ -348,7 +353,7 @@ function makeTooltipFormatter(mode){
 // ────────────────────────────────────────────────────────────────
 function rebuildChart(){
   const mode = document.getElementById("mode-select").value;
-  const keys = ["ibov","cot","ntnb","di2033","smal11","usdbrl","dxy","us10y","bcom","us_cpi_yoy"];
+  const keys = ["ibov","cot","ntnb","flow","di2033","smal11","usdbrl","dxy","us10y","bcom","us_cpi_yoy"];
 
   document.getElementById("lbl-mode").textContent =
     mode==="minmax" ? "Escala: Min-Max (0-100%)" :
@@ -450,7 +455,7 @@ function rebuildChart(){
 // desfaz arrastar, rodinha do mouse e escala manual definida por clique/arrastar na alça.
 function resetAllScale(){
   if(!chart) return;
-  const keys = ["ibov","cot","ntnb","di2033","smal11","usdbrl","dxy","us10y","bcom","us_cpi_yoy"];
+  const keys = ["ibov","cot","ntnb","flow","di2033","smal11","usdbrl","dxy","us10y","bcom","us_cpi_yoy"];
   keys.forEach(k=>{
     const axis = chart.get(META[k].axisId);
     if(axis) axis.setExtremes(null, null, false, false);
@@ -473,8 +478,10 @@ function applyViewport(){
   const fullSpan = xMax - xMin;
   const viewSpan = fullSpan * 0.5;
   const MS_DAY   = 86400000;
-  // Margem à direita: 24% do viewport, entre 45 e 210 dias (estilo Sharketo)
-  const rightSpace = Math.min(Math.max(viewSpan * 0.24, 45 * MS_DAY), 210 * MS_DAY);
+  // Margem à direita: 24% do viewport, entre 45 e 400 dias — suficiente pra grade
+  // de fundo (horizontal e vertical) cobrir todo o espaço reservado às escalas à
+  // direita (marginRight), sem alterar dataMin/dataMax nem a posição das séries.
+  const rightSpace = Math.min(Math.max(viewSpan * 0.24, 45 * MS_DAY), 400 * MS_DAY);
   const newMax = xMax + rightSpace;
   // update() define o max do eixo no nível de configuração (permite espaço além do dataMax)
   chart.xAxis[0].update({ max: newMax }, false);
@@ -604,7 +611,7 @@ function addDragHandles(){
     "top:"  + chart.plotTop    + "px;" +
     "height:" + chart.plotHeight + "px;";
 
-  const keys = ["ibov","cot","ntnb","di2033","smal11","usdbrl","dxy","us10y","bcom","us_cpi_yoy"];
+  const keys = ["ibov","cot","ntnb","flow","di2033","smal11","usdbrl","dxy","us10y","bcom","us_cpi_yoy"];
   keys.forEach(key => {
     const meta = META[key];
     const axis = chart.get(meta.axisId);
@@ -659,6 +666,7 @@ async function loadAndDraw(months){
     rawData.ibov   = d.ibov||[];
     rawData.cot    = d.cot ||[];
     rawData.ntnb   = d.ntnb35||[];
+    rawData.flow   = d.foreign_flow||[];
     rawData.di2033 = d.di2033||[];
     rawData.smal11 = d.smal11 ||[];
     rawData.usdbrl = d.usdbrl ||[];

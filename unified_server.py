@@ -16,7 +16,7 @@ import subprocess
 import sys
 import time
 import xml.etree.ElementTree as ET
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 
@@ -1180,6 +1180,58 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Log de acessos (IP, rota, hora) ─────────────────────────────────────────
+# Registra toda requisição ao Hub (todas as abas) num SQLite local, pra dar
+# visibilidade de quem acessou o quê — em especial via o túnel ngrok público.
+# Consultado sob demanda (sem página dedicada); ver ACCESS_LOG_DB.
+import sqlite3 as _sqlite3
+
+ACCESS_LOG_DB = BASE / "access_log.db"
+
+
+def _init_access_log() -> None:
+    conn = _sqlite3.connect(ACCESS_LOG_DB)
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS access_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts TEXT NOT NULL,
+            ip TEXT,
+            method TEXT,
+            path TEXT,
+            status INTEGER,
+            user_agent TEXT
+        )"""
+    )
+    conn.commit()
+    conn.close()
+
+
+_init_access_log()
+
+
+@app.middleware("http")
+async def _log_access(request: Request, call_next):
+    response = await call_next(request)
+    try:
+        conn = _sqlite3.connect(ACCESS_LOG_DB)
+        conn.execute(
+            "INSERT INTO access_log (ts, ip, method, path, status, user_agent) VALUES (?,?,?,?,?,?)",
+            (
+                datetime.now(timezone.utc).isoformat(),
+                request.client.host if request.client else None,
+                request.method,
+                request.url.path,
+                response.status_code,
+                request.headers.get("user-agent", ""),
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+    return response
+
 
 sys.path.insert(0, str(BIBLIOTECA_DIR))
 from biblioteca_api import router as biblioteca_api_router  # noqa: E402
