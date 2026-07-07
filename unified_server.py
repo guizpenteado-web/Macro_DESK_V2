@@ -33,9 +33,11 @@ from bs4 import BeautifulSoup
 BASE          = Path(__file__).resolve().parent
 DASHBOARD_DIR = BASE / "dashboard"
 BIBLIOTECA_DIR = BASE / "biblioteca"
-BREADTH_DIR   = Path(r"c:\Users\Guilherme\Documents\Market_BREADTH_ULTRA")
-MACRO_DIR     = Path(r"c:\Users\Guilherme\Documents\MacroDashboard")
-IBOV_DIR      = Path(r"c:\Users\Guilherme\Documents\IbovCalls")
+# Módulos do Macro Desk Principal — desde 07/07/2026 vivem dentro deste mesmo
+# repositório (git subtree), não mais em pastas irmãs separadas em Documents.
+BREADTH_DIR   = BASE / "Market_BREADTH_ULTRA"
+MACRO_DIR     = BASE / "MacroDashboard"
+IBOV_DIR      = BASE / "IbovCalls"
 
 
 PYTHON_1 = str(DASHBOARD_DIR / ".venv" / "Scripts" / "python.exe")
