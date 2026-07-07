@@ -1,0 +1,348 @@
+{
+  "_descricao": "Banco de fontes confiáveis para varredura diária do Macro Dashboard. Hierarquia: TIER-1 = sites oficiais dos bancos/órgãos reguladores (prioridade máxima), TIER-2 = bolsas e agências governamentais, TIER-3 = veículos financeiros renomados de referência de mercado.",
+  "_instrucao_de_uso": "Ao buscar qualquer dado financeiro, sempre tentar TIER-1 primeiro. Se não encontrar dados atualizados (> 2 meses), avançar para TIER-2 ou TIER-3. NUNCA usar estimativas de memória de treinamento. Sempre registrar a data da fonte.",
+  "_atualizado": "2026-07-01",
+
+  "hierarquia_de_busca": {
+    "passo_1": "Pesquisar diretamente no site oficial do banco (TIER-1) — ex: goldmansachs.com/insights",
+    "passo_2": "Se não encontrar, buscar nos sites de dados de bolsas/orgãos (TIER-2) — ex: bcb.gov.br, cmegroup.com, eia.gov",
+    "passo_3": "Se não encontrar, buscar em veículos especializados de referência de mercado (TIER-3) — ex: bloomberg.com, reuters.com, kitco.com",
+    "nunca_fazer": "Inventar, estimar pela memória de treinamento ou usar fontes sem data verificável"
+  },
+
+  "fontes": {
+
+    "bancos_internacionais_tier1": {
+      "_descricao": "Sites públicos de research dos principais bancos de investimento. Publicam outlooks, price targets e rationale diretamente.",
+      "goldman_sachs": {
+        "nome": "Goldman Sachs Insights",
+        "url_principal": "https://www.goldmansachs.com/insights",
+        "url_research": "https://www.goldmansachs.com/insights/goldman-sachs-research",
+        "url_commodities": "https://www.goldmansachs.com/insights/goldman-sachs-research/commodity-outlook-2026-ride-the-power-race-and-supply-waves",
+        "url_macro": "https://www.goldmansachs.com/insights/goldman-sachs-research/macro-outlook-2026-sturdy-growth-stagnant-jobs-stable-prices",
+        "url_midyear": "https://www.goldmansachs.com/insights/outlooks/2026-outlooks",
+        "dados_disponiveis": ["gold target", "silver target", "copper target", "oil target", "S&P 500 target", "Fed rate forecast", "GDP outlook", "macro scenarios"],
+        "frequencia_atualizacao": "Artigos publicados conforme revisões de research (geralmente a cada 1-3 meses por tema)",
+        "acesso": "público (sem login)"
+      },
+      "jpmorgan": {
+        "nome": "J.P. Morgan Global Research",
+        "url_principal": "https://www.jpmorgan.com/insights/global-research",
+        "url_commodities": "https://www.jpmorgan.com/insights/global-research/commodities",
+        "url_gold": "https://www.jpmorgan.com/insights/global-research/commodities/gold-prices",
+        "url_silver": "https://www.jpmorgan.com/insights/global-research/commodities/silver-prices",
+        "url_copper": "https://www.jpmorgan.com/insights/global-research/commodities/copper-outlook",
+        "url_oil": "https://www.jpmorgan.com/insights/global-research/commodities/oil-prices",
+        "url_market_outlook": "https://www.jpmorgan.com/insights/global-research/outlook/market-outlook",
+        "url_midyear": "https://www.jpmorgan.com/insights/global-research/outlook/mid-year-outlook",
+        "dados_disponiveis": ["gold target", "silver target", "copper target", "oil/Brent/WTI target", "S&P 500 target", "Fed rate forecast", "macro outlook"],
+        "frequencia_atualizacao": "Páginas de commodities atualizadas com novos research conforme publicado",
+        "acesso": "público (sem login)"
+      },
+      "morgan_stanley": {
+        "nome": "Morgan Stanley Insights",
+        "url_principal": "https://www.morganstanley.com/insights",
+        "url_outlooks": "https://www.morganstanley.com/Themes/outlooks",
+        "url_macro": "https://www.morganstanley.com/insights/topics/macroeconomics",
+        "url_midyear": "https://www.morganstanley.com/insights/articles/investment-outlook-midyear-2026",
+        "url_economic": "https://www.morganstanley.com/insights/articles/economic-outlook-midyear-2026",
+        "dados_disponiveis": ["S&P 500 target", "gold target", "macro forecast", "Fed outlook", "equity strategy", "global GDP"],
+        "frequencia_atualizacao": "Outlooks semestrais + artigos conforme revisões",
+        "acesso": "público (sem login)"
+      },
+      "bank_of_america": {
+        "nome": "BofA Global Research / BofA Institute",
+        "url_principal": "https://www.bankofamerica.com/invest/insights/",
+        "url_institute": "https://institute.bankofamerica.com/",
+        "url_private_bank": "https://www.privatebank.bankofamerica.com/articles/will-precious-metals-keep-their-shine.html",
+        "nota": "BofA Research completo requer Bloomberg Terminal ou acesso institucional (rsch.baml.com). Resumos públicos disponíveis no site e divulgados pela imprensa.",
+        "dados_disponiveis": ["gold target", "silver target", "S&P 500 target", "macro outlook"],
+        "alternativa_publica": "Buscar via Kitco, TheStreet ou Reuters quando o BofA divulga ao mercado",
+        "acesso": "parcial (resumos públicos, full research requer terminal)"
+      },
+      "citi": {
+        "nome": "Citi Global Insights",
+        "url_principal": "https://www.citigroup.com/global/insights",
+        "url_commodities": "https://www.citigroup.com/global/insights/commodities-market-outlook-4q-25",
+        "nota": "Citi publica Commodities Market Outlook trimestralmente. Full research requer acesso institucional.",
+        "dados_disponiveis": ["gold target", "silver target", "copper target", "oil target", "commodities outlook"],
+        "frequencia_atualizacao": "Quarterly (Commodities Market Outlook) + artigos avulsos",
+        "acesso": "parcial (resumos públicos)"
+      }
+    },
+
+    "bancos_brasil_tier1": {
+      "_descricao": "Research das casas brasileiras para IBOV, Selic, IPCA, câmbio e eleições.",
+      "xp_investimentos": {
+        "nome": "XP Research / Conteúdos XP",
+        "url_principal": "https://conteudos.xpi.com.br/",
+        "url_research": "https://conteudos.xpi.com.br/economia/",
+        "dados_disponiveis": ["IBOV target", "Selic forecast", "IPCA", "cenário macro Brasil", "estratégia renda variável"],
+        "acesso": "público"
+      },
+      "itau_bba": {
+        "nome": "Itaú BBA Research",
+        "url_principal": "https://www.itau.com.br/itaubba-pt/analises-e-publicacoes/",
+        "url_macro": "https://www.itau.com.br/itaubba-pt/analises-e-publicacoes/macro-research/",
+        "dados_disponiveis": ["IBOV target", "Selic forecast", "IPCA", "PIB Brasil", "cenário macro Brasil"],
+        "acesso": "parcial (alguns relatórios para clientes)"
+      },
+      "btg_pactual": {
+        "nome": "BTG Pactual Research",
+        "url_principal": "https://www.btgpactual.com/research",
+        "url_macro": "https://www.btgpactual.com/research/macro",
+        "dados_disponiveis": ["IBOV target", "Selic forecast", "estratégia renda variável", "macro Brasil"],
+        "acesso": "parcial"
+      }
+    },
+
+    "orgaos_oficiais_brasil_tier2": {
+      "_descricao": "Fontes primárias governamentais brasileiras. Dados mais confiáveis e definitivos para indicadores macro do Brasil.",
+      "bacen_focus": {
+        "nome": "Banco Central — Relatório Focus (Expectativas de Mercado)",
+        "url_principal": "https://www.bcb.gov.br/publicacoes/focus",
+        "url_api_expectativas": "https://olinda.bcb.gov.br/olinda/servico/Expectativas/versao/v1/odata/",
+        "url_dados_abertos": "https://dadosabertos.bcb.gov.br/dataset/expectativas-mercado",
+        "frequencia_atualizacao": "Toda sexta-feira (dados atualizados às 8h30 BRT)",
+        "dados_disponiveis": ["Selic (fim ano)", "IPCA (ano corrente e seguinte)", "PIB", "câmbio (USD/BRL)", "IGP-M"],
+        "como_usar": "O Focus agrega expectativas do mercado (bancos, assets) — é a referência usada pelo BCB para comparação com suas próprias projeções",
+        "acesso": "público (API aberta)"
+      },
+      "bacen_copom": {
+        "nome": "Banco Central — Atas do COPOM",
+        "url_principal": "https://www.bcb.gov.br/publicacoes/atascopom",
+        "url_calendario": "https://www.bcb.gov.br/controleinflacao/historicotaxasjuros",
+        "frequencia_atualizacao": "8 reuniões por ano (a cada ~45 dias). Ata publicada 6 dias úteis após reunião.",
+        "dados_disponiveis": ["decisão Selic", "votação", "guidance próxima reunião", "análise cenário"],
+        "acesso": "público"
+      },
+      "bacen_relatorio_inflacao": {
+        "nome": "Banco Central — Relatório de Política Monetária (ex-Relatório de Inflação)",
+        "url_principal": "https://www.bcb.gov.br/publicacoes/politicamonetaria",
+        "frequencia_atualizacao": "Trimestral (março, junho, setembro, dezembro)",
+        "dados_disponiveis": ["projeção IPCA do BCB", "projeção Selic do BCB", "projeção PIB", "balanço de riscos"],
+        "acesso": "público"
+      },
+      "ibge_ipca": {
+        "nome": "IBGE — IPCA (Índice de Preços ao Consumidor Amplo)",
+        "url_principal": "https://www.ibge.gov.br/explica/inflacao.php",
+        "url_sidra": "https://sidra.ibge.gov.br/tabela/1737",
+        "frequencia_atualizacao": "Mensal (divulgado ~dia 12 do mês seguinte)",
+        "dados_disponiveis": ["IPCA mensal", "IPCA acumulado 12 meses", "núcleos de inflação"],
+        "acesso": "público"
+      }
+    },
+
+    "orgaos_oficiais_eua_tier2": {
+      "_descricao": "Fontes primárias governamentais americanas. Dados definitivos para Fed, CPI, NFP e outros indicadores EUA.",
+      "federal_reserve": {
+        "nome": "Federal Reserve — FOMC",
+        "url_principal": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+        "url_statement": "https://www.federalreserve.gov/monetarypolicy/fomcminutes.htm",
+        "url_dot_plot": "https://www.federalreserve.gov/monetarypolicy/fomcprojtabl20250319.htm",
+        "frequencia_atualizacao": "8 reuniões por ano. Dot Plot publicado em reuniões com projeções (4x/ano).",
+        "dados_disponiveis": ["Fed rate decision", "dot plot (projeções dos membros)", "statement", "press conference", "SEP projections"],
+        "acesso": "público"
+      },
+      "bls_cpi": {
+        "nome": "Bureau of Labor Statistics — CPI (Consumer Price Index)",
+        "url_principal": "https://www.bls.gov/cpi/",
+        "url_release": "https://www.bls.gov/news.release/cpi.toc.htm",
+        "frequencia_atualizacao": "Mensal (divulgado ~dia 10-14 do mês seguinte)",
+        "dados_disponiveis": ["CPI YoY", "Core CPI YoY", "CPI MoM", "components breakdown"],
+        "acesso": "público"
+      },
+      "bls_nfp": {
+        "nome": "Bureau of Labor Statistics — NFP (Non-Farm Payrolls)",
+        "url_principal": "https://www.bls.gov/news.release/empsit.toc.htm",
+        "frequencia_atualizacao": "Mensal (primeiro sexta do mês seguinte, ~8h30 ET)",
+        "dados_disponiveis": ["NFP", "unemployment rate", "labor force participation", "average hourly earnings"],
+        "acesso": "público"
+      },
+      "fred_stlouisfed": {
+        "nome": "FRED — Federal Reserve Bank of St. Louis",
+        "url_principal": "https://fred.stlouisfed.org/",
+        "url_fedfunds": "https://fred.stlouisfed.org/series/FEDFUNDS",
+        "url_cpi": "https://fred.stlouisfed.org/series/CPIAUCSL",
+        "url_wti": "https://fred.stlouisfed.org/series/DCOILWTICO",
+        "frequencia_atualizacao": "Diária para séries de mercado, mensal/trimestral para macro",
+        "dados_disponiveis": ["histórico Fed funds rate", "CPI histórico", "WTI histórico", "GDP", "unemployment"],
+        "acesso": "público (API disponível)"
+      }
+    },
+
+    "bolsas_e_agencias_commodities_tier2": {
+      "_descricao": "Fontes primárias de preços e dados de commodities. Dados mais confiáveis para cotações.",
+      "cmegroup": {
+        "nome": "CME Group — COMEX & NYMEX",
+        "url_gold": "https://www.cmegroup.com/markets/metals/precious/gold.quotes.html",
+        "url_silver": "https://www.cmegroup.com/markets/metals/precious/silver.quotes.html",
+        "url_copper": "https://www.cmegroup.com/markets/metals/base/copper.quotes.html",
+        "url_wti": "https://www.cmegroup.com/markets/energy/crude-oil/light-sweet-crude.quotes.html",
+        "dados_disponiveis": ["Gold spot/futures (GC)", "Silver spot/futures (SI)", "Copper COMEX (HG) USD/lb", "WTI Crude (CL) USD/bbl"],
+        "nota_cobre": "Ticker COMEX Cobre = HG. Cotado em USD/lb. Preço pode ter prêmio vs LME quando há tarifas de importação EUA.",
+        "acesso": "público"
+      },
+      "lme": {
+        "nome": "London Metal Exchange — LME",
+        "url_principal": "https://www.lme.com/Metals/Non-ferrous/LME-Copper",
+        "url_copper": "https://www.lme.com/metals/non-ferrous/lme-copper",
+        "dados_disponiveis": ["Copper LME USD/ton", "Aluminium", "Zinc", "Nickel", "Lead"],
+        "nota": "LME = referência internacional de cobre (USD/ton). Bancos geralmente publicam targets em USD/ton LME.",
+        "acesso": "público"
+      },
+      "eia": {
+        "nome": "EIA — Energy Information Administration",
+        "url_principal": "https://www.eia.gov/petroleum/",
+        "url_wti": "https://www.eia.gov/dnav/pet/hist/LeafHandler.ashx?n=PET&s=RWTC&f=D",
+        "url_outlook": "https://www.eia.gov/outlooks/steo/",
+        "frequencia_atualizacao": "Preço diário. STEO (Short-Term Energy Outlook) mensal.",
+        "dados_disponiveis": ["WTI spot price", "Brent spot price", "inventários EUA", "Short-Term Energy Outlook com previsão de preços"],
+        "acesso": "público"
+      },
+      "kitco": {
+        "nome": "Kitco News — Referência global em metais preciosos",
+        "url_principal": "https://www.kitco.com/",
+        "url_gold": "https://www.kitco.com/charts/gold",
+        "url_silver": "https://www.kitco.com/charts/silver",
+        "url_copper": "https://www.kitco.com/charts/copper",
+        "url_news": "https://www.kitco.com/news/",
+        "dados_disponiveis": ["Gold spot (XAU/USD)", "Silver spot (XAG/USD)", "Copper spot", "notícias de bancos sobre metais preciosos"],
+        "nota": "Kitco é a referência global mais usada para acompanhar preços de metais e notícias de research de bancos sobre esses metais.",
+        "acesso": "público"
+      }
+    },
+
+    "veiculos_financeiros_tier3": {
+      "_descricao": "Veículos jornalísticos financeiros de referência mundial. Usar quando não se encontra nos sites dos bancos ou agências. São os que mais rápido publicam quando um banco divulga revisão de target.",
+      "bloomberg": {
+        "nome": "Bloomberg Markets",
+        "url_principal": "https://www.bloomberg.com/markets/commodities",
+        "url_economics": "https://www.bloomberg.com/economics",
+        "nota": "Paywall para maioria dos artigos completos. Mas manchetes e primeiros parágrafos são muitas vezes suficientes para confirmar revisões de target.",
+        "acesso": "paywall (primeiros parágrafos públicos)"
+      },
+      "reuters": {
+        "nome": "Reuters Markets",
+        "url_principal": "https://www.reuters.com/markets/",
+        "url_commodities": "https://www.reuters.com/markets/commodities/",
+        "acesso": "público (limitado)",
+        "nota": "Excelente para notícias rápidas de revisão de targets de bancos. Frequentemente o primeiro veículo a noticiar quando GS, JPM ou outros revisam."
+      },
+      "thestreet": {
+        "nome": "TheStreet — Investing",
+        "url_principal": "https://www.thestreet.com/investing",
+        "url_commodities": "https://www.thestreet.com/investing/commodities",
+        "nota": "Publica regularmente artigos sobre revisões de targets de Goldman, JPMorgan, BofA, Morgan Stanley. Título dos artigos é muito específico (ex: 'Goldman Sachs raises its gold price target'). Ótimo para varredura.",
+        "acesso": "público"
+      },
+      "investing_com": {
+        "nome": "Investing.com",
+        "url_gold": "https://www.investing.com/commodities/gold",
+        "url_silver": "https://www.investing.com/commodities/silver",
+        "url_copper": "https://www.investing.com/commodities/copper",
+        "url_oil": "https://www.investing.com/commodities/crude-oil",
+        "url_news": "https://www.investing.com/news/commodities-news",
+        "nota": "Excelente para preços em tempo real e notícias de commodities. Muitos artigos de research de bancos aparecem aqui rapidamente.",
+        "acesso": "público"
+      },
+      "oilprice_com": {
+        "nome": "OilPrice.com",
+        "url_principal": "https://oilprice.com/",
+        "url_forecasts": "https://oilprice.com/energy/energy-general/",
+        "nota": "Especializado em petróleo e energia. Referência para WTI, Brent e gás natural. Publica revisões de bancos sobre oil rapidamente.",
+        "acesso": "público"
+      },
+      "tradingeconomics": {
+        "nome": "Trading Economics",
+        "url_gold": "https://tradingeconomics.com/commodity/gold",
+        "url_silver": "https://tradingeconomics.com/commodity/silver",
+        "url_copper": "https://tradingeconomics.com/commodity/copper",
+        "url_oil": "https://tradingeconomics.com/commodity/crude-oil",
+        "url_selic": "https://tradingeconomics.com/brazil/interest-rate",
+        "url_fedfunds": "https://tradingeconomics.com/united-states/interest-rate",
+        "nota": "Banco de dados de séries históricas e previsões de consenso de mercado. Útil para confirmar preços atuais e ver tendência histórica.",
+        "acesso": "público (histórico limitado, full requer conta)"
+      },
+      "marketwatch": {
+        "nome": "MarketWatch",
+        "url_principal": "https://www.marketwatch.com/",
+        "url_gold": "https://www.marketwatch.com/investing/future/gold",
+        "url_oil": "https://www.marketwatch.com/investing/future/crude%20oil%20-%20electronic",
+        "acesso": "público"
+      }
+    },
+
+    "veiculos_brasil_tier3": {
+      "_descricao": "Veículos brasileiros de referência para dados macro Brasil, Selic, IBOV e eleições.",
+      "valor_economico": {
+        "nome": "Valor Econômico",
+        "url_principal": "https://valor.globo.com/",
+        "url_financas": "https://valor.globo.com/financas/",
+        "url_macro": "https://valor.globo.com/brasil/economia/",
+        "nota": "Principal jornal econômico do Brasil. Publica revisões de Selic e IBOV dos bancões brasileiros (XP, BTG, Itaú, Bradesco BBI). Paywall mas manchetes e primeiros parágrafos são públicos.",
+        "acesso": "paywall parcial"
+      },
+      "infomoney": {
+        "nome": "InfoMoney",
+        "url_principal": "https://www.infomoney.com.br/",
+        "url_mercados": "https://www.infomoney.com.br/mercados/",
+        "nota": "Referência gratuita de mercados no Brasil. Publica rapidamente revisões de targets de bancos locais para IBOV e Selic.",
+        "acesso": "público"
+      },
+      "broadcast": {
+        "nome": "Broadcast / Agência Estado",
+        "url_principal": "https://broadcast.com.br/",
+        "nota": "Serviço profissional de notícias financeiras. Muito usado por gestores e traders. Paywall, mas dados são referenciados por outros veículos.",
+        "acesso": "paywall (institucional)"
+      }
+    },
+
+    "pesquisas_eleitorais_tier1": {
+      "_descricao": "Institutos de pesquisa eleitoral para dados de intenção de voto no Brasil.",
+      "datafolha": {
+        "nome": "Datafolha",
+        "url_principal": "https://datafolha.folha.uol.com.br/",
+        "url_pesquisas": "https://datafolha.folha.uol.com.br/opiniaopublica/",
+        "nota": "Maior e mais respeitado instituto de pesquisa do Brasil. Referência absoluta para pesquisas eleitorais. Publicações registradas no TSE.",
+        "acesso": "público"
+      },
+      "quaest": {
+        "nome": "Quaest Pesquisa",
+        "url_principal": "https://quaest.com.br/",
+        "nota": "Instituto sério e com boa metodologia. Pesquisas eleitorais registradas no TSE. Frequentemente referenciado por grandes veículos.",
+        "acesso": "público"
+      },
+      "atlas_intel": {
+        "nome": "Atlas Intel",
+        "url_principal": "https://atlasintel.com.br/",
+        "nota": "Instituto com metodologia de coleta online massiva. Boa performance histórica em eleições recentes.",
+        "acesso": "público (resumos) / paywall (dados completos)"
+      },
+      "tse_divulga_cand": {
+        "nome": "TSE — Repositório de pesquisas registradas",
+        "url_principal": "https://divulgacandcontas.tse.jus.br/",
+        "nota": "Todos os institutos devem registrar pesquisas no TSE. Fonte oficial de todas as pesquisas eleitorais do Brasil.",
+        "acesso": "público"
+      }
+    }
+  },
+
+  "mapa_de_dados_por_indicador": {
+    "_descricao": "Para cada indicador do dashboard, qual fonte usar primeiro.",
+    "gold_target_bancos":         ["goldmansachs.com/insights", "jpmorgan.com/insights/global-research/commodities/gold-prices", "morganstanley.com/insights", "kitco.com/news", "thestreet.com/investing"],
+    "silver_target_bancos":       ["jpmorgan.com/insights/global-research/commodities/silver-prices", "kitco.com/news", "thestreet.com/investing"],
+    "copper_target_bancos":       ["goldmansachs.com/insights", "jpmorgan.com/insights/global-research/commodities/copper-outlook", "kitco.com/news"],
+    "copper_spot_price":          ["cmegroup.com (COMEX HG, USD/lb)", "lme.com (LME, USD/ton)", "investing.com/commodities/copper"],
+    "oil_target_bancos":          ["goldmansachs.com/insights", "jpmorgan.com/insights/global-research/commodities/oil-prices", "oilprice.com", "reuters.com/markets/commodities"],
+    "oil_spot_wti":               ["cmegroup.com/markets/energy/crude-oil", "eia.gov", "investing.com/commodities/crude-oil"],
+    "sp500_target_bancos":        ["goldmansachs.com/insights", "jpmorgan.com/insights/global-research/outlook/market-outlook", "morganstanley.com/insights", "thestreet.com/investing"],
+    "ibov_target_bancos":         ["conteudos.xpi.com.br", "btgpactual.com/research", "infomoney.com.br", "valor.globo.com"],
+    "selic_target_bancos":        ["bcb.gov.br/publicacoes/focus", "conteudos.xpi.com.br", "btgpactual.com/research", "infomoney.com.br"],
+    "fed_rate_target":            ["federalreserve.gov/monetarypolicy/fomccalendars.htm", "goldmansachs.com/insights", "jpmorgan.com/insights/global-research"],
+    "cpi_eua":                    ["bls.gov/cpi", "fred.stlouisfed.org/series/CPIAUCSL"],
+    "nfp_emprego_eua":            ["bls.gov/news.release/empsit.toc.htm"],
+    "ipca_brasil":                ["ibge.gov.br/explica/inflacao.php", "bcb.gov.br"],
+    "pesquisa_eleitoral_brasil":  ["datafolha.folha.uol.com.br", "quaest.com.br", "atlasintel.com.br", "divulgacandcontas.tse.jus.br"]
+  }
+}

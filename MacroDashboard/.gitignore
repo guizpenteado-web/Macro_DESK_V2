@@ -1,0 +1,17 @@
+# Ambiente virtual
+.venv/
+venv/
+env/
+
+# Cache Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Banco de dados local (regenerável via pipeline)
+database/*.db
+database/*.db-shm
+database/*.db-wal
+
+# Logs
+*.log
