@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RRGCOMPLETO — Rotação Relativa (universo expandido)</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;min-height:100vh}
+
+/* ── Header ── */
+header{background:#161b22;border-bottom:1px solid #30363d;padding:12px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+h1{font-size:15px;font-weight:600;color:#fff;white-space:nowrap}
+h1 span{color:#8b949e;font-weight:400;font-size:12px;display:block;margin-top:1px}
+
+.legend{display:flex;gap:14px;align-items:center;margin-left:8px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#8b949e;white-space:nowrap}
+.legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+
+.controls{display:flex;gap:10px;align-items:center;margin-left:auto;flex-wrap:wrap}
+.controls label{font-size:11px;color:#8b949e;white-space:nowrap}
+.controls select,.controls input{background:#21262d;border:1px solid #30363d;color:#c9d1d9;border-radius:4px;padding:3px 8px;font-size:12px}
+.controls select:focus,.controls input:focus{outline:none;border-color:#1f6feb}
+
+.btn{background:#21262d;border:1px solid #30363d;color:#c9d1d9;cursor:pointer;padding:4px 11px;border-radius:5px;font-size:11.5px;transition:all .15s;white-space:nowrap}
+.btn:hover{background:#2d333b}
+.btn.active{background:#1f6feb;border-color:#1f6feb;color:#fff}
+.btn.primary{background:#238636;border-color:#2ea043;color:#fff}
+.btn.primary:hover{background:#2ea043}
+.btn:disabled{opacity:.4;cursor:default}
+
+/* ── Index bar / Highlight toolbar ── */
+.index-bar,.highlights{background:#0d1117;border-bottom:1px solid #21262d;padding:8px 20px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.index-bar .label,.highlights .label{font-size:11px;color:#484f58;margin-right:2px}
+
+/* ── Status bar ── */
+.status-bar{padding:5px 20px;display:flex;gap:14px;align-items:center;font-size:11px;color:#484f58;border-bottom:1px solid #21262d}
+
+/* ── Matrix ── */
+.matrix-wrap{overflow:auto;padding:16px 20px 40px}
+table{border-collapse:separate;border-spacing:0 3px}
+thead th{font-size:10.5px;color:#8b949e;font-weight:600;text-align:center;padding:0 3px 6px;white-space:nowrap;position:sticky;top:0;background:#0d1117;z-index:5}
+thead th.col-name{text-align:left;position:sticky;left:0;z-index:6;background:#0d1117}
+thead th.col-score{min-width:46px}
+
+tbody td{padding:0;vertical-align:middle}
+tbody tr:hover td{background:rgba(255,255,255,0.02)}
+
+.cell-name{position:sticky;left:0;background:#0d1117;padding:4px 14px 4px 2px;min-width:150px;z-index:2}
+tbody tr:hover .cell-name{background:#161b22}
+.ticker{font-weight:700;color:#fff;font-size:13px}
+.badge-ibov{font-size:8.5px;font-weight:700;color:#8b949e;background:#21262d;border:1px solid #30363d;border-radius:3px;padding:1px 4px;vertical-align:middle;letter-spacing:.3px}
+.company{font-size:10px;color:#8b949e;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px}
+
+.cell-score{text-align:center;font-weight:700;font-size:12px;border-radius:4px;padding:5px 0;min-width:42px}
+
+.cell-week{width:24px;height:24px;padding:0 2px}
+.sq{width:22px;height:22px;border-radius:3px;margin:0 auto;cursor:default;transition:transform .1s}
+.sq:hover{transform:scale(1.15)}
+.sq.empty{background:#161b22;border:1px dashed #21262d}
+
+/* Cores dos quadrantes */
+.q-Leading   { background:#22c55e; }
+.q-Improving { background:#3b82f6; }
+.q-Weakening { background:#eab308; }
+.q-Lagging   { background:#ef4444; }
+
+/* Faixas do Score de Rotação */
+.score-90{background:rgba(34,197,94,.35);color:#4ade80}
+.score-70{background:rgba(34,197,94,.15);color:#86efac}
+.score-50{background:rgba(139,148,158,.15);color:#c9d1d9}
+.score-30{background:rgba(234,179,8,.15);color:#fbbf24}
+.score-0 {background:rgba(239,68,68,.18);color:#fca5a5}
+
+/* Linha do índice sintético do setor — fixada acima dos membros */
+tr.sector-row td{background:rgba(31,111,235,.10);border-top:2px solid #1f6feb;border-bottom:2px solid #1f6feb}
+tr.sector-row .cell-name{background:rgba(31,111,235,.10)}
+tr.sector-row .ticker{color:#58a6ff}
+tr.sector-row .company{color:#79b8ff}
+
+/* ── Tooltip ── */
+#tooltip{
+  position:fixed;pointer-events:none;background:#1c2128;border:1px solid #30363d;border-radius:7px;
+  padding:10px 12px;font-size:11.5px;color:#c9d1d9;z-index:1000;display:none;min-width:220px;
+  box-shadow:0 4px 16px rgba(0,0,0,.4);
+}
+#tooltip .tt-title{font-weight:700;color:#fff;font-size:13px;margin-bottom:2px}
+#tooltip .tt-sub{color:#8b949e;font-size:10.5px;margin-bottom:7px}
+#tooltip .tt-row{display:flex;justify-content:space-between;gap:16px;padding:1.5px 0}
+#tooltip .tt-row span:first-child{color:#8b949e}
+#tooltip .tt-row span:last-child{font-weight:600}
+#tooltip .tt-quad{display:inline-block;padding:1px 7px;border-radius:9px;font-size:10px;font-weight:700;color:#0d1117}
+
+.empty-state{padding:40px;text-align:center;color:#484f58;font-size:13px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Rotação Relativa — RRGCOMPLETO<span>Universo expandido (IBOV + todos os membros dos sub-índices B3) — cada ativo vs. o próprio IBOV</span></h1>
+
+  <div class="legend">
+    <span class="legend-item"><span class="legend-dot q-Leading"></span>Leading</span>
+    <span class="legend-item"><span class="legend-dot q-Weakening"></span>Weakening</span>
+    <span class="legend-item"><span class="legend-dot q-Lagging"></span>Lagging</span>
+    <span class="legend-item"><span class="legend-dot q-Improving"></span>Improving</span>
+  </div>
+
+  <div class="controls">
+    <label>Semanas</label>
+    <select id="f-weeks">
+      <option value="4">4</option>
+      <option value="8">8</option>
+      <option value="12">12</option>
+      <option value="16" selected>16</option>
+      <option value="26">26</option>
+      <option value="52">52</option>
+    </select>
+
+    <label title="Peso no IBOV — ativos fora do índice têm peso 0">Peso mín. no IBOV (%)</label>
+    <input id="f-weight" type="number" min="0" step="0.1" value="0" style="width:58px">
+
+    <button class="btn primary" id="btn-collect">↻ Atualizar dados</button>
+  </div>
+</header>
+
+<div class="index-bar">
+  <span class="label">Índice:</span>
+  <button class="btn active" data-sector="">IBOV</button>
+  <button class="btn" data-sector="IFNC">IFNC</button>
+  <button class="btn" data-sector="IEEX">IEEX</button>
+  <button class="btn" data-sector="IMOB">IMOB</button>
+  <button class="btn" data-sector="ICON">ICON</button>
+  <button class="btn" data-sector="IMAT">IMAT</button>
+  <button class="btn" data-sector="UTIL">UTIL</button>
+  <button class="btn" data-sector="INDX">INDX</button>
+  <button class="btn" data-sector="SMLL">SMALL</button>
+  <button class="btn" data-sector="IDIV">IDIV</button>
+  <button class="btn" data-sector="IBLV">IBLV</button>
+</div>
+
+<div class="highlights">
+  <span class="label">Destaques:</span>
+  <button class="btn active" data-hl="all">Todos</button>
+  <button class="btn" data-hl="top10_leaders">Top 10 líderes</button>
+  <button class="btn" data-hl="top10_deteriorating">Top 10 deteriorando</button>
+  <button class="btn" data-hl="quadrant_change">Maior mudança de quadrante</button>
+  <button class="btn" data-hl="rs_gain">Maior ganho de RS</button>
+  <button class="btn" data-hl="rs_loss">Maior perda de RS</button>
+</div>
+
+<div class="status-bar">
+  <span id="lbl-status">Carregando...</span>
+  <span id="lbl-count" style="margin-left:auto"></span>
+</div>
+
+<div class="matrix-wrap" id="matrix-wrap">
+  <div class="empty-state">Carregando dados...</div>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+const API = "";
+const QUAD_ORDER = { Leading: 3, Improving: 2, Weakening: 1, Lagging: 0 };
+const QUAD_LABEL_PT = { Leading: "Liderando", Improving: "Melhorando", Weakening: "Enfraquecendo", Lagging: "Perdendo força" };
+
+let payload = null;
+let activeHighlight = "all";
+
+function fmt(n, dec = 2) {
+  if (n === null || n === undefined || isNaN(n)) return "—";
+  return n.toLocaleString("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+}
+
+function scoreClass(score) {
+  if (score >= 90) return "score-90";
+  if (score >= 70) return "score-70";
+  if (score >= 50) return "score-50";
+  if (score >= 30) return "score-30";
+  return "score-0";
+}
+
+async function loadMatrix() {
+  document.getElementById("lbl-status").textContent = "Carregando...";
+  try {
+    const res = await fetch(`${API}/api/matrix`);
+    payload = await res.json();
+    render();
+    document.getElementById("lbl-status").textContent =
+      `Atualizado: ${new Date(payload.generated_at).toLocaleString("pt-BR")}`;
+  } catch (e) {
+    document.getElementById("lbl-status").textContent = "Erro ao carregar dados.";
+    document.getElementById("matrix-wrap").innerHTML =
+      `<div class="empty-state">Não foi possível carregar /api/matrix.<br>Clique em "Atualizar dados" para rodar a coleta inicial.</div>`;
+  }
+}
+
+let activeSector = "";
+
+function getFilteredAssets() {
+  const nWeeks = parseInt(document.getElementById("f-weeks").value, 10);
+  const minWeight = parseFloat(document.getElementById("f-weight").value) || 0;
+
+  let assets = payload.assets.filter(a => a.weight >= minWeight);
+  if (activeSector) assets = assets.filter(a => a.sectors.includes(activeSector));
+
+  assets = assets.map(a => ({ ...a, weekly: a.weekly.slice(-nWeeks) }));
+  assets = assets.filter(a => a.weekly.length > 0);
+  return assets;
+}
+
+function applyHighlight(assets) {
+  const withDelta = assets.map(a => {
+    const w = a.weekly;
+    const last = w[w.length - 1];
+    const prev = w.length > 1 ? w[w.length - 2] : null;
+    return {
+      a, last,
+      scoreDelta: prev ? last.rotation_score - prev.rotation_score : 0,
+      rsDelta: prev ? last.rs_ratio - prev.rs_ratio : 0,
+      quadChanged: prev ? prev.quadrant !== last.quadrant : false,
+    };
+  });
+
+  switch (activeHighlight) {
+    case "top10_leaders":
+      return withDelta.filter(x => x.last.quadrant === "Leading")
+        .sort((x, y) => y.last.rotation_score - x.last.rotation_score)
+        .slice(0, 10).map(x => x.a);
+    case "top10_deteriorating":
+      return withDelta.sort((x, y) => x.scoreDelta - y.scoreDelta).slice(0, 10).map(x => x.a);
+    case "quadrant_change":
+      return withDelta.filter(x => x.quadChanged)
+        .sort((x, y) => Math.abs(y.scoreDelta) - Math.abs(x.scoreDelta))
+        .slice(0, 15).map(x => x.a);
+    case "rs_gain":
+      return withDelta.sort((x, y) => y.rsDelta - x.rsDelta).slice(0, 10).map(x => x.a);
+    case "rs_loss":
+      return withDelta.sort((x, y) => x.rsDelta - y.rsDelta).slice(0, 10).map(x => x.a);
+    default:
+      return assets;
+  }
+}
+
+function sortDefault(assets) {
+  return assets.slice().sort((a, b) => {
+    const la = a.weekly[a.weekly.length - 1];
+    const lb = b.weekly[b.weekly.length - 1];
+    const qd = QUAD_ORDER[lb.quadrant] - QUAD_ORDER[la.quadrant];
+    if (qd !== 0) return qd;
+    return lb.rs_ratio - la.rs_ratio;
+  });
+}
+
+function getSectorRow() {
+  if (!activeSector || !payload.sector_indices) return null;
+  const nWeeks = parseInt(document.getElementById("f-weeks").value, 10);
+  const row = payload.sector_indices.find(si => si.code === activeSector);
+  if (!row) return null;
+  const weekly = row.weekly.slice(-nWeeks);
+  if (!weekly.length) return null;
+  return { ...row, weekly };
+}
+
+function rowHTML(ticker, name, weekly, weeks, extraClass, isIbov) {
+  const byWeek = {};
+  weekly.forEach(w => byWeek[w.week_ending] = w);
+  const last = weekly[weekly.length - 1];
+
+  const badge = isIbov ? ` <span class="badge-ibov" title="Componente do IBOV">IBOV</span>` : "";
+  let html = `<tr class="${extraClass || ""}">`;
+  html += `<td class="cell-name"><div class="ticker">${ticker}${badge}</div><div class="company">${name || ""}</div></td>`;
+  html += `<td class="cell-score ${scoreClass(last.rotation_score)}">${Math.round(last.rotation_score)}</td>`;
+
+  weeks.forEach(wk => {
+    const w = byWeek[wk];
+    if (!w) {
+      html += `<td class="cell-week"><div class="sq empty"></div></td>`;
+    } else {
+      html += `<td class="cell-week"><div class="sq q-${w.quadrant}" ` +
+        `data-ticker="${ticker}" data-name="${(name||"").replace(/"/g,"&quot;")}" data-week="${wk}" ` +
+        `data-rs="${w.rs_ratio}" data-mom="${w.rs_momentum}" data-quad="${w.quadrant}" ` +
+        `data-ret="${w.weekly_return}" data-iret="${w.ibov_weekly_return}"></div></td>`;
+    }
+  });
+  html += `</tr>`;
+  return html;
+}
+
+function render() {
+  let assets = getFilteredAssets();
+  assets = applyHighlight(assets);
+  assets = sortDefault(assets);
+
+  const sectorRow = getSectorRow();
+
+  document.getElementById("lbl-count").textContent =
+    `${assets.length} ativos` + (sectorRow ? ` — setor: ${sectorRow.name} (índice sintético)` : "");
+
+  const wrap = document.getElementById("matrix-wrap");
+  if (!assets.length && !sectorRow) {
+    wrap.innerHTML = `<div class="empty-state">Nenhum ativo encontrado para os filtros atuais.</div>`;
+    return;
+  }
+
+  // união de semanas presentes (mais recente → mais antiga)
+  const weekSet = new Set();
+  assets.forEach(a => a.weekly.forEach(w => weekSet.add(w.week_ending)));
+  if (sectorRow) sectorRow.weekly.forEach(w => weekSet.add(w.week_ending));
+  const weeks = Array.from(weekSet).sort().reverse();
+
+  let thead = `<tr><th class="col-name">Ativo</th><th class="col-score">Score</th>`;
+  weeks.forEach(w => {
+    const [y, m, d] = w.split("-");
+    thead += `<th>${d}/${m}</th>`;
+  });
+  thead += `</tr>`;
+
+  let tbody = "";
+  if (sectorRow) {
+    tbody += rowHTML(sectorRow.code, `Índice sintético — ${sectorRow.name}`, sectorRow.weekly, weeks, "sector-row");
+  }
+  assets.forEach(a => {
+    tbody += rowHTML(a.ticker, a.name, a.weekly, weeks, "", a.is_ibov);
+  });
+
+  wrap.innerHTML = `<table><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+  attachTooltipHandlers();
+}
+
+// ── Tooltip ──
+function attachTooltipHandlers() {
+  const tt = document.getElementById("tooltip");
+  document.querySelectorAll(".sq:not(.empty)").forEach(sq => {
+    sq.addEventListener("mouseenter", e => {
+      const d = e.target.dataset;
+      const rel = (parseFloat(d.ret) - parseFloat(d.iret));
+      const [y, m, day] = d.week.split("-");
+      tt.innerHTML = `
+        <div class="tt-title">${d.ticker}</div>
+        <div class="tt-sub">${d.name} — semana de ${day}/${m}/${y}</div>
+        <div class="tt-row"><span>Quadrante</span><span class="tt-quad q-${d.quad}">${QUAD_LABEL_PT[d.quad] || d.quad}</span></div>
+        <div class="tt-row"><span>RS-Ratio</span><span>${fmt(parseFloat(d.rs))}</span></div>
+        <div class="tt-row"><span>RS-Momentum</span><span>${fmt(parseFloat(d.mom))}</span></div>
+        <div class="tt-row"><span>Retorno da ação</span><span>${fmt(parseFloat(d.ret))}%</span></div>
+        <div class="tt-row"><span>Retorno do IBOV</span><span>${fmt(parseFloat(d.iret))}%</span></div>
+        <div class="tt-row"><span>Performance relativa</span><span>${rel >= 0 ? "+" : ""}${fmt(rel)}%</span></div>
+      `;
+      tt.style.display = "block";
+    });
+    sq.addEventListener("mousemove", e => {
+      tt.style.left = Math.min(e.clientX + 16, window.innerWidth - 260) + "px";
+      tt.style.top = Math.min(e.clientY + 12, window.innerHeight - 200) + "px";
+    });
+    sq.addEventListener("mouseleave", () => { tt.style.display = "none"; });
+  });
+}
+
+// ── Filtros e destaques ──
+["f-weeks", "f-weight"].forEach(id => {
+  document.getElementById(id).addEventListener("change", render);
+});
+document.querySelectorAll(".index-bar .btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".index-bar .btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    activeSector = btn.dataset.sector;
+    render();
+  });
+});
+document.querySelectorAll(".highlights .btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".highlights .btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    activeHighlight = btn.dataset.hl;
+    render();
+  });
+});
+
+// ── Coleta manual ──
+document.getElementById("btn-collect").addEventListener("click", async () => {
+  const btn = document.getElementById("btn-collect");
+  btn.disabled = true;
+  const poll = setInterval(async () => {
+    const st = await (await fetch(`${API}/api/status`)).json();
+    document.getElementById("lbl-status").textContent = st.step || "...";
+    if (!st.running) {
+      clearInterval(poll);
+      btn.disabled = false;
+      loadMatrix();
+    }
+  }, 2000);
+  await fetch(`${API}/api/collect/trigger`, { method: "POST" });
+});
+
+loadMatrix();
+</script>
+</body>
+</html>
