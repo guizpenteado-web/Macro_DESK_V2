@@ -674,15 +674,15 @@ _SHELL = """<!DOCTYPE html>
     Market Breadth
   </button>
 
+  <button class="nav-btn" id="btn6" onclick="show(6)">
+    <span class="dot"></span>
+    RRG
+  </button>
+
   <button class="nav-btn" id="btn5" onclick="show(5)">
     <span class="dot"></span>
     Biblioteca
     <span class="call-badge" id="biblio-badge" style="display:none"></span>
-  </button>
-
-  <button class="nav-btn" id="btn6" onclick="show(6)">
-    <span class="dot"></span>
-    Rotação Relativa
   </button>
 
   <button class="nav-btn" id="btn-news" onclick="toggleNews()" style="margin-left:auto">
@@ -770,7 +770,7 @@ _SHELL = """<!DOCTYPE html>
   </div>
   <div class="loader hidden" id="loader6">
     <div class="spinner" style="border-top-color:var(--c6)"></div>
-    Carregando Rotação Relativa...
+    Carregando RRG...
   </div>
 
   <iframe id="f1" src="" class="visible"
