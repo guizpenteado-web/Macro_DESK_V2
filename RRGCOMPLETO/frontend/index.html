@@ -13,22 +13,22 @@ header{background:#161b22;border-bottom:1px solid #30363d;padding:12px 20px;disp
 h1{font-size:15px;font-weight:600;color:#fff;white-space:nowrap}
 h1 span{color:#8b949e;font-weight:400;font-size:12px;display:block;margin-top:1px}
 
-.legend{display:flex;gap:14px;align-items:center;margin-left:8px;flex-wrap:wrap}
-
 /* Ciclo clássico, no cabeçalho */
 .cycle-mini{
-  display:flex;flex-direction:column;gap:3px;background:#0d1117;border:1px solid #21262d;border-radius:8px;
-  padding:8px 18px;font-size:14px;color:#c9d1d9;line-height:1.5;cursor:help;
+  display:flex;flex-direction:column;gap:2px;background:#0d1117;border:1px solid #21262d;border-radius:7px;
+  padding:6px 14px;font-size:12px;color:#c9d1d9;line-height:1.45;cursor:help;
 }
-.cycle-mini .cm-row{display:flex;align-items:center;gap:8px;white-space:nowrap}
-.cycle-mini .cm-arrows{display:flex;justify-content:space-between;padding:0 9px;color:#484f58;font-size:13px}
-.cm-dot{width:11px;height:11px;border-radius:3px;flex-shrink:0}
-.cycle-mini .cm-arrow{color:#6e7681;font-size:15px}
+.cycle-mini .cm-row{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.cycle-mini .cm-arrows{display:flex;justify-content:space-between;padding:0 7px;color:#484f58;font-size:11px}
+.cm-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+.cycle-mini .cm-arrow{color:#6e7681;font-size:12.5px}
 
 .controls{display:flex;gap:10px;align-items:center;margin-left:auto;flex-wrap:wrap}
 .controls label{font-size:11px;color:#8b949e;white-space:nowrap}
 .controls select,.controls input{background:#21262d;border:1px solid #30363d;color:#c9d1d9;border-radius:4px;padding:3px 8px;font-size:12px}
 .controls select:focus,.controls input:focus{outline:none;border-color:#1f6feb}
+.control-stack{display:flex;flex-direction:column;gap:5px;align-items:flex-start}
+.control-inline{display:flex;align-items:center;gap:8px}
 
 .btn{background:#21262d;border:1px solid #30363d;color:#c9d1d9;cursor:pointer;padding:4px 11px;border-radius:5px;font-size:11.5px;transition:all .15s;white-space:nowrap}
 .btn:hover{background:#2d333b}
@@ -133,10 +133,6 @@ tr.sector-row .company{color:#79b8ff}
 <header>
   <h1>Relative Rotation Graph<span>Universo expandido (IBOV + todos os membros dos sub-índices B3) — cada ativo vs. o próprio IBOV</span></h1>
 
-  <div class="legend">
-    <button class="btn" id="btn-help">Como utilizar</button>
-  </div>
-
   <div class="cycle-mini" title="Ciclo clássico do RRG: uma ação saudável tende a girar no sentido horário entre os quadrantes">
     <div class="cm-row"><span class="cm-dot q-Improving"></span>Improving <span class="cm-arrow">→</span> <span class="cm-dot q-Leading"></span>Leading</div>
     <div class="cm-arrows"><span>↑</span><span>↓</span></div>
@@ -144,15 +140,20 @@ tr.sector-row .company{color:#79b8ff}
   </div>
 
   <div class="controls">
-    <label>Semanas</label>
-    <select id="f-weeks">
-      <option value="4">4</option>
-      <option value="8">8</option>
-      <option value="12">12</option>
-      <option value="16" selected>16</option>
-      <option value="26">26</option>
-      <option value="52">52</option>
-    </select>
+    <div class="control-stack">
+      <div class="control-inline">
+        <label>Semanas</label>
+        <select id="f-weeks">
+          <option value="4">4</option>
+          <option value="8">8</option>
+          <option value="12">12</option>
+          <option value="16" selected>16</option>
+          <option value="26">26</option>
+          <option value="52">52</option>
+        </select>
+      </div>
+      <button class="btn" id="btn-help">Como utilizar</button>
+    </div>
 
     <label title="Peso no IBOV — ativos fora do índice têm peso 0">Peso mín. no IBOV (%)</label>
     <input id="f-weight" type="number" min="0" step="0.1" value="0" style="width:58px">
