@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Ibovespa - Calls dos Bancos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f1117; color: #e1e4e8; min-height: 100vh;
+}
+.container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+.header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 20px 0; border-bottom: 1px solid #21262d; margin-bottom: 24px;
+    flex-wrap: wrap; gap: 16px;
+}
+.header-left h1 { font-size: 24px; font-weight: 600; color: #f0f6fc; }
+.header-left h1 span { color: #58a6ff; }
+.header-left .subtitle { font-size: 13px; color: #8b949e; margin-top: 4px; }
+.header-right { text-align: right; }
+.header-right .price { font-size: 36px; font-weight: 700; color: #f0f6fc; }
+.header-right .price .currency { font-size: 18px; color: #8b949e; }
+.header-right .change { font-size: 16px; font-weight: 500; margin-top: 2px; }
+.change.positive { color: #3fb950; }
+.change.negative { color: #f85149; }
+.update-info { text-align: right; font-size: 11px; color: #484f58; padding: 4px 2px; margin-bottom: 8px; }
+
+.filters {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;
+}
+.filter-btn {
+    padding: 6px 16px; border-radius: 20px; border: 1px solid #30363d;
+    background: #161b22; color: #8b949e; cursor: pointer;
+    font-size: 13px; font-weight: 500; transition: all 0.2s;
+}
+.filter-btn:hover { background: #1c2128; color: #e1e4e8; }
+.filter-btn.active { background: #1f6feb33; border-color: #1f6feb; color: #58a6ff; }
+.filter-btn .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+
+.chart-wrapper {
+    background: #161b22; border-radius: 12px; border: 1px solid #21262d;
+    padding: 20px; margin-bottom: 24px; position: relative;
+}
+.chart-controls {
+    display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap;
+}
+.range-btn {
+    padding: 4px 14px; border-radius: 16px; border: 1px solid #30363d;
+    background: transparent; color: #8b949e; cursor: pointer;
+    font-size: 12px; font-weight: 500; transition: all 0.2s;
+}
+.range-btn:hover { background: #1c2128; color: #e1e4e8; }
+.range-btn.active { background: #1f6feb33; border-color: #1f6feb; color: #58a6ff; }
+.chart-wrapper canvas { width: 100% !important; max-height: 500px; }
+#chartCallTooltip {
+    display: none; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+    background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+    padding: 8px 14px; color: #c9d1d9; font-size: 12px; z-index: 100;
+    pointer-events: none; white-space: nowrap; max-width: 80vw; overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.legend {
+    display: flex; flex-wrap: wrap; gap: 16px; padding: 12px 20px;
+    background: #0d1117; border-radius: 8px; border: 1px solid #21262d;
+    margin-bottom: 24px;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #8b949e; }
+.legend-item .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+.stats-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px; margin-bottom: 24px;
+}
+.stat-card {
+    background: #161b22; border-radius: 8px; padding: 14px 16px;
+    border: 1px solid #21262d;
+}
+.stat-card .label { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; }
+.stat-card .value { font-size: 20px; font-weight: 600; color: #f0f6fc; margin-top: 4px; }
+.stat-card .change { font-size: 13px; margin-top: 2px; }
+
+.timeline-section { margin-top: 24px; }
+.timeline-section h2 { font-size: 18px; color: #f0f6fc; margin-bottom: 16px; }
+.timeline {
+    position: relative; padding-left: 32px; max-height: 600px; overflow-y: auto;
+}
+.timeline::-webkit-scrollbar { width: 6px; }
+.timeline::-webkit-scrollbar-track { background: transparent; }
+.timeline::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+.timeline::before {
+    content: ''; position: absolute; left: 12px; top: 0; bottom: 0;
+    width: 2px; background: #21262d;
+}
+.timeline-item {
+    position: relative; margin-bottom: 12px; padding: 14px;
+    background: #161b22; border-radius: 8px; border: 1px solid #21262d;
+    cursor: pointer; transition: all 0.15s;
+}
+.timeline-item:hover { border-color: #30363d; background: #1c2128; }
+.timeline-item::before {
+    content: ''; position: absolute; left: -24px; top: 20px;
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 2px solid; background: #0d1117;
+}
+.timeline-item .date { font-size: 12px; color: #8b949e; margin-bottom: 2px; }
+.timeline-item .bank-name {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 2px;
+}
+.timeline-item .title { font-size: 14px; font-weight: 600; color: #f0f6fc; margin-bottom: 4px; }
+.timeline-item .summary { font-size: 13px; color: #8b949e; line-height: 1.4; }
+
+.modal-overlay {
+    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;
+    padding: 20px;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+    background: #161b22; border-radius: 12px; border: 1px solid #30363d;
+    padding: 28px; max-width: 560px; width: 100%; max-height: 80vh; overflow-y: auto;
+    position: relative;
+}
+.modal-close {
+    position: absolute; top: 16px; right: 16px; background: none;
+    border: none; color: #8b949e; font-size: 24px; cursor: pointer;
+    width: 32px; height: 32px; display: flex; align-items: center;
+    justify-content: center; border-radius: 50%;
+}
+.modal-close:hover { background: #21262d; color: #e1e4e8; }
+.modal .bank-badge {
+    display: inline-block; padding: 4px 12px; border-radius: 12px;
+    font-size: 12px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 8px;
+}
+.modal .date { font-size: 13px; color: #8b949e; margin-bottom: 12px; }
+.modal h2 { font-size: 20px; color: #f0f6fc; margin-bottom: 16px; }
+.modal p { font-size: 14px; color: #c9d1d9; line-height: 1.7; margin-bottom: 20px; }
+.modal .source-link {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 20px; background: #1f6feb33; border: 1px solid #1f6feb;
+    border-radius: 8px; color: #58a6ff; text-decoration: none;
+    font-size: 13px; font-weight: 500; transition: all 0.2s;
+}
+.modal .source-link:hover { background: #1f6feb55; }
+
+.loading {
+    text-align: center; padding: 80px 20px; color: #8b949e;
+}
+.loading .spinner {
+    width: 40px; height: 40px; border: 3px solid #21262d;
+    border-top-color: #58a6ff; border-radius: 50%;
+    animation: spin 0.8s linear infinite; margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading p { font-size: 14px; }
+
+.error-state { text-align: center; padding: 60px 20px; }
+.error-state h2 { color: #f85149; margin-bottom: 8px; }
+.error-state p { color: #8b949e; font-size: 14px; }
+.error-state button {
+    margin-top: 16px; padding: 8px 20px; background: #1f6feb;
+    border: none; border-radius: 8px; color: white; font-size: 14px;
+    cursor: pointer;
+}
+.error-state button:hover { background: #388bfd; }
+
+.loading-chart { text-align: center; padding: 40px; color: #8b949e; font-size: 14px; }
+
+@media (max-width: 768px) {
+    .header { flex-direction: column; text-align: center; }
+    .header-right { text-align: center; }
+    .header-right .price { font-size: 28px; }
+    .filters { justify-content: center; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="header-left">
+            <h1><span>IBOVESPA</span> Dashboard</h1>
+            <div class="subtitle">Calls e recomenda&ccedil;&otilde;es dos principais bancos desde 2025</div>
+        </div>
+        <div class="header-right" id="priceHeader"></div>
+    </div>
+
+    <div class="filters" id="filters">
+        <button class="filter-btn active" data-bank="all">TODOS</button>
+    </div>
+
+    <div class="update-info" id="updateInfo">Carregando...</div>
+
+    <div class="chart-wrapper" id="chartWrapper">
+        <div class="chart-controls" id="rangeControls">
+            <button class="range-btn" data-range="7d">7D</button>
+            <button class="range-btn" data-range="14d">14D</button>
+            <button class="range-btn" data-range="1mo">1M</button>
+            <button class="range-btn" data-range="3mo">3M</button>
+            <button class="range-btn" data-range="6mo">6M</button>
+            <button class="range-btn active" data-range="1y">1A</button>
+            <button class="range-btn" data-range="2y">2A</button>
+            <button class="range-btn" data-range="3y">3A</button>
+            <button class="range-btn" data-range="4y">4A</button>
+            <button class="range-btn" data-range="5y">5A</button>
+            <button class="range-btn" data-range="max">MAX</button>
+        </div>
+        <div class="loading" id="loadingState">
+            <div class="spinner"></div>
+            <p>Carregando dados do Ibovespa...</p>
+        </div>
+        <canvas id="ibovChart"></canvas>
+        <div id="chartCallTooltip"></div>
+    </div>
+
+    <div class="legend" id="legend"></div>
+
+    <div class="timeline-section">
+        <h2>Linha do Tempo - Calls dos Bancos</h2>
+        <div class="timeline" id="timeline"></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+        <button class="modal-close" id="modalClose">&times;</button>
+        <div class="bank-badge" id="modalBankBadge"></div>
+        <div class="date" id="modalDate"></div>
+        <h2 id="modalTitle"></h2>
+        <p id="modalSummary"></p>
+        <a class="source-link" id="modalLink" target="_blank" rel="noopener">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
+            Ver fonte original
+        </a>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+<script>
+const BANK_COLORS = {
+    'BTG Pactual': '#5c6bc0',
+    'Ita\u00fa BBA': '#ff8f00',
+    'Morgan Stanley': '#00bfa5',
+    'BofA': '#ef5350',
+    'Goldman Sachs': '#fdd835',
+    'JP Morgan': '#42a5f5',
+    'Citi': '#9c27b0'
+};
+const RANGES = ['7d','14d','1mo','3mo','6mo','1y','2y','3y','4y','5y','max'];
+
+let chartInstance = null;
+let allCalls = [];
+let allIbovData = [];
+let selectedBanks = new Set();
+let activeRange = '1y';
+
+function fmtDate(dateStr) {
+    const d = new Date(dateStr + 'T12:00:00');
+    return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+function fmtPrice(v) { return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 }); }
+
+function init() {
+    setupModal();
+    setupRangeControls();
+    loadData();
+}
+
+function setupModal() {
+    const overlay = document.getElementById('modalOverlay');
+    document.getElementById('modalClose').onclick = () => overlay.classList.remove('active');
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.classList.remove('active'); };
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') overlay.classList.remove('active'); });
+}
+
+function setupRangeControls() {
+    document.querySelectorAll('.range-btn').forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeRange = btn.dataset.range;
+            if (allIbovData.length > 0) {
+                renderChart();
+            }
+        };
+    });
+}
+
+function openModal(call) {
+    const bc = BANK_COLORS[call.bank] || '#58a6ff';
+    const mb = document.getElementById('modalBankBadge');
+    mb.textContent = call.bank; mb.style.background = bc + '33'; mb.style.color = bc;
+    document.getElementById('modalDate').textContent = fmtDate(call.date);
+    document.getElementById('modalTitle').textContent = call.title;
+    document.getElementById('modalSummary').textContent = call.summary;
+    document.getElementById('modalLink').href = call.url;
+    document.getElementById('modalOverlay').classList.add('active');
+}
+
+async function loadData() {
+    try {
+        const [ibovRes, callsRes, banksRes] = await Promise.all([
+            fetch('/api/ibov?range=max'),
+            fetch('/api/calls'),
+            fetch('/api/banks')
+        ]);
+        if (!ibovRes.ok) throw new Error('Erro ao carregar dados do Ibovespa');
+        const ibovData = await ibovRes.json();
+        allIbovData = ibovData.data || [];
+        allCalls = await callsRes.json();
+        const banks = await banksRes.json();
+
+        renderFilters(banks);
+        renderLegend(banks);
+        renderChart();
+        renderTimeline(allCalls);
+        updateHeader(ibovData);
+
+        document.getElementById('loadingState').style.display = 'none';
+    } catch (err) {
+        console.error('Erro:', err);
+        document.getElementById('loadingState').innerHTML =
+            `<div class="error-state"><h2>Erro ao carregar dados</h2><p>${err.message}. Verifique se o servidor está rodando.</p><button onclick="location.reload()">Tentar novamente</button></div>`;
+    }
+}
+
+function renderFilters(banks) {
+    const c = document.getElementById('filters');
+    c.innerHTML = '<button class="filter-btn active" data-bank="all" id="todosBtn">TODOS</button>';
+    const todosBtn = c.querySelector('#todosBtn');
+    todosBtn.onclick = () => {
+        selectedBanks.clear();
+        c.querySelectorAll('.filter-btn').forEach(x => x.classList.remove('active'));
+        todosBtn.classList.add('active');
+        filterCalls();
+    };
+    banks.forEach(b => {
+        const btn = document.createElement('button');
+        btn.className = 'filter-btn';
+        btn.dataset.bank = b.name;
+        btn.innerHTML = `<span class="dot" style="background:${b.color}"></span>${b.name}`;
+        btn.onclick = () => {
+            if (selectedBanks.has(b.name)) {
+                selectedBanks.delete(b.name);
+                btn.classList.remove('active');
+            } else {
+                selectedBanks.add(b.name);
+                btn.classList.add('active');
+                todosBtn.classList.remove('active');
+            }
+            if (selectedBanks.size === 0) {
+                todosBtn.classList.add('active');
+            }
+            filterCalls();
+        };
+        c.appendChild(btn);
+    });
+}
+
+function renderLegend(banks) {
+    const c = document.getElementById('legend');
+    c.innerHTML = '<div class="legend-item" style="font-weight:600;color:#f0f6fc">Bancos:</div>';
+    banks.forEach(b => {
+        const d = document.createElement('div'); d.className = 'legend-item';
+        d.innerHTML = `<span class="dot" style="background:${b.color}"></span>${b.name}`;
+        c.appendChild(d);
+    });
+}
+
+function updateHeader(ibovData) {
+    document.getElementById('updateInfo').textContent = `Atualizado em ${new Date().toLocaleString('pt-BR')}`;
+}
+
+function getFilteredData() {
+    let data = allIbovData;
+    if (activeRange === 'max') return data;
+    const cutoff = new Date();
+    const daysMap = { '7d': 7, '14d': 14, '1mo': 30, '3mo': 90, '6mo': 180, '1y': 365, '2y': 730, '3y': 1095, '4y': 1460, '5y': 1825 };
+    cutoff.setDate(cutoff.getDate() - (daysMap[activeRange] || 365));
+    return data.filter(d => new Date(d.date + 'T12:00:00') >= cutoff);
+}
+
+function getFilteredCalls() {
+    if (selectedBanks.size === 0) return allCalls;
+    return allCalls.filter(c => selectedBanks.has(c.bank));
+}
+
+function renderChart() {
+    const data = getFilteredData();
+    if (!data || data.length === 0) return;
+
+    const ctx = document.getElementById('ibovChart').getContext('2d');
+    const labels = data.map(d => d.date);
+    const prices = data.map(d => d.close);
+    const filteredCalls = getFilteredCalls();
+
+    const annotations = {};
+    const MAX_TITLE_LEN = 50;
+    filteredCalls.forEach((call, idx) => {
+        const di = labels.indexOf(call.date);
+        if (di === -1) return;
+        const bc = BANK_COLORS[call.bank] || '#58a6ff';
+        const shortTitle = call.title.length > MAX_TITLE_LEN ? call.title.substring(0, MAX_TITLE_LEN) + '...' : call.title;
+        annotations[`c${idx}`] = {
+            type: 'point',
+            xValue: call.date,
+            yValue: prices[di],
+            backgroundColor: bc,
+            borderColor: '#0d1117',
+            borderWidth: 2,
+            radius: 8,
+            pointStyle: 'rectRounded',
+            label: {
+                display: true,
+                content: call.bank,
+                position: 'start',
+                yAdjust: -16,
+                backgroundColor: bc,
+                color: '#0d1117',
+                font: { size: 9, weight: 'bold' },
+                padding: { top: 3, bottom: 3, left: 5, right: 5 },
+                borderRadius: 3
+            },
+            enter: (ctx) => {
+                const el = document.getElementById('chartCallTooltip');
+                if (el) {
+                    el.innerHTML = `<strong>${call.bank}</strong> — ${shortTitle}`;
+                    el.style.display = 'block';
+                }
+            },
+            leave: () => {
+                const el = document.getElementById('chartCallTooltip');
+                if (el) el.style.display = 'none';
+            }
+        };
+    });
+
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+    try {
+        if (typeof ChartAnnotation !== 'undefined') {
+            Chart.register(ChartAnnotation);
+        }
+    } catch(e) {}
+
+    chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Ibovespa',
+                data: prices,
+                borderColor: '#58a6ff',
+                backgroundColor: (ctx) => {
+                    const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, ctx.chart.height);
+                    g.addColorStop(0, 'rgba(88,166,255,0.12)');
+                    g.addColorStop(1, 'rgba(88,166,255,0)');
+                    return g;
+                },
+                fill: true,
+                borderWidth: 2,
+                pointRadius: 0,
+                pointHitRadius: 10,
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#161b22',
+                    titleColor: '#f0f6fc',
+                    bodyColor: '#c9d1d9',
+                    borderColor: '#30363d',
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 8,
+                    callbacks: {
+                        title: (items) => {
+                            const d = new Date(items[0].label + 'T12:00:00');
+                            return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+                        },
+                        label: (item) => {
+                            const hoverDate = item.label;
+                            const near = allCalls.filter(c => {
+                                const diff = Math.abs(new Date(c.date + 'T12:00:00') - new Date(hoverDate + 'T12:00:00'));
+                                return diff <= 3 * 86400000;
+                            });
+                            const lines = [`Ibovespa: ${fmtPrice(item.raw)}`];
+                            near.slice(0, 3).forEach(c => lines.push(`${c.bank}: ${c.title}`));
+                            return lines;
+                        }
+                    }
+                },
+                annotation: {
+                    annotations,
+                    click: (ctx) => {
+                        const id = ctx.elementId;
+                        if (id && id.startsWith('c')) {
+                            const idx = parseInt(id.substring(1));
+                            openModal(filteredCalls[idx]);
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: '#21262d' },
+                    ticks: {
+                        color: '#8b949e', font: { size: 11 },
+                        maxTicksLimit: 20,
+                        callback: (val, idx) => {
+                            const d = new Date(labels[idx] + 'T12:00:00');
+                            return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' });
+                        }
+                    }
+                },
+                y: {
+                    grid: { color: '#21262d' },
+                    ticks: {
+                        color: '#8b949e', font: { size: 11 },
+                        callback: (v) => v.toLocaleString('pt-BR')
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderTimeline(calls) {
+    const c = document.getElementById('timeline');
+    c.innerHTML = '';
+    if (calls.length === 0) {
+        c.innerHTML = '<p style="color:#8b949e;text-align:center;padding:40px;">Nenhum call encontrado para este filtro.</p>';
+        return;
+    }
+    [...calls].sort((a,b) => b.date.localeCompare(a.date)).forEach(call => {
+        const d = document.createElement('div'); d.className = 'timeline-item';
+        const bc = BANK_COLORS[call.bank] || '#58a6ff';
+        d.style.borderLeft = `3px solid ${bc}`;
+        d.innerHTML = `
+            <div class="date">${fmtDate(call.date)}</div>
+            <div class="bank-name" style="color:${bc}">${call.bank}</div>
+            <div class="title">${call.title}</div>
+            <div class="summary">${call.summary.substring(0,150)}...</div>
+        `;
+        d.onclick = () => openModal(call);
+        c.appendChild(d);
+    });
+}
+
+function filterCalls() {
+    const filtered = getFilteredCalls();
+    renderTimeline(filtered);
+    renderChart();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
