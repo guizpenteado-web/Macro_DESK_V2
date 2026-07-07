@@ -402,8 +402,11 @@ function rebuildChart(){
         mouseWheel:{ enabled:true, type:"x" },
         resetButton:{ theme:{ display:"none" } },
       },
-      // Arrastar o corpo do gráfico move livremente nos dois eixos (x e y).
-      panning:{ enabled:true, type:"xy" },
+      // Panning nativo desligado — com vários eixos Y sobrepostos, o pan "xy"
+      // nativo do Highcharts não move o eixo Y de forma confiável. Arrastar
+      // (x e y juntos) é feito por código próprio (ver bgDrag mais abaixo),
+      // do mesmo jeito que já fazíamos pra alça de escala e pra linha de um ativo.
+      panning:{ enabled:false },
     },
     rangeSelector:{ enabled:false },
     navigator:{
@@ -494,21 +497,29 @@ function applyViewport(){
 let ydDrag = null;
 const YD_CLICK_THRESHOLD = 3; // px — abaixo disso, mouseup vira "clique" em vez de "arrastar"
 
-document.addEventListener("mousemove", e => {
+// Throttle via requestAnimationFrame: o mousemove pode disparar dezenas de vezes
+// por segundo, mas só precisamos de 1 redraw por frame — evita empilhar redraws
+// do gráfico inteiro (várias séries/eixos) e deixa o arrastar mais solto/fluido.
+let dragRafPending = false;
+let lastMouseX = 0;
+let lastMouseY = 0;
+
+function applyDragFrame(){
+  dragRafPending = false;
   if(ydDrag && chart){
-    const dy = e.clientY - ydDrag.startY;
+    const dy = lastMouseY - ydDrag.startY;
     if (Math.abs(dy) > YD_CLICK_THRESHOLD) ydDrag.moved = true;
     if (ydDrag.moved) {
       const range = Math.abs(ydDrag.startMax - ydDrag.startMin) || 1;
       const center = (ydDrag.startMin + ydDrag.startMax) / 2;
       // arrastar para baixo = expande (factor > 1), para cima = comprime (factor < 1)
-      const factor = Math.pow(1.004, dy);
+      const factor = Math.pow(1.006, dy);
       const nr = range * factor;
       ydDrag.axis.setExtremes(center - nr / 2, center + nr / 2, true, false);
     }
   }
   if(lineDrag && chart){
-    const dy = e.clientY - lineDrag.startClientY;
+    const dy = lastMouseY - lineDrag.startClientY;
     if (Math.abs(dy) > LINE_DRAG_THRESHOLD) lineDrag.moved = true;
     if (lineDrag.moved) {
       // Mesma lógica de "arrastar" das alças, mas desloca (pan) em vez de reescalar:
@@ -518,12 +529,41 @@ document.addEventListener("mousemove", e => {
       lineDrag.axis.setExtremes(lineDrag.startMin + deltaValue, lineDrag.startMax + deltaValue, true, false);
     }
   }
+  if(bgDrag && chart){
+    const dxPix = lastMouseX - bgDrag.startClientX;
+    const dyPix = lastMouseY - bgDrag.startClientY;
+    if (Math.abs(dxPix) > LINE_DRAG_THRESHOLD || Math.abs(dyPix) > LINE_DRAG_THRESHOLD) bgDrag.moved = true;
+    if (bgDrag.moved) {
+      // Eixo X: arrastar pra direita revela o passado (desloca a janela pra trás no tempo).
+      const xRange = bgDrag.xStartMax - bgDrag.xStartMin;
+      const xDelta = -(dxPix / bgDrag.xPlotWidth) * xRange;
+      chart.xAxis[0].setExtremes(bgDrag.xStartMin + xDelta, bgDrag.xStartMax + xDelta, false, false);
+      // Todos os eixos Y juntos — mesma lógica linear do arrastar-na-linha, só que aplicada a cada eixo.
+      bgDrag.yStates.forEach(st => {
+        const range = st.startMax - st.startMin;
+        const yDelta = (dyPix / st.plotHeight) * range;
+        st.axis.setExtremes(st.startMin + yDelta, st.startMax + yDelta, false, false);
+      });
+    }
+    chart.redraw(false);
+  }
+}
+
+document.addEventListener("mousemove", e => {
+  if (!ydDrag && !lineDrag && !bgDrag) return;
+  lastMouseX = e.clientX;
+  lastMouseY = e.clientY;
+  if (!dragRafPending) {
+    dragRafPending = true;
+    requestAnimationFrame(applyDragFrame);
+  }
 });
 
 document.addEventListener("mouseup", () => {
   if (ydDrag && !ydDrag.moved) openScalePrompt(ydDrag.axis, ydDrag.label);
   ydDrag = null;
   lineDrag = null;
+  bgDrag = null;
 });
 
 // ────────────────────────────────────────────────────────────────
@@ -556,6 +596,8 @@ function findHitSeries(plotX, plotY){
   return best;
 }
 
+let bgDrag = null;
+
 document.getElementById("chart-container").addEventListener("mousedown", e => {
   if (!chart) return;
   if (e.target.closest("#yd-panel") || e.target.closest("#chart-toolbar")) return;
@@ -564,14 +606,30 @@ document.getElementById("chart-container").addEventListener("mousedown", e => {
   const plotY = e.clientY - rect.top - chart.plotTop;
   if (plotX < 0 || plotY < 0 || plotX > chart.plotWidth || plotY > chart.plotHeight) return;
   const hitSeries = findHitSeries(plotX, plotY);
-  if (!hitSeries) return; // fora de qualquer linha — deixa o arrastar padrão do gráfico agir
-  const axis = hitSeries.yAxis;
-  const ex = axis.getExtremes();
-  const mn = ex.userMin ?? ex.min ?? ex.dataMin;
-  const mx = ex.userMax ?? ex.max ?? ex.dataMax;
-  lineDrag = { axis, startClientY: e.clientY, startMin: mn, startMax: mx, plotHeight: axis.len, moved: false };
+  if (hitSeries) {
+    const axis = hitSeries.yAxis;
+    const ex = axis.getExtremes();
+    const mn = ex.userMin ?? ex.min ?? ex.dataMin;
+    const mx = ex.userMax ?? ex.max ?? ex.dataMax;
+    lineDrag = { axis, startClientY: e.clientY, startMin: mn, startMax: mx, plotHeight: axis.len, moved: false };
+    e.preventDefault();
+    e.stopPropagation();
+    return;
+  }
+  // Fundo do gráfico (fora de qualquer linha) — arrasta o eixo X e todos os eixos Y juntos.
+  // Panning nativo do Highcharts está desligado (ver chart.panning acima); isso substitui.
+  const xAxis = chart.xAxis[0];
+  const xEx = xAxis.getExtremes();
+  const yStates = chart.yAxis.map(ax => {
+    const ex = ax.getExtremes();
+    return { axis: ax, startMin: ex.min, startMax: ex.max, plotHeight: ax.len };
+  });
+  bgDrag = {
+    startClientX: e.clientX, startClientY: e.clientY,
+    xStartMin: xEx.min, xStartMax: xEx.max, xPlotWidth: xAxis.len,
+    yStates, moved: false,
+  };
   e.preventDefault();
-  e.stopPropagation();
 });
 
 // Duplo-clique em qualquer ponto do gráfico = mesmo reset do botão "Resetar escala".
