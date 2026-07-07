@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  ibov-breadth:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: ibov_market_breadth
+    volumes:
+      - ../database:/app/database
+      - ../logs:/app/logs
+      - ../reports:/app/reports
+      - ../dashboard:/app/dashboard
+    environment:
+      - DATABASE_PATH=database/ibov_breadth.db
+      - LOG_LEVEL=INFO
+      - SCHEDULER_TIME=18:30
+    restart: unless-stopped

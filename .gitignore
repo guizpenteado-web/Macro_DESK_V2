@@ -1,0 +1,22 @@
+# Ambiente virtual
+.venv/
+venv/
+env/
+
+# Cache Python / pytest
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Banco de dados local (regenerável via pipeline)
+database/*.db
+database/*.db-shm
+database/*.db-wal
+
+# Segredos reais (mantém .env.example versionado)
+.env
+
+# Logs
+*.log
+logs/
