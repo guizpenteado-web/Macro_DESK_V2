@@ -17,6 +17,16 @@ h1 span{color:#8b949e;font-weight:400;font-size:12px;display:block;margin-top:1p
 .legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#8b949e;white-space:nowrap}
 .legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
 
+/* Ciclo clássico compacto, no cabeçalho */
+.cycle-mini{
+  display:flex;flex-direction:column;gap:1px;background:#0d1117;border:1px solid #21262d;border-radius:6px;
+  padding:4px 10px;font-size:10px;color:#8b949e;line-height:1.4;cursor:help;
+}
+.cycle-mini .cm-row{display:flex;align-items:center;gap:4px;white-space:nowrap}
+.cycle-mini .cm-arrows{display:flex;justify-content:space-between;padding:0 5px;color:#30363d;font-size:9px}
+.cm-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
+.cycle-mini .cm-arrow{color:#484f58}
+
 .controls{display:flex;gap:10px;align-items:center;margin-left:auto;flex-wrap:wrap}
 .controls label{font-size:11px;color:#8b949e;white-space:nowrap}
 .controls select,.controls input{background:#21262d;border:1px solid #30363d;color:#c9d1d9;border-radius:4px;padding:3px 8px;font-size:12px}
@@ -118,16 +128,6 @@ tr.sector-row .company{color:#79b8ff}
 #help-modal th{text-align:left;color:#8b949e;font-weight:600;padding:6px 10px;border-bottom:1px solid #30363d}
 #help-modal td{padding:8px 10px;border-bottom:1px solid #21262d;color:#c9d1d9;vertical-align:top}
 #help-modal .hq-dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:middle}
-#help-cycle{
-  background:#0d1117;border:1px solid #21262d;border-radius:7px;padding:14px 18px;margin:12px 0;
-  font-size:12.5px;color:#c9d1d9;display:inline-block;
-}
-#help-cycle .hc-row{display:flex;gap:40px;align-items:center}
-#help-cycle .hc-arrows{display:flex;justify-content:space-between;padding:2px 6px;color:#484f58}
-#help-modal .hq-tip{
-  background:rgba(31,111,235,.08);border:1px solid rgba(31,111,235,.25);border-radius:7px;
-  padding:10px 14px;margin-top:10px;font-size:12.5px;color:#c9d1d9;
-}
 </style>
 </head>
 <body>
@@ -141,6 +141,12 @@ tr.sector-row .company{color:#79b8ff}
     <span class="legend-item"><span class="legend-dot q-Lagging"></span>Lagging</span>
     <span class="legend-item"><span class="legend-dot q-Improving"></span>Improving</span>
     <button class="btn" id="btn-help">Como utilizar</button>
+  </div>
+
+  <div class="cycle-mini" title="Ciclo clássico do RRG: uma ação saudável tende a girar no sentido horário entre os quadrantes">
+    <div class="cm-row"><span class="cm-dot q-Improving"></span>Improving <span class="cm-arrow">→</span> <span class="cm-dot q-Leading"></span>Leading</div>
+    <div class="cm-arrows"><span>↑</span><span>↓</span></div>
+    <div class="cm-row"><span class="cm-dot q-Lagging"></span>Lagging <span class="cm-arrow">←</span> <span class="cm-dot q-Weakening"></span>Weakening</div>
   </div>
 
   <div class="controls">
@@ -221,17 +227,7 @@ tr.sector-row .company{color:#79b8ff}
     </table>
 
     <h2>O ciclo clássico (por que a ordem importa)</h2>
-    <p>Na teoria do RRG, uma ação saudável tende a <b>girar no sentido horário</b> entre os quadrantes ao longo do tempo:</p>
-    <div id="help-cycle">
-      <div class="hc-row">
-        <span><span class="hq-dot q-Improving"></span>Improving → <span class="hq-dot q-Leading"></span>Leading</span>
-      </div>
-      <div class="hc-arrows"><span>↑</span><span>↓</span></div>
-      <div class="hc-row">
-        <span><span class="hq-dot q-Lagging"></span>Lagging ← <span class="hq-dot q-Weakening"></span>Weakening</span>
-      </div>
-    </div>
-    <p>Ou seja: recupera (azul) → assume liderança (verde) → começa a cansar (amarelo) → perde força de vez (vermelho) → eventualmente recupera de novo (azul). Não é uma regra fixa, mas é o padrão mais comum — por isso vale prestar atenção não só na cor da semana atual, mas na <b>sequência</b> de cores ao longo das colunas.</p>
+    <p>Na teoria do RRG, uma ação saudável tende a <b>girar no sentido horário</b> entre os quadrantes ao longo do tempo (veja o diagrama no topo da tela). Ou seja: recupera (azul) → assume liderança (verde) → começa a cansar (amarelo) → perde força de vez (vermelho) → eventualmente recupera de novo (azul). Não é uma regra fixa, mas é o padrão mais comum — por isso vale prestar atenção não só na cor da semana atual, mas na <b>sequência</b> de cores ao longo das colunas.</p>
 
     <h2>Como ler a matriz na prática</h2>
     <ul>
@@ -239,7 +235,6 @@ tr.sector-row .company{color:#79b8ff}
       <li>Olhando a sequência de cores <b>da direita pra esquerda</b> (do passado pro presente), você vê o "caminho" que o ativo percorreu no ciclo. Ex.: vermelho→vermelho→azul→azul→verde é uma recuperação clássica se formando.</li>
       <li>O <b>Score de Rotação (0-100)</b>, na coluna fixa, resume tudo isso num número: combina RS-Ratio, RS-Momentum e quanto tempo o ativo já está no quadrante atual (persistência). Serve pra comparar ativos rapidamente sem precisar ler cor por cor — score alto e consistente = líder de verdade, não só um pico passageiro.</li>
     </ul>
-    <div class="hq-tip"><b>Dica prática:</b> o quadrante mais "acionável" costuma ser o azul (Improving) — é onde você pega a virada antes dela ficar óbvia (verde). O amarelo (Weakening) é o aviso oposto: ainda parece bom, mas já é hora de ficar de olho.</div>
   </div>
 </div>
 
