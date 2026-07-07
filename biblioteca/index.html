@@ -61,6 +61,11 @@
     min-width:18px; text-align:center; transition:background .15s,color .15s;
   }
   .tab-btn.active .tab-count { background:var(--accent); color:#000; }
+  .new-badge {
+    background:#ef4444; color:#fff; font-family:Consolas,"Courier New",monospace;
+    font-size:10px; font-weight:700; padding:1px 5px; border-radius:10px;
+    min-width:16px; text-align:center; line-height:14px;
+  }
 
   #main { position:fixed; top:var(--header-h); left:0; right:0; bottom:0; display:flex; }
 
@@ -319,22 +324,22 @@
 
 <!-- TAB BAR -->
 <div id="tabbar">
-  <button class="tab-btn" data-section="Geral">Geral <span class="tab-count" id="cnt-Geral">0</span></button>
-  <button class="tab-btn active" data-section="Macro">Macro <span class="tab-count" id="cnt-Macro">0</span></button>
-  <button class="tab-btn" data-section="Commodities">Commodities <span class="tab-count" id="cnt-Commodities">0</span></button>
-  <button class="tab-btn" data-section="Materials">Materials <span class="tab-count" id="cnt-Materials">0</span></button>
-  <button class="tab-btn" data-section="Financeiro">Financeiro <span class="tab-count" id="cnt-Financeiro">0</span></button>
-  <button class="tab-btn" data-section="Imobiliário">Imobiliário <span class="tab-count" id="cnt-Imobiliário">0</span></button>
-  <button class="tab-btn" data-section="Utilities">Utilities <span class="tab-count" id="cnt-Utilities">0</span></button>
-  <button class="tab-btn" data-section="Saúde">Saúde <span class="tab-count" id="cnt-Saúde">0</span></button>
-  <button class="tab-btn" data-section="Agro">Agro <span class="tab-count" id="cnt-Agro">0</span></button>
-  <button class="tab-btn" data-section="Smallcaps">Smallcaps <span class="tab-count" id="cnt-Smallcaps">0</span></button>
-  <button class="tab-btn" data-section="ETFs Alternativos">ETFs Alternativos <span class="tab-count" id="cnt-ETFs Alternativos">0</span></button>
-  <button class="tab-btn" data-section="Tecnologia">Tecnologia <span class="tab-count" id="cnt-Tecnologia">0</span></button>
-  <button class="tab-btn" data-section="Watchlist">Watchlist <span class="tab-count" id="cnt-Watchlist">0</span></button>
-  <button class="tab-btn" data-section="Momentum">Momentum <span class="tab-count" id="cnt-Momentum">0</span></button>
-  <button class="tab-btn" data-section="Setores">Setores <span class="tab-count" id="cnt-Setores">0</span></button>
-  <button class="tab-btn" data-section="Outros">Outros <span class="tab-count" id="cnt-Outros">0</span></button>
+  <button class="tab-btn" data-section="Geral">Geral <span class="tab-count" id="cnt-Geral">0</span><span class="new-badge" id="new-Geral" style="display:none">0</span></button>
+  <button class="tab-btn active" data-section="Macro">Macro <span class="tab-count" id="cnt-Macro">0</span><span class="new-badge" id="new-Macro" style="display:none">0</span></button>
+  <button class="tab-btn" data-section="Commodities">Commodities <span class="tab-count" id="cnt-Commodities">0</span><span class="new-badge" id="new-Commodities" style="display:none">0</span></button>
+  <button class="tab-btn" data-section="Materials">Materials <span class="tab-count" id="cnt-Materials">0</span><span class="new-badge" id="new-Materials" style="display:none">0</span></button>
+  <button class="tab-btn" data-section="Financeiro">Financeiro <span class="tab-count" id="cnt-Financeiro">0</span><span class="new-badge" id="new-Financeiro" style="display:none">0</span></button>
+  <button class="tab-btn" data-section="Imobiliário">Imobiliário <span class="tab-count" id="cnt-Imobiliário">0</span><span class="new-badge" id="new-Imobiliário" style="display:none">0</span></button>
+  <button class="tab-btn" data-section="Utilities">Utilities <span class="tab-count" id="cnt-Utilities">0</span><span class="new-badge" id="new-Utilities" style="display:none">0</span></button>
+  <button class="tab-btn" data-section="Saúde">Saúde <span class="tab-count" id="cnt-Saúde">0</span><span class="new-badge" id="new-Saúde" style="display:none">0</span></button>
+  <button class="tab-btn" data-section="Agro">Agro <span class="tab-count" id="cnt-Agro">0</span><span class="new-badge" id="new-Agro" style="display:none">0</span></button>
+  <button class="tab-btn" data-section="Smallcaps">Smallcaps <span class="tab-count" id="cnt-Smallcaps">0</span><span class="new-badge" id="new-Smallcaps" style="display:none">0</span></button>
+  <button class="tab-btn" data-section="ETFs Alternativos">ETFs Alternativos <span class="tab-count" id="cnt-ETFs Alternativos">0</span><span class="new-badge" id="new-ETFs Alternativos" style="display:none">0</span></button>
+  <button class="tab-btn" data-section="Tecnologia">Tecnologia <span class="tab-count" id="cnt-Tecnologia">0</span><span class="new-badge" id="new-Tecnologia" style="display:none">0</span></button>
+  <button class="tab-btn" data-section="Watchlist">Watchlist <span class="tab-count" id="cnt-Watchlist">0</span><span class="new-badge" id="new-Watchlist" style="display:none">0</span></button>
+  <button class="tab-btn" data-section="Momentum">Momentum <span class="tab-count" id="cnt-Momentum">0</span><span class="new-badge" id="new-Momentum" style="display:none">0</span></button>
+  <button class="tab-btn" data-section="Setores">Setores <span class="tab-count" id="cnt-Setores">0</span><span class="new-badge" id="new-Setores" style="display:none">0</span></button>
+  <button class="tab-btn" data-section="Outros">Outros <span class="tab-count" id="cnt-Outros">0</span><span class="new-badge" id="new-Outros" style="display:none">0</span></button>
 </div>
 
 <!-- SEARCH BAR -->
@@ -702,6 +707,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     titleEl.textContent = currentSection;
     titleEl.style.display = activeSubtabsId ? 'none' : '';
     document.getElementById('posts-area').scrollTop = 0;
+    markSectionSeen(currentSection);
     renderPosts();
     await loadChatFromServer(currentSection);
     renderChat();
@@ -724,6 +730,29 @@ function updateCounts(){
   });
   const geralEl = document.getElementById('cnt-Geral');
   if (geralEl) geralEl.textContent = allPosts.length;
+}
+
+function _tabLastSeen(section) {
+  return parseInt(localStorage.getItem('biblio_seen_'+section), 10) || 0;
+}
+function markSectionSeen(section) {
+  localStorage.setItem('biblio_seen_'+section, Date.now().toString());
+  updateNewBadges();
+}
+function updateNewBadges(){
+  ALL_SECTIONS.forEach(s=>{
+    const el = document.getElementById('new-'+s);
+    if (!el) return;
+    const n = allPosts.filter(p=>p.section===s && p.ts>_tabLastSeen(s)).length;
+    if (n>0 && s!==currentSection) { el.textContent=n; el.style.display='flex'; }
+    else el.style.display='none';
+  });
+  const geralEl = document.getElementById('new-Geral');
+  if (geralEl) {
+    const n = allPosts.filter(p=>p.ts>_tabLastSeen('Geral')).length;
+    if (n>0 && currentSection!=='Geral') { geralEl.textContent=n; geralEl.style.display='flex'; }
+    else geralEl.style.display='none';
+  }
 }
 
 let searchQuery = '';
@@ -813,7 +842,7 @@ window.react = async function(pid, type, btn) {
   if (bc) bc.postMessage('post');
 };
 
-function renderAll() { updateCounts(); renderPosts(); }
+function renderAll() { updateCounts(); updateNewBadges(); renderPosts(); }
 function renderPosts() {
   const grid = document.getElementById('posts-grid');
   const titleEl = document.getElementById('section-title');
@@ -1544,6 +1573,7 @@ async function bootstrap() {
   document.getElementById('macro-subtabs').style.display = 'flex';
   await loadPostsFromServer();
   renderAll();
+  markSectionSeen(currentSection);
   await loadChatFromServer(currentSection);
   renderChat();
 }

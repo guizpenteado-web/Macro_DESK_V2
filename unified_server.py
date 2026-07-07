@@ -658,6 +658,7 @@ _SHELL = """<!DOCTYPE html>
   <button class="nav-btn" id="btn5" onclick="show(5)">
     <span class="dot"></span>
     Biblioteca
+    <span class="call-badge" id="biblio-badge" style="display:none"></span>
   </button>
 
   <button class="nav-btn" id="btn-news" onclick="toggleNews()" style="margin-left:auto">
@@ -806,6 +807,10 @@ _SHELL = """<!DOCTYPE html>
       var today = new Date().toISOString().slice(0,10);
       localStorage.setItem("calls_last_seen", today);
       document.getElementById("call-badge").style.display = "none";
+    }
+    if (n === 5) {
+      localStorage.setItem("biblioteca_last_seen", Date.now().toString());
+      document.getElementById("biblio-badge").style.display = "none";
     }
   }
 
@@ -1062,6 +1067,35 @@ _SHELL = """<!DOCTYPE html>
   }
   _refreshCallBadge();
   setInterval(_refreshCallBadge, 1800000);
+
+  // Badge de notificação para posts novos na Biblioteca
+  function _refreshBiblioBadge() {
+    fetch("/api/biblioteca/posts")
+      .then(function(r) { return r.json(); })
+      .then(function(items) {
+        var lastSeen = parseInt(localStorage.getItem("biblioteca_last_seen"), 10) || 0;
+        var newCount = items.filter(function(p) { return p.ts > lastSeen; }).length;
+        var badge = document.getElementById("biblio-badge");
+        if (_current !== 5 && newCount > 0) {
+          badge.textContent = newCount;
+          badge.style.display = "flex";
+        } else {
+          badge.style.display = "none";
+        }
+      })
+      .catch(function() {});
+  }
+  _refreshBiblioBadge();
+  // Ancora às 05h e repete a cada 2h a partir daí (05h, 07h, 09h, ...), em vez de a cada 30min
+  (function _scheduleBiblioBadge() {
+    var now = new Date();
+    var next = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 5, 0, 0, 0);
+    if (next <= now) next.setDate(next.getDate() + 1);
+    setTimeout(function() {
+      _refreshBiblioBadge();
+      setInterval(_refreshBiblioBadge, 7200000);
+    }, next - now);
+  })();
 
   setInterval(function() {
     if (_newsOpen) { delete _newsData[_newsTab]; loadNews(_newsTab, document.getElementById("ntab-"+_newsTab)); }

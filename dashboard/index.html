@@ -71,7 +71,7 @@ body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFo
 #chart-toolbar .chart-tool-btn:hover{ background:#21262d; border-color:#1f6feb; }
 
 /* ── Y-axis drag handles (TradingView-style) ── */
-#yd-panel{position:absolute;right:0;display:flex;flex-direction:column;z-index:25;pointer-events:none;border-radius:0 4px 4px 0;overflow:hidden}
+#yd-panel{position:absolute;right:6px;display:flex;flex-direction:column;z-index:25;pointer-events:none;border-radius:4px;overflow:hidden}
 .yd-handle{flex:1;width:20px;display:flex;align-items:center;justify-content:center;pointer-events:all;cursor:ns-resize;background:rgba(13,17,23,0.82);border-left:3px solid transparent;transition:background .12s;min-height:20px}
 .yd-handle:hover{background:rgba(255,255,255,0.07)}
 .yd-handle:active{background:rgba(255,255,255,0.12)}
@@ -349,10 +349,41 @@ function makeTooltipFormatter(mode){
 }
 
 // ────────────────────────────────────────────────────────────────
+// Estende as linhas de grade horizontais (do eixo do IBOV) por dentro da
+// margem direita reservada pro yd-panel/labels, pra ela não ficar "vazia" —
+// reexecuta a cada redraw (zoom, pan, arrastar alça) via chart.events.render.
+// ────────────────────────────────────────────────────────────────
+function extendGridToMargin(c){
+  if (c._marginGridGroup) { c._marginGridGroup.destroy(); c._marginGridGroup = null; }
+  const axis = c.get("ax-ibov");
+  if (!axis || !axis.options || !axis.options.gridLineWidth || !axis.tickPositions) return;
+
+  const x1 = c.plotLeft + c.plotWidth;
+  const x2 = c.chartWidth - 30; // deixa espaço pro yd-panel (right:6px + 20px de largura)
+  if (x2 <= x1) return;
+
+  const group = c.renderer.g("margin-grid-lines").add();
+  axis.tickPositions.forEach(function(tick){
+    const y = Math.round(axis.toPixels(tick, false)) + 0.5;
+    c.renderer.path(["M", x1, y, "L", x2, y])
+      .attr({ "stroke-width":1, stroke:"#21262d" })
+      .add(group);
+  });
+
+  // Insere logo após o fundo do gráfico, pra ficar atrás das séries/labels
+  // dos eixos — igual ao comportamento nativo do grid dentro do plot.
+  const bg = c.container.querySelector(".highcharts-background");
+  if (bg && bg.parentNode) bg.parentNode.insertBefore(group.element, bg.nextSibling);
+
+  c._marginGridGroup = group;
+}
+
+// ────────────────────────────────────────────────────────────────
 // Build/rebuild chart
 // ────────────────────────────────────────────────────────────────
 function rebuildChart(){
   const mode = document.getElementById("mode-select").value;
+  const marginR = 130;
   const keys = ["ibov","cot","ntnb","flow","di2033","smal11","usdbrl","dxy","us10y","bcom","us_cpi_yoy"];
 
   document.getElementById("lbl-mode").textContent =
@@ -396,7 +427,7 @@ function rebuildChart(){
       backgroundColor:"#161b22",
       style:{ fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" },
       animation:false,
-      marginRight: 130,
+      marginRight: marginR,
       zooming:{
         type: null,
         mouseWheel:{ enabled:true, type:"x" },
@@ -407,6 +438,7 @@ function rebuildChart(){
       // (x e y juntos) é feito por código próprio (ver bgDrag mais abaixo),
       // do mesmo jeito que já fazíamos pra alça de escala e pra linha de um ativo.
       panning:{ enabled:false },
+      events:{ render(){ extendGridToMargin(this); } },
     },
     rangeSelector:{ enabled:false },
     navigator:{
@@ -665,7 +697,7 @@ function addDragHandles(){
   const panel = document.createElement("div");
   panel.id = "yd-panel";
   panel.style.cssText =
-    "position:absolute;right:0;width:20px;z-index:25;pointer-events:none;display:flex;flex-direction:column;" +
+    "position:absolute;right:6px;width:20px;z-index:25;pointer-events:none;display:flex;flex-direction:column;" +
     "top:"  + chart.plotTop    + "px;" +
     "height:" + chart.plotHeight + "px;";
 
