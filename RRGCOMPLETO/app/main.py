@@ -43,6 +43,7 @@ def _run_pipeline() -> None:
     steps = [
         ("Sincronizando setores (sub-índices B3)...", _step_sectors),
         ("Sincronizando universo completo (IBOV + setores)...", _step_universe),
+        ("Sincronizando setor 'TODOS' (união do universo)...", _step_todos),
         ("Baixando preços (incremental)...", _step_prices),
         ("Calculando RS-Ratio / Momentum / Score...", _step_calc),
         ("Construindo índices sintéticos de setor...", _step_sector_composites),
@@ -72,6 +73,11 @@ def _step_universe():
 def _step_sectors():
     from app.downloader.sector_components import sync_sector_components
     sync_sector_components()
+
+
+def _step_todos():
+    from app.downloader.sector_components import sync_todos_sector
+    sync_todos_sector()
 
 
 def _step_prices():

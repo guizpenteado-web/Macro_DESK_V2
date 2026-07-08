@@ -17,16 +17,14 @@ import json
 import requests
 
 from app.database.connection import get_session
-from app.database.repository import SectorComponentRepository
+from app.database.repository import AssetRepository, SectorComponentRepository
 from app.utils.logger import logger
 
 SECTOR_CODES: list[str] = ["IFNC", "IEEX", "IMOB", "ICON", "IMAT", "UTIL", "SMLL", "INDX", "IDIV", "IBLV"]
 
-# Setores "de verdade" (Classificação Setorial B3) que não têm índice de mercado
-# tradeable próprio — por isso ficam de fora da API B3 acima. Curados manualmente
-# a partir da classificação oficial B3 (setor/subsetor), verificada individualmente
-# por ticker (ex.: investidor10, dadosdemercado) em 07/jul/2026.
-CURATED_CODES: list[str] = ["PETRO", "TRANS"]
+# "TODOS" não vem da API B3 — é a união dinâmica de todo o universo de ativos
+# (ver sync_sector_components), sempre o último botão da lista no frontend.
+CURATED_CODES: list[str] = ["TODOS"]
 
 SECTOR_LABELS: dict[str, str] = {
     "IFNC": "Financeiro",
@@ -39,17 +37,17 @@ SECTOR_LABELS: dict[str, str] = {
     "INDX": "Industrial",
     "IDIV": "Dividendos",
     "IBLV": "Baixa Volatilidade",
-    "PETRO": "Petróleo e Gás",
-    "TRANS": "Transporte",
+    "TODOS": "Todos os Ativos",
 }
 
-# Setor "Petróleo, Gás e Biocombustíveis" (classificação B3) — nenhum sub-índice
-# tradeable da B3 cobre esse setor entre os listados acima.
-# Setor "Bens Industriais" / subsetor "Transportes" (classificação B3).
-_CURATED: dict[str, list[str]] = {
-    "PETRO": ["PETR3", "PETR4", "PRIO3", "RECV3", "BRAV3", "UGPA3", "VBBR3", "CSAN3"],
-    "TRANS": ["RAIL3", "MOTV3", "ECOR3", "HBSA3", "JSLG3", "TGMA3"],
-}
+# Ativos cuja Classificação Setorial B3 real é "Petróleo, Gás e Biocombustíveis"
+# ou "Bens Industriais/Transportes" — nenhum dos dois tem índice tradeable B3
+# próprio. A pedido explícito do usuário (07/jul/2026), em vez de manter abas
+# "PETRO"/"TRANS" separadas, esses ativos foram unidos ao IMAT.
+_IMAT_EXTRA: list[str] = [
+    "PETR3", "PETR4", "PRIO3", "RECV3", "BRAV3", "UGPA3", "VBBR3", "CSAN3",  # Petróleo e Gás
+    "RAIL3", "MOTV3", "ECOR3", "HBSA3", "JSLG3", "TGMA3",  # Transporte
+]
 
 # Fallbacks locais caso a API B3 falhe
 _FALLBACKS: dict[str, list[str]] = {
@@ -110,14 +108,24 @@ def sync_sector_components() -> dict[str, int]:
     totals: dict[str, int] = {}
     for code in SECTOR_CODES:
         tickers = _fetch_b3(code)
+        if code == "IMAT":
+            tickers = sorted(set(tickers) | set(_IMAT_EXTRA))
+            logger.info(f"IMAT: +{len(_IMAT_EXTRA)} ativos de Petróleo/Gás e Transporte unidos manualmente")
         with get_session() as s:
             SectorComponentRepository(s).replace_sector(code, tickers)
         totals[code] = len(tickers)
-    for code in CURATED_CODES:
-        tickers = _CURATED.get(code, [])
-        with get_session() as s:
-            SectorComponentRepository(s).replace_sector(code, tickers)
-        totals[code] = len(tickers)
-        logger.info(f"{code}: {len(tickers)} componentes (curado — sem índice B3 tradeable)")
     logger.success(f"Setores sincronizados: {totals}")
     return totals
+
+
+def sync_todos_sector() -> int:
+    """"TODOS" — união dinâmica de todo o universo de ativos ativos no banco.
+
+    Precisa rodar DEPOIS de sync_universe() (Asset já populado), por isso é um
+    passo próprio no pipeline em vez de ficar dentro de sync_sector_components().
+    """
+    with get_session() as s:
+        all_tickers = sorted(AssetRepository(s).get_active_tickers())
+        SectorComponentRepository(s).replace_sector("TODOS", all_tickers)
+    logger.info(f"TODOS: {len(all_tickers)} componentes (união de todo o universo)")
+    return len(all_tickers)
