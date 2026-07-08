@@ -650,9 +650,7 @@ _SHELL = """<!DOCTYPE html>
 <body>
 
 <nav>
-  <div class="hub-logo">
-    <span>Macro Desk</span>
-  </div>
+  <div class="hub-logo">&#9670; <span>Macro Desk</span></div>
   <div class="divider"></div>
 
   <button class="nav-btn active-1" id="btn1" onclick="show(1)">
