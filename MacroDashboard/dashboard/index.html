@@ -74,6 +74,17 @@ td.num { text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
 .chart-box { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px }
 .chart-title { font-size:12px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin-bottom:4px }
 
+/* Alça visual sobre a zona nativa do Plotly que reescala só o eixo Y (preço) */
+.price-scale-handle {
+  position:absolute; pointer-events:none; background:rgba(56,189,248,.06);
+  border-left:2px solid rgba(56,189,248,.45); border-right:2px solid rgba(56,189,248,.45);
+  display:flex; align-items:center; justify-content:center;
+}
+.price-scale-handle span {
+  writing-mode:vertical-rl; transform:rotate(180deg); font-size:9px; font-weight:700;
+  letter-spacing:1.5px; color:rgba(56,189,248,.7); user-select:none; white-space:nowrap;
+}
+
 /* BTC stats */
 .btc-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:24px }
 .stat-box { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:16px }
@@ -763,7 +774,9 @@ td.num { text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
   <div id="btc-stats-boxes" class="btc-stats"></div>
   <div class="chart-box" style="margin-bottom:20px">
     <div class="chart-title">Ciclos Sobrepostos — Preço indexado ao Halving (= 1.0)</div>
-    <div id="ch-btc-cycle" style="height:440px"></div>
+    <div class="btc-chart-wrap" style="position:relative">
+      <div id="ch-btc-cycle" style="height:440px"></div>
+    </div>
   </div>
 
   <!-- ── Insights Institucionais ───────────────────────────────── -->
@@ -1154,7 +1167,29 @@ function btcCycleChart(cycles) {
     hovermode:"x",
     legend:{ x:0.01, y:0.98, bgcolor:"rgba(0,0,0,0.3)", font:{color:"#e8eef5",size:11} },
   });
-  Plotly.newPlot("ch-btc-cycle", traces, layout, CFG_Z);
+  Plotly.newPlot("ch-btc-cycle", traces, layout, CFG_Z).then(addBtcPriceScaleHandle);
+}
+
+// Alça visual (não-interativa) sobre a faixa esquerda do eixo Y — o próprio
+// Plotly já deixa essa faixa arrastável nativamente (reescala só o preço,
+// fixedrange:false); isso só torna visível onde arrastar.
+function addBtcPriceScaleHandle() {
+  var gd = document.getElementById("ch-btc-cycle");
+  var wrap = gd.parentElement;
+  var old = wrap.querySelector(".price-scale-handle");
+  if (old) old.remove();
+
+  var nsRect = gd.querySelector(".draglayer .nsdrag");
+  if (!nsRect) return;
+  var handle = document.createElement("div");
+  handle.className = "price-scale-handle";
+  handle.title = "Arraste para reescalar o eixo de preço";
+  handle.style.left   = nsRect.getAttribute("x") + "px";
+  handle.style.top    = nsRect.getAttribute("y") + "px";
+  handle.style.width  = nsRect.getAttribute("width") + "px";
+  handle.style.height = nsRect.getAttribute("height") + "px";
+  handle.innerHTML = "<span>ESCALA</span>";
+  wrap.appendChild(handle);
 }
 
 // ─── COT Panel — positioning (top) + Z-score (bottom) num único subplot ─
