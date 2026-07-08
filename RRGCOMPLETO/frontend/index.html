@@ -23,7 +23,7 @@ h1 span{color:#8b949e;font-weight:400;font-size:12px;display:block;margin-top:1p
 .cm-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
 .cycle-mini .cm-arrow{color:#6e7681;font-size:12.5px}
 
-.controls{display:flex;gap:10px;align-items:center;margin-left:auto;flex-wrap:wrap}
+.controls{display:flex;gap:10px;align-items:flex-start;margin-left:auto;flex-wrap:wrap}
 .controls label{font-size:11px;color:#8b949e;white-space:nowrap}
 .controls select,.controls input{background:#21262d;border:1px solid #30363d;color:#c9d1d9;border-radius:4px;padding:3px 8px;font-size:12px}
 .controls select:focus,.controls input:focus{outline:none;border-color:#1f6feb}
@@ -101,7 +101,7 @@ tr.sector-row .company{color:#79b8ff}
 
 .empty-state{padding:40px;text-align:center;color:#484f58;font-size:13px}
 
-/* ── Modal "Como utilizar" ── */
+/* ── Modal "Sobre" ── */
 #help-overlay{
   position:fixed;inset:0;background:rgba(1,4,9,.72);z-index:2000;display:none;
   align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;
@@ -152,7 +152,7 @@ tr.sector-row .company{color:#79b8ff}
           <option value="52">52</option>
         </select>
       </div>
-      <button class="btn" id="btn-help">Como utilizar</button>
+      <button class="btn" id="btn-help">Sobre</button>
     </div>
 
     <label title="Peso no IBOV — ativos fora do índice têm peso 0">Peso mín. no IBOV (%)</label>
@@ -503,7 +503,7 @@ document.getElementById("btn-collect").addEventListener("click", async () => {
   await fetch(`${API}/api/collect/trigger`, { method: "POST" });
 });
 
-// ── Modal "Como utilizar" ──
+// ── Modal "Sobre" ──
 const helpOverlay = document.getElementById("help-overlay");
 document.getElementById("btn-help").addEventListener("click", () => helpOverlay.classList.add("show"));
 document.getElementById("help-close").addEventListener("click", () => helpOverlay.classList.remove("show"));
