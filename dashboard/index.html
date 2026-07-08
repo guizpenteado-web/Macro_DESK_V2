@@ -72,11 +72,20 @@ body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFo
 
 /* ── Y-axis drag handles (TradingView-style) ── */
 #yd-panel{position:absolute;right:6px;display:flex;flex-direction:column;z-index:25;pointer-events:none;border-radius:4px;overflow:hidden}
-.yd-handle{flex:1;width:20px;display:flex;align-items:center;justify-content:center;pointer-events:all;cursor:ns-resize;background:rgba(13,17,23,0.82);border-left:3px solid transparent;transition:background .12s;min-height:20px}
-.yd-handle:hover{background:rgba(255,255,255,0.07)}
-.yd-handle:active{background:rgba(255,255,255,0.12)}
-.yd-handle span{writing-mode:vertical-rl;transform:rotate(180deg);font-size:8px;font-weight:700;letter-spacing:.6px;opacity:.65;user-select:none}
+.yd-handle{flex:1;width:34px;display:flex;align-items:center;justify-content:center;pointer-events:all;cursor:ns-resize;background:rgba(13,17,23,0.88);border-left:4px solid transparent;transition:background .12s;min-height:22px}
+.yd-handle:hover{background:rgba(255,255,255,0.09)}
+.yd-handle:active{background:rgba(255,255,255,0.14)}
+.yd-handle span{writing-mode:vertical-rl;transform:rotate(180deg);font-size:10.5px;font-weight:800;letter-spacing:.6px;opacity:.8;user-select:none}
 .yd-handle:hover span{opacity:1}
+
+.yd-info{
+  position:absolute; right:6px; width:34px; height:18px; z-index:26;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(13,17,23,0.9); border:1px solid #30363d; border-radius:4px 4px 0 0;
+  color:#8b949e; font-size:10px; font-weight:800; font-style:italic; font-family:Georgia,serif;
+  cursor:help; user-select:none; transition:background .12s,color .12s;
+}
+.yd-info:hover{ background:rgba(31,111,235,0.18); color:#58a6ff; border-color:#1f6feb; }
 
 /* ── Status bar ── */
 .status-bar{padding:7px 20px;display:flex;gap:16px;flex-wrap:wrap;border-top:1px solid #21262d}
@@ -689,15 +698,26 @@ function openScalePrompt(axis, label){
 }
 
 function addDragHandles(){
-  const old = document.getElementById("yd-panel");
-  if(old) old.remove();
+  const oldPanel = document.getElementById("yd-panel");
+  if(oldPanel) oldPanel.remove();
+  const oldInfo = document.getElementById("yd-info");
+  if(oldInfo) oldInfo.remove();
   if(!chart) return;
 
   const container = document.getElementById("chart-container");
+
+  const info = document.createElement("div");
+  info.id = "yd-info";
+  info.className = "yd-info";
+  info.textContent = "i";
+  info.title = "Arraste para ajustar a escala do ativo";
+  info.style.top = (chart.plotTop - 20) + "px";
+  container.appendChild(info);
+
   const panel = document.createElement("div");
   panel.id = "yd-panel";
   panel.style.cssText =
-    "position:absolute;right:6px;width:20px;z-index:25;pointer-events:none;display:flex;flex-direction:column;" +
+    "position:absolute;right:6px;width:34px;z-index:25;pointer-events:none;display:flex;flex-direction:column;" +
     "top:"  + chart.plotTop    + "px;" +
     "height:" + chart.plotHeight + "px;";
 
