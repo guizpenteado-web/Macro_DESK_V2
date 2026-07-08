@@ -242,9 +242,6 @@ _SHELL = """<!DOCTYPE html>
   }
 
   .hub-logo {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
     font-size: 21px;
     font-weight: 700;
     letter-spacing: 1.5px;
@@ -254,7 +251,6 @@ _SHELL = """<!DOCTYPE html>
     white-space: nowrap;
   }
   .hub-logo span { color: var(--text); }
-  .hub-logo-icon { width: 40px; height: 40px; flex-shrink: 0; }
 
   .divider {
     width: 1px; height: 24px;
@@ -636,20 +632,6 @@ _SHELL = """<!DOCTYPE html>
 
 <nav>
   <div class="hub-logo">
-    <svg class="hub-logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="7.7" cy="11" r="6.5"/>
-      <circle cx="15.3" cy="11" r="6.5"/>
-      <path d="M7.7 4.5 C4.6 7 4.6 15 7.7 17.5 C10.8 15 10.8 7 7.7 4.5 Z"/>
-      <path d="M1.2 11 H14.2"/>
-      <path d="M2.3 8.3 H13.1"/>
-      <path d="M2.3 13.7 H13.1"/>
-      <path d="M15.3 5.2 V14" stroke-width="1.6"/>
-      <path d="M16.3 7.4 H17.3"/>
-      <path d="M16.3 9.7 H17.3"/>
-      <path d="M16.3 12 H17.3"/>
-      <circle cx="15.3" cy="16.3" r="2.1"/>
-      <circle cx="15.3" cy="16.3" r="0.9" fill="currentColor" stroke="none"/>
-    </svg>
     <span>Macro Desk</span>
   </div>
   <div class="divider"></div>
