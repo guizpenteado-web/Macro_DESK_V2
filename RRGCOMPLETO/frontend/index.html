@@ -27,7 +27,6 @@ h1 span{color:#8b949e;font-weight:400;font-size:12px;display:block;margin-top:1p
 .controls label{font-size:11px;color:#8b949e;white-space:nowrap}
 .controls select,.controls input{background:#21262d;border:1px solid #30363d;color:#c9d1d9;border-radius:4px;padding:3px 8px;font-size:12px}
 .controls select:focus,.controls input:focus{outline:none;border-color:#1f6feb}
-.cycle-wrap{display:flex;align-items:center;gap:10px}
 
 .btn{background:#21262d;border:1px solid #30363d;color:#c9d1d9;cursor:pointer;padding:4px 11px;border-radius:5px;font-size:11.5px;transition:all .15s;white-space:nowrap}
 .btn:hover{background:#2d333b}
@@ -132,13 +131,10 @@ tr.sector-row .company{color:#79b8ff}
 <header>
   <h1>Relative Rotation Graph<span>(IBOV + todos os membros dos sub-índices B3) — cada ativo vs. o próprio IBOV</span></h1>
 
-  <div class="cycle-wrap">
-    <div class="cycle-mini" title="Ciclo clássico do RRG: uma ação saudável tende a girar no sentido horário entre os quadrantes">
-      <div class="cm-row"><span class="cm-dot q-Improving"></span>Improving <span class="cm-arrow">→</span> <span class="cm-dot q-Leading"></span>Leading</div>
-      <div class="cm-arrows"><span>↑</span><span>↓</span></div>
-      <div class="cm-row"><span class="cm-dot q-Lagging"></span>Lagging <span class="cm-arrow">←</span> <span class="cm-dot q-Weakening"></span>Weakening</div>
-    </div>
-    <button class="btn" id="btn-help" style="margin-top:12px">Sobre</button>
+  <div class="cycle-mini" title="Ciclo clássico do RRG: uma ação saudável tende a girar no sentido horário entre os quadrantes">
+    <div class="cm-row"><span class="cm-dot q-Improving"></span>Improving <span class="cm-arrow">→</span> <span class="cm-dot q-Leading"></span>Leading</div>
+    <div class="cm-arrows"><span>↑</span><span>↓</span></div>
+    <div class="cm-row"><span class="cm-dot q-Lagging"></span>Lagging <span class="cm-arrow">←</span> <span class="cm-dot q-Weakening"></span>Weakening</div>
   </div>
 
   <div class="controls">
@@ -156,6 +152,7 @@ tr.sector-row .company{color:#79b8ff}
     <input id="f-weight" type="number" min="0" step="0.1" value="0" style="width:58px">
 
     <button class="btn primary" id="btn-collect">↻ Atualizar dados</button>
+    <button class="btn" id="btn-help">Sobre</button>
   </div>
 </header>
 
