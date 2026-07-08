@@ -1130,6 +1130,13 @@ var _idxCfg = [
   {{code:"IFNC", color:"#ffc400", width:2,   dash:"solid", label:"IFNC"}},
   {{code:"EWZ",  color:"#ff794d", width:2,   dash:"solid", label:"EWZ"}},
   {{code:"IBLV", color:"#a371f7", width:2,   dash:"solid", label:"IBLV"}},
+  {{code:"IEEX", color:"#3fb950", width:2,   dash:"solid", label:"IEEX"}},
+  {{code:"IMOB", color:"#f778ba", width:2,   dash:"solid", label:"IMOB"}},
+  {{code:"ICON", color:"#39c5cf", width:2,   dash:"solid", label:"ICON"}},
+  {{code:"IMAT", color:"#f85149", width:2,   dash:"solid", label:"IMAT"}},
+  {{code:"UTIL", color:"#d29922", width:2,   dash:"solid", label:"UTIL"}},
+  {{code:"SMLL", color:"#7ee787", width:2,   dash:"solid", label:"SMALL"}},
+  {{code:"INDX", color:"#bc8cff", width:2,   dash:"solid", label:"INDX"}},
 ];
 
 function buildIdxChart() {{
