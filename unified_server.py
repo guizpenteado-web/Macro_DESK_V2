@@ -242,6 +242,9 @@ _SHELL = """<!DOCTYPE html>
   }
 
   .hub-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     font-size: 21px;
     font-weight: 700;
     letter-spacing: 1.5px;
@@ -251,6 +254,7 @@ _SHELL = """<!DOCTYPE html>
     white-space: nowrap;
   }
   .hub-logo span { color: var(--text); }
+  .hub-logo-icon { width: 19px; height: 19px; flex-shrink: 0; }
 
   .divider {
     width: 1px; height: 24px;
@@ -631,7 +635,15 @@ _SHELL = """<!DOCTYPE html>
 <body>
 
 <nav>
-  <div class="hub-logo"><span>Macro Desk</span></div>
+  <div class="hub-logo">
+    <svg class="hub-logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="2" y="15" width="3.6" height="7" rx="1.4" fill="currentColor"/>
+      <rect x="8.2" y="11" width="3.6" height="11" rx="1.4" fill="currentColor"/>
+      <rect x="14.4" y="7" width="3.6" height="15" rx="1.4" fill="currentColor"/>
+      <rect x="20.4" y="3" width="3.6" height="19" rx="1.4" fill="currentColor"/>
+    </svg>
+    <span>Macro Desk</span>
+  </div>
   <div class="divider"></div>
 
   <button class="nav-btn active-1" id="btn1" onclick="show(1)">
