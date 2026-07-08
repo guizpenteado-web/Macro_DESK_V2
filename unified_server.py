@@ -656,17 +656,21 @@ _SHELL = """<!DOCTYPE html>
 <nav>
   <div class="hub-logo">
     <svg class="hub-logo-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <rect x="1" y="1" width="22" height="22" rx="6" fill="#2f9e6e"/>
-      <g stroke="#0d1117" stroke-width="1.1" stroke-linecap="round" fill="none">
-        <path d="M12 4 L8.7 16.5"/>
-        <path d="M12 4 L15.3 16.5"/>
-        <path d="M10.2 9.3 L13.8 9.3"/>
-        <path d="M9.4 13 L14.6 13"/>
-        <path d="M10.6 4.6 L13.4 4.6"/>
+      <rect x="1" y="1" width="22" height="22" rx="6" fill="#4FC3BE"/>
+      <g stroke="#173a2d" stroke-width="1" stroke-linecap="round" fill="none">
+        <path d="M11.6 3.3 L8.3 15.3"/>
+        <path d="M11.6 3.3 L13.9 15.3"/>
+        <path d="M9.5 6.9 L12.7 6.9"/>
+        <path d="M9.0 9.6 L13.2 9.6"/>
+        <path d="M8.6 12.4 L13.6 12.4"/>
+        <path d="M13.9 15.3 L16.8 2.8 L18.5 4.3"/>
       </g>
-      <rect x="6.5" y="16.5" width="11" height="1.8" rx="0.9" fill="#0d1117"/>
-      <path d="M3 20 q1.4,-1.3 2.8,0 q1.4,1.3 2.8,0 q1.4,-1.3 2.8,0 q1.4,1.3 2.8,0 q1.4,-1.3 2.8,0 q1.4,1.3 2.8,0"
-            stroke="#58c4ff" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+      <rect x="6.3" y="15.1" width="9.4" height="1.4" rx="0.6" fill="#173a2d"/>
+      <path d="M7.8 16.5 L7.8 18.6 M14.4 16.5 L14.4 18.6" stroke="#173a2d" stroke-width="1.1" stroke-linecap="round"/>
+      <path d="M2.3 19.6 q1.6,-1.5 3.2,0 q1.6,1.5 3.2,0 q1.6,-1.5 3.2,0 q1.6,1.5 3.2,0 q1.6,-1.5 3.2,0"
+            stroke="#1e88c7" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+      <path d="M2.3 21.4 q1.6,-1.3 3.2,0 q1.6,1.3 3.2,0 q1.6,-1.3 3.2,0 q1.6,1.3 3.2,0 q1.6,-1.3 3.2,0"
+            stroke="#1e88c7" stroke-width="1" fill="none" opacity="0.65" stroke-linecap="round"/>
     </svg>
     <span>Macro Desk</span>
   </div>
