@@ -1229,7 +1229,7 @@ td.num {{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
   <div id="btc-stats-boxes" class="btc-stats"></div>
   <div class="chart-box" style="margin-bottom:20px">
     <div class="chart-title">Ciclos Sobrepostos — Preço indexado ao Halving (= 1.0)</div>
-    <div id="ch-btc-cycle" style="height:680px"></div>
+    <div id="ch-btc-cycle" style="height:440px"></div>
   </div>
 
   <!-- ── Insights Institucionais ───────────────────────────────── -->
@@ -1591,15 +1591,18 @@ function btcCycleChart(cycles) {{
   }});
   var layout = Object.assign({{}}, LAYOUT_BASE, {{
     margin:{{ t:14,b:54,l:68,r:20 }},
+    dragmode:"pan",
     xaxis: {{
       title:"Dias desde o Halving",
       range: [0, xMax],
       autorange: false,
+      fixedrange: false,
       gridcolor:"rgba(255,255,255,.05)", linecolor:"rgba(255,255,255,.08)",
     }},
     yaxis: {{
       title:"Preço indexado (1.0 = dia do Halving)",
       type:"log",
+      fixedrange: false,
       gridcolor:"rgba(255,255,255,.05)", linecolor:"rgba(255,255,255,.08)",
     }},
     shapes: [
