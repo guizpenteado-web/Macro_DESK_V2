@@ -750,16 +750,12 @@ td.num {{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
 .chart-box {{ background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px }}
 .chart-title {{ font-size:12px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin-bottom:4px }}
 
-/* Alça visual sobre a zona nativa do Plotly que reescala só o eixo Y (preço) */
+/* Alça sobre o eixo Y — arraste vertical reescala o preço (ver JS) */
 .price-scale-handle {{
-  position:absolute; pointer-events:none; background:rgba(56,189,248,.06);
+  position:absolute; cursor:ns-resize; background:rgba(56,189,248,.06);
   border-left:2px solid rgba(56,189,248,.45); border-right:2px solid rgba(56,189,248,.45);
-  display:flex; align-items:center; justify-content:center;
 }}
-.price-scale-handle span {{
-  writing-mode:vertical-rl; transform:rotate(180deg); font-size:9px; font-weight:700;
-  letter-spacing:1.5px; color:rgba(56,189,248,.7); user-select:none; white-space:nowrap;
-}}
+.price-scale-handle:hover {{ background:rgba(56,189,248,.14); }}
 
 /* BTC stats */
 .btc-stats {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:24px }}
@@ -1636,9 +1632,33 @@ function btcCycleChart(cycles) {{
   Plotly.newPlot("ch-btc-cycle", traces, layout, CFG_Z).then(addBtcPriceScaleHandle);
 }}
 
-// Alça visual (não-interativa) sobre a faixa esquerda do eixo Y — o próprio
-// Plotly já deixa essa faixa arrastável nativamente (reescala só o preço,
-// fixedrange:false); isso só torna visível onde arrastar.
+// Alça sobre a faixa esquerda do eixo Y — arraste vertical reescala o preço
+// (mesmo padrão do Intermarket: pra baixo expande, pra cima comprime),
+// via Plotly.relayout direto no yaxis.range. Overlay próprio (pointer-events
+// auto) porque o comportamento nativo do Plotly nessa faixa (com
+// dragmode:"pan") só desloca o range, não reescala.
+var _btcScaleDrag = null;
+var _btcDragRafPending = false;
+var _btcLastMouseY = 0;
+
+function _btcApplyScaleDragFrame() {{
+  _btcDragRafPending = false;
+  if (!_btcScaleDrag) return;
+  var dy = _btcLastMouseY - _btcScaleDrag.startY;
+  var center = (_btcScaleDrag.min + _btcScaleDrag.max) / 2;
+  var halfRange = (_btcScaleDrag.max - _btcScaleDrag.min) / 2;
+  var factor = Math.pow(1.006, dy); // arrastar pra baixo = expande, pra cima = comprime
+  var newHalf = halfRange * factor;
+  Plotly.relayout("ch-btc-cycle", {{ "yaxis.range": [center - newHalf, center + newHalf] }});
+}}
+
+document.addEventListener("mousemove", function(e) {{
+  if (!_btcScaleDrag) return;
+  _btcLastMouseY = e.clientY;
+  if (!_btcDragRafPending) {{ _btcDragRafPending = true; requestAnimationFrame(_btcApplyScaleDragFrame); }}
+}});
+document.addEventListener("mouseup", function() {{ _btcScaleDrag = null; }});
+
 function addBtcPriceScaleHandle() {{
   var gd = document.getElementById("ch-btc-cycle");
   var wrap = gd.parentElement;
@@ -1649,12 +1669,16 @@ function addBtcPriceScaleHandle() {{
   if (!nsRect) return;
   var handle = document.createElement("div");
   handle.className = "price-scale-handle";
-  handle.title = "Arraste para reescalar o eixo de preço";
+  handle.title = "Arraste pra cima/baixo para reescalar o eixo de preço";
   handle.style.left   = nsRect.getAttribute("x") + "px";
   handle.style.top    = nsRect.getAttribute("y") + "px";
   handle.style.width  = nsRect.getAttribute("width") + "px";
   handle.style.height = nsRect.getAttribute("height") + "px";
-  handle.innerHTML = "<span>ESCALA</span>";
+  handle.addEventListener("mousedown", function(e) {{
+    var range = gd._fullLayout.yaxis.range;
+    _btcScaleDrag = {{ startY: e.clientY, min: range[0], max: range[1] }};
+    e.preventDefault();
+  }});
   wrap.appendChild(handle);
 }}
 
