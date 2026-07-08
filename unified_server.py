@@ -255,7 +255,7 @@ _SHELL = """<!DOCTYPE html>
   }
 
   .hub-logo {
-    font-size: 19px;
+    font-size: 21px;
     font-weight: 700;
     letter-spacing: 1.5px;
     text-transform: uppercase;
