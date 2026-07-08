@@ -40,15 +40,6 @@ SECTOR_LABELS: dict[str, str] = {
     "TODOS": "Todos os Ativos",
 }
 
-# Ativos cuja Classificação Setorial B3 real é "Petróleo, Gás e Biocombustíveis"
-# — não tem índice tradeable B3 próprio. A pedido explícito do usuário
-# (07/jul/2026), em vez de manter uma aba "PETRO" separada, esses ativos
-# foram unidos ao IMAT. Os de "Transporte" (RAIL3, MOTV3, ECOR3, HBSA3,
-# JSLG3, TGMA3) NÃO entram aqui — ficam só na aba "TODOS".
-_IMAT_EXTRA: list[str] = [
-    "PETR3", "PETR4", "PRIO3", "RECV3", "BRAV3", "UGPA3", "VBBR3", "CSAN3",  # Petróleo e Gás
-]
-
 # Fallbacks locais caso a API B3 falhe
 _FALLBACKS: dict[str, list[str]] = {
     "IFNC": ["AXIA3", "B3SA3", "BBAS3", "BBDC3", "BBDC4", "BBSE3", "BPAC11",
@@ -58,8 +49,8 @@ _FALLBACKS: dict[str, list[str]] = {
     "IMOB": ["ALOS3", "CURY3", "CYRE3", "DIRR3", "IGTI11", "MRVE3", "MULT3", "SMFT3"],
     "ICON": ["ABEV3", "ASAI3", "AZZA3", "BEEF3", "CSAN3", "HYPE3", "LREN3",
              "MGLU3", "NATU3", "RADL3", "RENT3", "SLCE3", "UGPA3", "VBBR3", "VIVA3", "YDUQ3"],
-    "IMAT": ["BRAV3", "BRKM5", "CMIN3", "CSNA3", "GGBR4", "GOAU4", "KLBN11",
-             "PETR3", "PETR4", "PRIO3", "RECV3", "SUZB3", "USIM5", "VALE3"],
+    "IMAT": ["BRAP4", "BRKM5", "CBAV3", "CMIN3", "CSNA3", "DXCO3", "FESA4",
+             "GGBR4", "GOAU4", "KLBN11", "RANI3", "SUZB3", "UNIP6", "USIM5", "VALE3"],
     "UTIL": ["CSMG3", "SBSP3"],
     "SMLL": ["COGN3", "FLRY3", "HAPV3", "MOTV3", "RDOR3", "CURY3", "DIRR3", "SMFT3",
              "ALOS3", "CYRE3", "IGTI11", "MRVE3", "CEAB3", "AURE3", "RECV3", "POMO4",
@@ -108,9 +99,6 @@ def sync_sector_components() -> dict[str, int]:
     totals: dict[str, int] = {}
     for code in SECTOR_CODES:
         tickers = _fetch_b3(code)
-        if code == "IMAT":
-            tickers = sorted(set(tickers) | set(_IMAT_EXTRA))
-            logger.info(f"IMAT: +{len(_IMAT_EXTRA)} ativos de Petróleo/Gás e Transporte unidos manualmente")
         with get_session() as s:
             SectorComponentRepository(s).replace_sector(code, tickers)
         totals[code] = len(tickers)
