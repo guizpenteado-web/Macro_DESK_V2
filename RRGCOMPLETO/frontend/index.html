@@ -10,7 +10,7 @@ body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFo
 
 /* ── Header ── */
 header{background:#161b22;border-bottom:1px solid #30363d;padding:12px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-h1{font-size:22px;font-weight:600;color:#fff;white-space:nowrap}
+h1{font-size:18px;font-weight:600;color:#fff;white-space:nowrap}
 h1 span{color:#8b949e;font-weight:400;font-size:12px;display:block;margin-top:1px}
 
 /* Ciclo clássico, no cabeçalho */
@@ -19,7 +19,7 @@ h1 span{color:#8b949e;font-weight:400;font-size:12px;display:block;margin-top:1p
   padding:6px 14px;font-size:12px;color:#c9d1d9;line-height:1.45;cursor:help;
 }
 .cycle-mini .cm-row{display:flex;align-items:center;gap:6px;white-space:nowrap}
-.cycle-mini .cm-arrows{display:flex;justify-content:space-between;padding:0 7px;color:#484f58;font-size:11px}
+.cycle-mini .cm-arrows{display:flex;justify-content:space-between;padding:0 7px;color:#c9d1d9;font-size:15px;font-weight:700}
 .cm-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
 .cycle-mini .cm-arrow{color:#6e7681;font-size:12.5px}
 
@@ -324,7 +324,7 @@ function render() {
 
   let tbody = "";
   if (sectorRow) {
-    tbody += rowHTML(sectorRow.code, `Índice sintético — ${sectorRow.name}`, sectorRow.weekly, weeks, "sector-row");
+    tbody += rowHTML(sectorRow.code, sectorRow.name, sectorRow.weekly, weeks, "sector-row");
   }
   assets.forEach(a => {
     tbody += rowHTML(a.ticker, a.name, a.weekly, weeks, "", a.is_ibov);
