@@ -746,15 +746,15 @@ _SHELL = """<!DOCTYPE html>
   </div>
 
   <iframe id="f1" src="" class="visible"
-          onload="loaded(1)"></iframe>
+          onload="if(window.loaded)loaded(1)"></iframe>
   <iframe id="f2" src="about:blank"
-          onload="loaded(2)"></iframe>
+          onload="if(window.loaded)loaded(2)"></iframe>
   <iframe id="f3" src="about:blank"
-          onload="loaded(3)"></iframe>
+          onload="if(window.loaded)loaded(3)"></iframe>
   <iframe id="f4" src="about:blank"
-          onload="loaded(4)"></iframe>
+          onload="if(window.loaded)loaded(4)"></iframe>
   <iframe id="f5" src="about:blank"
-          onload="loaded(5)"></iframe>
+          onload="if(window.loaded)loaded(5)"></iframe>
 
 </div>
 
