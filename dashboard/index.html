@@ -79,10 +79,10 @@ body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFo
 .yd-handle:hover span{opacity:1}
 
 .yd-info{
-  position:absolute; right:6px; width:34px; height:18px; z-index:26;
+  position:absolute; width:20px; height:20px; z-index:26;
   display:flex; align-items:center; justify-content:center;
-  background:rgba(13,17,23,0.9); border:1px solid #30363d; border-radius:4px 4px 0 0;
-  color:#8b949e; font-size:10px; font-weight:800; font-style:italic; font-family:Georgia,serif;
+  background:rgba(13,17,23,0.9); border:1px solid #30363d; border-radius:4px;
+  color:#8b949e; font-size:11px; font-weight:800; font-style:italic; font-family:Georgia,serif;
   cursor:help; user-select:none; transition:background .12s,color .12s;
 }
 .yd-info:hover{ background:rgba(31,111,235,0.18); color:#58a6ff; border-color:#1f6feb; }
@@ -706,14 +706,6 @@ function addDragHandles(){
 
   const container = document.getElementById("chart-container");
 
-  const info = document.createElement("div");
-  info.id = "yd-info";
-  info.className = "yd-info";
-  info.textContent = "i";
-  info.title = "Arraste para ajustar a escala do ativo";
-  info.style.top = (chart.plotTop - 20) + "px";
-  container.appendChild(info);
-
   const panel = document.createElement("div");
   panel.id = "yd-panel";
   panel.style.cssText =
@@ -751,6 +743,22 @@ function addDragHandles(){
   });
 
   container.appendChild(panel);
+
+  // Botão "i" ao lado esquerdo da alça do IBOV (primeira da pilha) — usa a
+  // posição já renderizada em vez de recalcular a altura de cada linha.
+  const ibovHandle = panel.firstElementChild;
+  if(ibovHandle){
+    const hRect = ibovHandle.getBoundingClientRect();
+    const cRect = container.getBoundingClientRect();
+    const info = document.createElement("div");
+    info.id = "yd-info";
+    info.className = "yd-info";
+    info.textContent = "i";
+    info.title = "Arraste para ajustar a escala do ativo";
+    info.style.top   = (hRect.top - cRect.top + (hRect.height - 20) / 2) + "px";
+    info.style.right = "44px";
+    container.appendChild(info);
+  }
 }
 
 // ────────────────────────────────────────────────────────────────
