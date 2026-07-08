@@ -98,38 +98,12 @@ tr.sector-row .company{color:#79b8ff}
 #tooltip .tt-quad{display:inline-block;padding:1px 7px;border-radius:9px;font-size:10px;font-weight:700;color:#0d1117}
 
 .empty-state{padding:40px;text-align:center;color:#484f58;font-size:13px}
-
-/* ── Modal "Sobre" ── */
-#help-overlay{
-  position:fixed;inset:0;background:rgba(1,4,9,.72);z-index:2000;display:none;
-  align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;
-}
-#help-overlay.show{display:flex}
-#help-modal{
-  background:#161b22;border:1px solid #30363d;border-radius:10px;max-width:820px;width:100%;
-  padding:28px 32px 32px;box-shadow:0 12px 40px rgba(0,0,0,.5);position:relative;
-}
-#help-close{
-  position:absolute;top:16px;right:18px;background:none;border:none;color:#8b949e;
-  font-size:20px;cursor:pointer;line-height:1;padding:4px;
-}
-#help-close:hover{color:#fff}
-#help-modal h2{font-size:17px;color:#fff;margin:22px 0 10px}
-#help-modal h2:first-child{margin-top:0}
-#help-modal p{color:#c9d1d9;font-size:13px;line-height:1.6;margin-bottom:8px}
-#help-modal ul{margin:6px 0 6px 20px;color:#c9d1d9;font-size:13px;line-height:1.6}
-#help-modal ul ul{margin-top:2px;margin-bottom:2px;color:#8b949e}
-#help-modal b{color:#fff}
-#help-modal table{width:100%;border-collapse:collapse;margin:10px 0 14px;font-size:12.5px}
-#help-modal th{text-align:left;color:#8b949e;font-weight:600;padding:6px 10px;border-bottom:1px solid #30363d}
-#help-modal td{padding:8px 10px;border-bottom:1px solid #21262d;color:#c9d1d9;vertical-align:top}
-#help-modal .hq-dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:middle}
 </style>
 </head>
 <body>
 
 <header>
-  <h1>Relative Rotation Graph<span>(IBOV + todos os membros dos sub-índices B3) — cada ativo vs. o próprio IBOV</span></h1>
+  <h1>Relative Rotation Graph</h1>
 
   <div class="cycle-mini" title="Ciclo clássico do RRG: uma ação saudável tende a girar no sentido horário entre os quadrantes">
     <div class="cm-row"><span class="cm-dot q-Improving"></span>Improving <span class="cm-arrow">→</span> <span class="cm-dot q-Leading"></span>Leading</div>
@@ -152,80 +126,8 @@ tr.sector-row .company{color:#79b8ff}
     <input id="f-weight" type="number" min="0" step="0.1" value="0" style="width:58px">
 
     <button class="btn primary" id="btn-collect">↻ Atualizar dados</button>
-    <button class="btn" id="btn-help" style="margin-top:34px">Sobre</button>
   </div>
 </header>
-
-<div id="help-overlay">
-  <div id="help-modal">
-    <button id="help-close" title="Fechar">✕</button>
-
-    <h2>A ideia central</h2>
-    <p>Tudo é medido <b>contra o IBOV</b>, nunca em valor absoluto. Não importa se PETR4 subiu ou caiu — importa se ela subiu ou caiu <b>mais ou menos que o índice</b> naquela semana. Duas métricas fazem esse trabalho:</p>
-    <ul>
-      <li><b>RS-Ratio</b> (força relativa): mede se a ação está performando acima ou abaixo da sua própria média recente vs. IBOV. Oscila em torno de <b>100</b>.
-        <ul>
-          <li>RS-Ratio &gt; 100 → a ação está relativamente forte</li>
-          <li>RS-Ratio &lt; 100 → a ação está relativamente fraca</li>
-        </ul>
-      </li>
-      <li><b>RS-Momentum</b>: mede se essa força relativa está <b>acelerando ou desacelerando</b>. Também oscila em torno de <b>100</b>.
-        <ul>
-          <li>RS-Momentum &gt; 100 → a força relativa está ganhando ritmo</li>
-          <li>RS-Momentum &lt; 100 → a força relativa está perdendo ritmo</li>
-        </ul>
-      </li>
-    </ul>
-    <p>Combinando os dois (força × momentum), cada ação cai num dos 4 quadrantes:</p>
-
-    <h2>Os 4 quadrantes</h2>
-    <table>
-      <thead>
-        <tr><th>Cor</th><th>Quadrante</th><th>RS-Ratio</th><th>RS-Momentum</th><th>O que significa</th></tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><span class="hq-dot q-Leading"></span>Verde</td>
-          <td><b>Leading</b></td>
-          <td>acima de 100</td>
-          <td>acima de 100</td>
-          <td>Está forte <b>e</b> acelerando. É líder de mercado agora — está "puxando" o IBOV pra cima.</td>
-        </tr>
-        <tr>
-          <td><span class="hq-dot q-Weakening"></span>Amarelo</td>
-          <td><b>Weakening</b></td>
-          <td>acima de 100</td>
-          <td>abaixo de 100</td>
-          <td>Ainda está forte, mas perdendo fôlego. Foi líder, começa a cansar. Sinal de atenção.</td>
-        </tr>
-        <tr>
-          <td><span class="hq-dot q-Lagging"></span>Vermelho</td>
-          <td><b>Lagging</b></td>
-          <td>abaixo de 100</td>
-          <td>abaixo de 100</td>
-          <td>Fraca e ainda piorando. É o pior estado — perdendo performance pro índice de forma consistente.</td>
-        </tr>
-        <tr>
-          <td><span class="hq-dot q-Improving"></span>Azul</td>
-          <td><b>Improving</b></td>
-          <td>abaixo de 100</td>
-          <td>acima de 100</td>
-          <td>Ainda fraca, mas o momentum já virou pra cima. É o estágio de "início de recuperação" — pode virar líder nas próximas semanas.</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <h2>O ciclo clássico (por que a ordem importa)</h2>
-    <p>Na teoria do RRG, uma ação saudável tende a <b>girar no sentido horário</b> entre os quadrantes ao longo do tempo (veja o diagrama no topo da tela). Ou seja: recupera (azul) → assume liderança (verde) → começa a cansar (amarelo) → perde força de vez (vermelho) → eventualmente recupera de novo (azul). Não é uma regra fixa, mas é o padrão mais comum — por isso vale prestar atenção não só na cor da semana atual, mas na <b>sequência</b> de cores ao longo das colunas.</p>
-
-    <h2>Como ler a matriz na prática</h2>
-    <ul>
-      <li>Cada linha é um ativo (ou um setor, se você clicou num dos botões de índice), cada coluna é uma semana, sempre com a mais recente à esquerda.</li>
-      <li>Olhando a sequência de cores <b>da direita pra esquerda</b> (do passado pro presente), você vê o "caminho" que o ativo percorreu no ciclo. Ex.: vermelho→vermelho→azul→azul→verde é uma recuperação clássica se formando.</li>
-      <li>O <b>Score de Rotação (0-100)</b>, na coluna fixa, resume tudo isso num número: combina RS-Ratio, RS-Momentum e quanto tempo o ativo já está no quadrante atual (persistência). Serve pra comparar ativos rapidamente sem precisar ler cor por cor — score alto e consistente = líder de verdade, não só um pico passageiro.</li>
-    </ul>
-  </div>
-</div>
 
 <div class="index-bar">
   <span class="label">Índice:</span>
@@ -496,13 +398,6 @@ document.getElementById("btn-collect").addEventListener("click", async () => {
   }, 2000);
   await fetch(`${API}/api/collect/trigger`, { method: "POST" });
 });
-
-// ── Modal "Sobre" ──
-const helpOverlay = document.getElementById("help-overlay");
-document.getElementById("btn-help").addEventListener("click", () => helpOverlay.classList.add("show"));
-document.getElementById("help-close").addEventListener("click", () => helpOverlay.classList.remove("show"));
-helpOverlay.addEventListener("click", e => { if (e.target === helpOverlay) helpOverlay.classList.remove("show"); });
-document.addEventListener("keydown", e => { if (e.key === "Escape") helpOverlay.classList.remove("show"); });
 
 loadMatrix();
 </script>
