@@ -242,6 +242,9 @@ _SHELL = """<!DOCTYPE html>
   }
 
   .hub-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     font-size: 21px;
     font-weight: 700;
     letter-spacing: 1.5px;
@@ -251,6 +254,7 @@ _SHELL = """<!DOCTYPE html>
     white-space: nowrap;
   }
   .hub-logo span { color: var(--text); }
+  .hub-logo-icon { width: 20px; height: 20px; flex-shrink: 0; }
 
   .divider {
     width: 1px; height: 24px;
@@ -631,7 +635,22 @@ _SHELL = """<!DOCTYPE html>
 <body>
 
 <nav>
-  <div class="hub-logo"><span>Macro Desk</span></div>
+  <div class="hub-logo">
+    <svg class="hub-logo-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="1" width="22" height="22" rx="6" fill="#2f9e6e"/>
+      <g stroke="#0d1117" stroke-width="1.1" stroke-linecap="round" fill="none">
+        <path d="M12 4 L8.7 16.5"/>
+        <path d="M12 4 L15.3 16.5"/>
+        <path d="M10.2 9.3 L13.8 9.3"/>
+        <path d="M9.4 13 L14.6 13"/>
+        <path d="M10.6 4.6 L13.4 4.6"/>
+      </g>
+      <rect x="6.5" y="16.5" width="11" height="1.8" rx="0.9" fill="#0d1117"/>
+      <path d="M3 20 q1.4,-1.3 2.8,0 q1.4,1.3 2.8,0 q1.4,-1.3 2.8,0 q1.4,1.3 2.8,0 q1.4,-1.3 2.8,0 q1.4,1.3 2.8,0"
+            stroke="#58c4ff" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+    </svg>
+    <span>Macro Desk</span>
+  </div>
   <div class="divider"></div>
 
   <button class="nav-btn active-1" id="btn1" onclick="show(1)">
