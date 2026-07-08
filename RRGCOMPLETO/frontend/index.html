@@ -243,9 +243,9 @@ function applyHighlight(assets) {
         .sort((x, y) => Math.abs(y.scoreDelta) - Math.abs(x.scoreDelta))
         .slice(0, 15).map(x => x.a);
     case "rs_gain":
-      return withDelta.sort((x, y) => y.rsDelta - x.rsDelta).slice(0, 10).map(x => x.a);
+      return withDelta.sort((x, y) => y.rsDelta - x.rsDelta).slice(0, 40).map(x => x.a);
     case "rs_loss":
-      return withDelta.sort((x, y) => x.rsDelta - y.rsDelta).slice(0, 10).map(x => x.a);
+      return withDelta.sort((x, y) => x.rsDelta - y.rsDelta).slice(0, 40).map(x => x.a);
     default:
       return assets;
   }
