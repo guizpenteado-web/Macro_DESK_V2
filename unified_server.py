@@ -1686,20 +1686,23 @@ class EconomicCalendar:
         return cls._parse_html(html)
 
     @classmethod
-    def fetch_us_high(cls, days: int = 7) -> list[dict]:
+    def fetch_us_high_medium(cls, days: int = 7) -> list[dict]:
         # importance: 1=Low, 2=Medium, 3=High on investing.com
-        return cls.fetch(["US"], ["3"], days)
+        return cls.fetch(["US"], ["3", "2"], days)
 
     @classmethod
     def fetch_brazil_high_medium(cls, days: int = 7) -> list[dict]:
+        # Brasil quase não tem eventos marcados "High" nessa fonte (mesmo CPI e
+        # Vendas no Varejo ficam em "Medium") — High-only deixaria a seção
+        # praticamente sempre vazia, por isso mantém High+Medium.
         return cls.fetch(["BR"], ["3", "2"], days)
 
     @classmethod
     def fetch_filtered(cls, days: int = 7) -> list[dict]:
-        """US High + Brazil High+Medium, sorted by datetime."""
-        us   = cls.fetch(["US"],  ["3"],      days)
-        br   = cls.fetch(["BR"],  ["3", "2"], days)
-        combined = us + br
+        """Brazil High+Medium + US High+Medium, sorted by datetime."""
+        br   = cls.fetch(["BR"], ["3", "2"], days)
+        us   = cls.fetch(["US"], ["3", "2"], days)
+        combined = br + us
         combined.sort(key=lambda e: e.get("datetime", ""))
         return combined
 
