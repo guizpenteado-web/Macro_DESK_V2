@@ -12,7 +12,7 @@ from __future__ import annotations
 from app.database.connection import get_session
 from app.database.repository import AssetRepository, SectorComponentRepository
 from app.downloader.ibov_components import fetch_ibov_components
-from app.downloader.sector_components import SECTOR_CODES
+from app.downloader.sector_components import SECTOR_CODES, CURATED_CODES
 from app.utils.logger import logger
 
 
@@ -23,7 +23,7 @@ def sync_universe() -> int:
     with get_session() as s:
         scr = SectorComponentRepository(s)
         sector_tickers: set[str] = set()
-        for code in SECTOR_CODES:
+        for code in SECTOR_CODES + CURATED_CODES:
             sector_tickers |= set(scr.get_tickers(code))
 
     universe = set(ibov_by_ticker) | sector_tickers

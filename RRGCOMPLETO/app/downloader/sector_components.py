@@ -22,6 +22,12 @@ from app.utils.logger import logger
 
 SECTOR_CODES: list[str] = ["IFNC", "IEEX", "IMOB", "ICON", "IMAT", "UTIL", "SMLL", "INDX", "IDIV", "IBLV"]
 
+# Setores "de verdade" (Classificação Setorial B3) que não têm índice de mercado
+# tradeable próprio — por isso ficam de fora da API B3 acima. Curados manualmente
+# a partir da classificação oficial B3 (setor/subsetor), verificada individualmente
+# por ticker (ex.: investidor10, dadosdemercado) em 07/jul/2026.
+CURATED_CODES: list[str] = ["PETRO", "TRANS"]
+
 SECTOR_LABELS: dict[str, str] = {
     "IFNC": "Financeiro",
     "IEEX": "Energia Elétrica",
@@ -33,6 +39,16 @@ SECTOR_LABELS: dict[str, str] = {
     "INDX": "Industrial",
     "IDIV": "Dividendos",
     "IBLV": "Baixa Volatilidade",
+    "PETRO": "Petróleo e Gás",
+    "TRANS": "Transporte",
+}
+
+# Setor "Petróleo, Gás e Biocombustíveis" (classificação B3) — nenhum sub-índice
+# tradeable da B3 cobre esse setor entre os listados acima.
+# Setor "Bens Industriais" / subsetor "Transportes" (classificação B3).
+_CURATED: dict[str, list[str]] = {
+    "PETRO": ["PETR3", "PETR4", "PRIO3", "RECV3", "BRAV3", "UGPA3", "VBBR3", "CSAN3"],
+    "TRANS": ["RAIL3", "MOTV3", "ECOR3", "HBSA3", "JSLG3", "TGMA3"],
 }
 
 # Fallbacks locais caso a API B3 falhe
@@ -97,5 +113,11 @@ def sync_sector_components() -> dict[str, int]:
         with get_session() as s:
             SectorComponentRepository(s).replace_sector(code, tickers)
         totals[code] = len(tickers)
+    for code in CURATED_CODES:
+        tickers = _CURATED.get(code, [])
+        with get_session() as s:
+            SectorComponentRepository(s).replace_sector(code, tickers)
+        totals[code] = len(tickers)
+        logger.info(f"{code}: {len(tickers)} componentes (curado — sem índice B3 tradeable)")
     logger.success(f"Setores sincronizados: {totals}")
     return totals

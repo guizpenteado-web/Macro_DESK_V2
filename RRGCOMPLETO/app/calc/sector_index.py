@@ -24,7 +24,9 @@ from app.database.repository import (
     PriceRepository, SectorComponentRepository, WeeklyMetricRepository,
 )
 from app.downloader.price_downloader import IBOV_TICKER
-from app.downloader.sector_components import SECTOR_CODES
+from app.downloader.sector_components import SECTOR_CODES, CURATED_CODES
+
+ALL_SECTOR_CODES = SECTOR_CODES + CURATED_CODES
 from app.utils.logger import logger
 
 SECTOR_TICKER_PREFIX = "SECT_"
@@ -70,7 +72,7 @@ def _build_composite(weights: dict[str, float]) -> pd.Series:
 
 def build_all_sector_composites() -> dict[str, int]:
     totals: dict[str, int] = {}
-    for code in SECTOR_CODES:
+    for code in ALL_SECTOR_CODES:
         with get_session() as s:
             members = SectorComponentRepository(s).get_tickers(code)
 
@@ -111,7 +113,7 @@ def compute_sector_metrics() -> int:
         return 0
 
     all_rows: list[dict] = []
-    for code in SECTOR_CODES:
+    for code in ALL_SECTOR_CODES:
         all_rows.extend(compute_ticker_metrics(sector_ticker(code), ibov_weekly))
 
     with get_session() as s:
