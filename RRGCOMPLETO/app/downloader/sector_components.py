@@ -41,12 +41,12 @@ SECTOR_LABELS: dict[str, str] = {
 }
 
 # Ativos cuja Classificação Setorial B3 real é "Petróleo, Gás e Biocombustíveis"
-# ou "Bens Industriais/Transportes" — nenhum dos dois tem índice tradeable B3
-# próprio. A pedido explícito do usuário (07/jul/2026), em vez de manter abas
-# "PETRO"/"TRANS" separadas, esses ativos foram unidos ao IMAT.
+# — não tem índice tradeable B3 próprio. A pedido explícito do usuário
+# (07/jul/2026), em vez de manter uma aba "PETRO" separada, esses ativos
+# foram unidos ao IMAT. Os de "Transporte" (RAIL3, MOTV3, ECOR3, HBSA3,
+# JSLG3, TGMA3) NÃO entram aqui — ficam só na aba "TODOS".
 _IMAT_EXTRA: list[str] = [
     "PETR3", "PETR4", "PRIO3", "RECV3", "BRAV3", "UGPA3", "VBBR3", "CSAN3",  # Petróleo e Gás
-    "RAIL3", "MOTV3", "ECOR3", "HBSA3", "JSLG3", "TGMA3",  # Transporte
 ]
 
 # Fallbacks locais caso a API B3 falhe
