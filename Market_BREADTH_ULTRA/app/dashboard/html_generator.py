@@ -644,7 +644,7 @@ tr:hover td{{
 /* ─── Y-SCALE HANDLES ─── */
 .chart-area{{display:flex;align-items:stretch;padding:0 28px 12px}}
 .chart-area .chart-box{{flex:1;height:380px;width:0}}
-#chart-idx{{height:640px}}
+#chart-idx{{height:480px}}
 .y-scale-handle{{
   width:22px;flex-shrink:0;cursor:ns-resize;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
