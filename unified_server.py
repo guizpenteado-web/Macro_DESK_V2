@@ -8,6 +8,8 @@ Proxy reverso integrado: tudo passa pela porta 8000 (compativel com ngrok/Tailsc
   http://<host>:8000/intermarket/ -> Intermarket Dashboard (proxy -> :8010)
   http://<host>:8000/breadth/     -> Market_BREADTH_ULTRA  (proxy -> :8011)
   http://<host>:8000/macro/       -> Macro Dashboard        (proxy -> :8012)
+  http://<host>:8000/ibov/        -> IBOV Calls             (proxy -> :8013)
+  http://<host>:8000/rrg/         -> RRGCOMPLETO (Rotação Relativa) (proxy -> :8014)
 """
 from __future__ import annotations
 import asyncio
@@ -38,18 +40,21 @@ BIBLIOTECA_DIR = BASE / "biblioteca"
 BREADTH_DIR   = BASE / "Market_BREADTH_ULTRA"
 MACRO_DIR     = BASE / "MacroDashboard"
 IBOV_DIR      = BASE / "IbovCalls"
+RRG_DIR       = BASE / "RRGCOMPLETO"
 
 
 PYTHON_1 = str(DASHBOARD_DIR / ".venv" / "Scripts" / "python.exe")
 PYTHON_2 = str(BREADTH_DIR   / ".venv" / "Scripts" / "python.exe")
 PYTHON_3 = str(MACRO_DIR     / ".venv" / "Scripts" / "python.exe")
 PYTHON_4 = str(IBOV_DIR      / ".venv" / "Scripts" / "python.exe")
+PYTHON_5 = str(RRG_DIR       / ".venv" / "Scripts" / "python.exe")
 
 PORT_SHELL       = 8000
 PORT_INTERMARKET = 8010
 PORT_BREADTH     = 8011
 PORT_MACRO       = 8012
 PORT_IBOV        = 8013
+PORT_RRG         = 8014
 
 _procs: list[subprocess.Popen] = []
 
@@ -94,6 +99,13 @@ def _start_subservers() -> None:
             "cmd":  [PYTHON_4, "server.py"],
             "cwd":  str(IBOV_DIR),
             "env":  {**__import__("os").environ, "PORT": str(PORT_IBOV)},
+        },
+        {
+            "name": "RRGCompleto",
+            "port": PORT_RRG,
+            "cmd":  [PYTHON_5, "-m", "app.main"],
+            "cwd":  str(RRG_DIR),
+            "env":  {**__import__("os").environ, "PORT": str(PORT_RRG)},
         },
     ]
 
@@ -213,6 +225,7 @@ _SHELL = """<!DOCTYPE html>
     --c3:       #a78bfa;
     --c4:       #34d399;
     --c5:       #f472b6;
+    --c6:       #fb923c;
     --text:     #e6edf3;
     --muted:    #8b949e;
     --border:   #21262d;
@@ -315,6 +328,12 @@ _SHELL = """<!DOCTYPE html>
     background: rgba(244,114,182,.08);
   }
   .nav-btn.active-8 .dot { opacity: 1; }
+  .nav-btn.active-9 {
+    border-color: var(--c6);
+    color: var(--c6);
+    background: rgba(251,146,60,.08);
+  }
+  .nav-btn.active-9 .dot { opacity: 1; }
   .nav-btn.active-5 { border-color: #6e7681; color: #d1d4dc; background: rgba(110,118,129,.12); }
   .nav-btn.active-6 { border-color: #6e7681; color: #d1d4dc; background: rgba(110,118,129,.12); }
   .nav-btn.active-7 { border-color: #6e7681; color: #d1d4dc; background: rgba(110,118,129,.12); }
@@ -655,6 +674,11 @@ _SHELL = """<!DOCTYPE html>
     Market Breadth
   </button>
 
+  <button class="nav-btn" id="btn6" onclick="show(6)">
+    <span class="dot"></span>
+    RRG
+  </button>
+
   <button class="nav-btn" id="btn5" onclick="show(5)">
     <span class="dot"></span>
     Biblioteca
@@ -744,6 +768,10 @@ _SHELL = """<!DOCTYPE html>
     <div class="spinner" style="border-top-color:var(--c5)"></div>
     Carregando Biblioteca...
   </div>
+  <div class="loader hidden" id="loader6">
+    <div class="spinner" style="border-top-color:var(--c6)"></div>
+    Carregando RRG...
+  </div>
 
   <iframe id="f1" src="" class="visible"
           onload="if(window.loaded)loaded(1)"></iframe>
@@ -755,12 +783,14 @@ _SHELL = """<!DOCTYPE html>
           onload="if(window.loaded)loaded(4)"></iframe>
   <iframe id="f5" src="about:blank"
           onload="if(window.loaded)loaded(5)"></iframe>
+  <iframe id="f6" src="about:blank"
+          onload="if(window.loaded)loaded(6)"></iframe>
 
 </div>
 
 <script>
-  var _loaded    = {1: false, 2: false, 3: false, 4: false, 5: false};
-  var _srcSet    = {1: false, 2: false, 3: false, 4: false, 5: false};
+  var _loaded    = {1: false, 2: false, 3: false, 4: false, 5: false, 6: false};
+  var _srcSet    = {1: false, 2: false, 3: false, 4: false, 5: false, 6: false};
   var _current   = 1;
 
   var _cv = Date.now();
@@ -770,6 +800,7 @@ _SHELL = """<!DOCTYPE html>
     3: "/macro/?v=" + _cv,
     4: "/breadth/?v=" + _cv,
     5: "/biblioteca/?v=" + _cv,
+    6: "/rrg/?v=" + _cv,
   };
 
   function loaded(n) {
@@ -787,7 +818,7 @@ _SHELL = """<!DOCTYPE html>
       document.getElementById("f" + n).src = URLS[n];
     }
 
-    [1, 2, 3, 4, 5].forEach(function(i) {
+    [1, 2, 3, 4, 5, 6].forEach(function(i) {
       document.getElementById("f" + i).classList.toggle("visible", i === n);
       document.getElementById("loader" + i).classList.toggle("hidden",
         i !== n || _loaded[i]);
@@ -803,6 +834,8 @@ _SHELL = """<!DOCTYPE html>
       "nav-btn" + (n === 4 ? " active-4" : "");
     document.getElementById("btn5").className =
       "nav-btn" + (n === 5 ? " active-8" : "");
+    document.getElementById("btn6").className =
+      "nav-btn" + (n === 6 ? " active-9" : "");
     if (n === 1) {
       var today = new Date().toISOString().slice(0,10);
       localStorage.setItem("calls_last_seen", today);
@@ -1347,6 +1380,12 @@ async def proxy_macro(request: Request, path: str = "") -> Response:
 @app.api_route("/ibov/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
 async def proxy_ibov(request: Request, path: str = "") -> Response:
     return await _proxy(request, f"http://127.0.0.1:{PORT_IBOV}", "/ibov")
+
+
+@app.api_route("/rrg", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+@app.api_route("/rrg/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+async def proxy_rrg(request: Request, path: str = "") -> Response:
+    return await _proxy(request, f"http://127.0.0.1:{PORT_RRG}", "/rrg")
 
 
 @app.get("/biblioteca")
