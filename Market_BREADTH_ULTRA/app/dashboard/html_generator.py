@@ -817,7 +817,7 @@ tr:hover td{{
   <div class="chart-area">
     <div class="y-scale-handle y-left" onmousedown="startYScale(event,'chart-idx','y')" title="Arraste: escala %">&#9650;<br>&#9632;<br>&#9660;</div>
     <div id="chart-idx" class="chart-box"></div>
-    <div class="y-scale-handle y-right" onmousedown="startYScale(event,'chart-idx','y2')" title="Arraste: escala IBOV">&#9650;<br>&#9632;<br>&#9660;</div>
+    <div class="y-scale-handle y-right" style="visibility:hidden">&#9650;<br>&#9632;<br>&#9660;</div>
   </div>
 
   <div class="cards" style="padding-top:4px" id="idx-cards"></div>
@@ -1153,7 +1153,6 @@ function buildIdxChart() {{
   }}
 
   var metric = "sma200";
-  // Painel inferior — amplitude comparada entre indices (y)
   var traces = _idxCfg
     .filter(function(c) {{ return idxBreadth[c.code]; }})
     .map(function(c) {{
@@ -1164,50 +1163,16 @@ function buildIdxChart() {{
         type:"scatter", mode:"lines",
         line:{{color:c.color, width:c.width, dash:c.dash}},
         visible: c.code === "IBOV" ? true : "legendonly",
-        yaxis:"y", xaxis:"x",
         hovertemplate:"%{{x}}<br>" + c.label + ": %{{y:.1f}}%<extra></extra>"
       }};
     }});
 
-  // Painel superior — IBOVESPA (cotação), sempre visível — mesmo padrão do RSI Breadth
-  var ibovTrace = {{
-    x: ibovDates, y: ibovPrices,
-    name: "IBOVESPA",
-    type: "scatter", mode: "lines",
-    line: {{color:"rgba(88,166,255,0.65)", width:1.5}},
-    yaxis: "y2", xaxis: "x",
-    hovertemplate: "%{{x}}<br>IBOV: %{{y:,.0f}}<extra></extra>"
-  }};
+  var layout = Object.assign({{}}, layoutBase, {{
+    shapes: smaShapes,
+    yaxis: Object.assign({{}}, layoutBase.yaxis, {{range:[0,105]}})
+  }});
 
-  var layout = {{
-    paper_bgcolor:"#0b1520", plot_bgcolor:"#070d14",
-    font: {{color:"#6a8099", size:11, family:"Inter,sans-serif"}},
-    margin: {{t:10, r:60, b:40, l:55}},
-    dragmode:"pan",
-    xaxis: {{
-      gridcolor:"rgba(255,255,255,0.04)", linecolor:"rgba(255,255,255,0.07)",
-      rangeslider:{{visible:false}}, domain:[0,1], anchor:"y"
-    }},
-    // Painel inferior — amplitude % (30% da altura)
-    yaxis: {{
-      domain:[0,0.30],
-      gridcolor:"rgba(255,255,255,0.04)", linecolor:"rgba(255,255,255,0.07)",
-      ticksuffix:"%", fixedrange:false, range:[0,105],
-      title:{{text:"% Ativos",font:{{size:10,color:"#3a5060"}}}}
-    }},
-    // Painel superior — IBOVESPA (67% da altura)
-    yaxis2: {{
-      domain:[0.35,1.0],
-      gridcolor:"rgba(255,255,255,0.04)", linecolor:"rgba(255,255,255,0.07)",
-      anchor:"x", fixedrange:false, tickformat:",.0f",
-      title:{{text:"IBOVESPA",font:{{size:10,color:"#3a5060"}}}}
-    }},
-    legend: {{bgcolor:"rgba(0,0,0,0)", bordercolor:"rgba(255,255,255,0.07)", borderwidth:1}},
-    hovermode: "x unified",
-    shapes: smaShapes
-  }};
-
-  Plotly.newPlot("chart-idx", traces.concat([ibovTrace]), layout, plotConfig)
+  Plotly.newPlot("chart-idx", traces, layout, plotConfig)
     .then(function() {{
       _addCtrlZoom("chart-idx");
       _buildIdxCards("sma200");
@@ -1222,10 +1187,7 @@ function switchIdxMetric(metric, btn) {{
   var active = _idxCfg.filter(function(c){{return idxBreadth[c.code];}});
   var newY = active.map(function(c){{return idxBreadth[c.code][metric];}});
   var newX = active.map(function(c){{return idxBreadth[c.code].dates;}});
-  // Só os traços de amplitude (0..active.length-1) — o último traço é a
-  // cotação do IBOV (painel superior) e não deve ser tocado aqui.
-  var indices = active.map(function(_, i) {{ return i; }});
-  Plotly.restyle("chart-idx", {{x:newX, y:newY}}, indices);
+  Plotly.restyle("chart-idx", {{x:newX, y:newY}});
   _buildIdxCards(metric);
 }}
 
