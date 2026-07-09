@@ -420,6 +420,7 @@ def generate_dashboard() -> Path:
         "sma50":  b_chart["pct_sma50"].round(1).tolist(),
         "sma21":  b_chart["pct_sma21"].round(1).tolist(),
         "rsi":    b_chart["pct_rsi_oversold"].fillna(0).round(1).tolist(),
+        "rsi_overbought": b_chart["pct_rsi_overbought"].fillna(0).round(1).tolist(),
     }
 
     sma_traces_json    = json.dumps(sma_traces)
