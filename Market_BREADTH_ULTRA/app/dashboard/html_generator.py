@@ -183,7 +183,7 @@ def _load_ibov() -> tuple[list[str], list[float]]:
 
 
 def _load_index_breadth() -> dict:
-    """Retorna {index_code: {dates, sma200, sma50, sma21, rsi}} para o JS."""
+    """Retorna {index_code: {dates, sma200, sma50, sma21, rsi, rsi_overbought}} para o JS."""
     try:
         df = pd.read_sql(
             "SELECT * FROM index_breadth ORDER BY index_code, date", engine
@@ -199,6 +199,7 @@ def _load_index_breadth() -> dict:
                 "sma50":  g["pct_sma50"].fillna(0).round(1).tolist(),
                 "sma21":  g["pct_sma21"].fillna(0).round(1).tolist(),
                 "rsi":    g["pct_rsi_oversold"].fillna(0).round(1).tolist(),
+                "rsi_overbought": g["pct_rsi_overbought"].fillna(0).round(1).tolist(),
             }
         return result
     except Exception:
@@ -805,6 +806,7 @@ tr:hover td{{
       <button class="fbtn f-sma50"         id="im-50"  onclick="switchIdxMetric('sma50', this)">% Acima SMA50</button>
       <button class="fbtn f-sma21"         id="im-21"  onclick="switchIdxMetric('sma21', this)">% Acima SMA21</button>
       <button class="fbtn f-ov"            id="im-rsi" onclick="switchIdxMetric('rsi',   this)">RSI Sobrevendido</button>
+      <button class="fbtn f-ov"            id="im-rsiob" onclick="switchIdxMetric('rsi_overbought', this)">RSI Sobrecomprado</button>
     </div>
     <div style="margin-left:auto;font-size:11px;color:#484f58">Ative/desative indices clicando na legenda</div>
   </div>
@@ -813,7 +815,7 @@ tr:hover td{{
   <div class="chart-area">
     <div class="y-scale-handle y-left" onmousedown="startYScale(event,'chart-idx','y')" title="Arraste: escala %">&#9650;<br>&#9632;<br>&#9660;</div>
     <div id="chart-idx" class="chart-box"></div>
-    <div class="y-scale-handle y-right" style="visibility:hidden">&#9650;<br>&#9632;<br>&#9660;</div>
+    <div class="y-scale-handle y-right" onmousedown="startYScale(event,'chart-idx','y2')" title="Arraste: escala IBOV">&#9650;<br>&#9632;<br>&#9660;</div>
   </div>
 
   <div class="cards" style="padding-top:4px" id="idx-cards"></div>
@@ -1149,6 +1151,7 @@ function buildIdxChart() {{
   }}
 
   var metric = "sma200";
+  // Painel inferior — amplitude comparada entre indices (y)
   var traces = _idxCfg
     .filter(function(c) {{ return idxBreadth[c.code]; }})
     .map(function(c) {{
@@ -1159,16 +1162,50 @@ function buildIdxChart() {{
         type:"scatter", mode:"lines",
         line:{{color:c.color, width:c.width, dash:c.dash}},
         visible: c.code === "IBOV" ? true : "legendonly",
+        yaxis:"y", xaxis:"x",
         hovertemplate:"%{{x}}<br>" + c.label + ": %{{y:.1f}}%<extra></extra>"
       }};
     }});
 
-  var layout = Object.assign({{}}, layoutBase, {{
-    shapes: smaShapes,
-    yaxis: Object.assign({{}}, layoutBase.yaxis, {{range:[0,105]}})
-  }});
+  // Painel superior — IBOVESPA (cotação), sempre visível — mesmo padrão do RSI Breadth
+  var ibovTrace = {{
+    x: ibovDates, y: ibovPrices,
+    name: "IBOVESPA",
+    type: "scatter", mode: "lines",
+    line: {{color:"rgba(88,166,255,0.65)", width:1.5}},
+    yaxis: "y2", xaxis: "x",
+    hovertemplate: "%{{x}}<br>IBOV: %{{y:,.0f}}<extra></extra>"
+  }};
 
-  Plotly.newPlot("chart-idx", traces, layout, plotConfig)
+  var layout = {{
+    paper_bgcolor:"#0b1520", plot_bgcolor:"#070d14",
+    font: {{color:"#6a8099", size:11, family:"Inter,sans-serif"}},
+    margin: {{t:10, r:60, b:40, l:55}},
+    dragmode:"pan",
+    xaxis: {{
+      gridcolor:"rgba(255,255,255,0.04)", linecolor:"rgba(255,255,255,0.07)",
+      rangeslider:{{visible:false}}, domain:[0,1], anchor:"y"
+    }},
+    // Painel inferior — amplitude % (30% da altura)
+    yaxis: {{
+      domain:[0,0.30],
+      gridcolor:"rgba(255,255,255,0.04)", linecolor:"rgba(255,255,255,0.07)",
+      ticksuffix:"%", fixedrange:false, range:[0,105],
+      title:{{text:"% Ativos",font:{{size:10,color:"#3a5060"}}}}
+    }},
+    // Painel superior — IBOVESPA (67% da altura)
+    yaxis2: {{
+      domain:[0.35,1.0],
+      gridcolor:"rgba(255,255,255,0.04)", linecolor:"rgba(255,255,255,0.07)",
+      anchor:"x", fixedrange:false, tickformat:",.0f",
+      title:{{text:"IBOVESPA",font:{{size:10,color:"#3a5060"}}}}
+    }},
+    legend: {{bgcolor:"rgba(0,0,0,0)", bordercolor:"rgba(255,255,255,0.07)", borderwidth:1}},
+    hovermode: "x unified",
+    shapes: smaShapes
+  }};
+
+  Plotly.newPlot("chart-idx", traces.concat([ibovTrace]), layout, plotConfig)
     .then(function() {{
       _addCtrlZoom("chart-idx");
       _buildIdxCards("sma200");
@@ -1183,12 +1220,15 @@ function switchIdxMetric(metric, btn) {{
   var active = _idxCfg.filter(function(c){{return idxBreadth[c.code];}});
   var newY = active.map(function(c){{return idxBreadth[c.code][metric];}});
   var newX = active.map(function(c){{return idxBreadth[c.code].dates;}});
-  Plotly.restyle("chart-idx", {{x:newX, y:newY}});
+  // Só os traços de amplitude (0..active.length-1) — o último traço é a
+  // cotação do IBOV (painel superior) e não deve ser tocado aqui.
+  var indices = active.map(function(_, i) {{ return i; }});
+  Plotly.restyle("chart-idx", {{x:newX, y:newY}}, indices);
   _buildIdxCards(metric);
 }}
 
 function _buildIdxCards(metric) {{
-  var labels = {{sma200:"% Acima SMA200", sma50:"% Acima SMA50", sma21:"% Acima SMA21", rsi:"RSI Sobrevendido"}};
+  var labels = {{sma200:"% Acima SMA200", sma50:"% Acima SMA50", sma21:"% Acima SMA21", rsi:"RSI Sobrevendido", rsi_overbought:"RSI Sobrecomprado"}};
   var container = document.getElementById("idx-cards");
   if (!container) return;
   var html = "";
