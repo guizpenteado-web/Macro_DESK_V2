@@ -1158,6 +1158,7 @@ function buildIdxChart() {{
         name: c.label,
         type:"scatter", mode:"lines",
         line:{{color:c.color, width:c.width, dash:c.dash}},
+        visible: c.code === "IBOV" ? true : "legendonly",
         hovertemplate:"%{{x}}<br>" + c.label + ": %{{y:.1f}}%<extra></extra>"
       }};
     }});
