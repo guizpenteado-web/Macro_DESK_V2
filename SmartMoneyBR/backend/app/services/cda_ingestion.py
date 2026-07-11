@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import io
 import logging
-from datetime import datetime
+from datetime import date, datetime
 
 import pandas as pd
 from sqlalchemy import select
@@ -21,7 +21,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.models import Asset, Fund, FundHolding, FundNav, IngestionLog
-from app.services.cvm_client import download_cda_zip, extract_member
+from app.services.cvm_client import download_cda_hist_zip, download_cda_zip, extract_member
 from app.utils.dates import yyyymm_to_ref_date_end_of_month
 
 logger = logging.getLogger(__name__)
@@ -64,9 +64,23 @@ BLC4_COLUMNS = [
 
 PL_COLUMNS = ["CNPJ_FUNDO_CLASSE", "DENOM_SOCIAL", "TP_FUNDO_CLASSE", "DT_COMPTC", "VL_PATRIM_LIQ"]
 
+# Pre-cutover CVM files (verified 11/jul/2026: still true as of 202301,
+# already renamed by 202406 — exact month of the Resolucao CVM 175 rename
+# not pinned down) use CNPJ_FUNDO/TP_FUNDO instead of the _CLASSE suffix.
+# Sniff the actual header per-file instead of branching by date/year, since
+# the cutover month is unknown and this is cheap or safe either way.
+_OLD_TO_NEW_COLUMNS = {"CNPJ_FUNDO": "CNPJ_FUNDO_CLASSE", "TP_FUNDO": "TP_FUNDO_CLASSE"}
 
-def _read_csv(raw: bytes, usecols: list[str]) -> pd.DataFrame:
-    return pd.read_csv(io.BytesIO(raw), sep=";", encoding="latin-1", usecols=usecols, low_memory=False)
+
+def _read_csv_normalized(raw: bytes, columns_new: list[str]) -> pd.DataFrame:
+    header = pd.read_csv(io.BytesIO(raw), sep=";", encoding="latin-1", nrows=0).columns
+    if "CNPJ_FUNDO_CLASSE" in header:
+        return pd.read_csv(io.BytesIO(raw), sep=";", encoding="latin-1", usecols=columns_new, low_memory=False)
+
+    new_to_old = {v: k for k, v in _OLD_TO_NEW_COLUMNS.items()}
+    columns_old = [new_to_old.get(c, c) for c in columns_new]
+    df = pd.read_csv(io.BytesIO(raw), sep=";", encoding="latin-1", usecols=columns_old, low_memory=False)
+    return df.rename(columns=_OLD_TO_NEW_COLUMNS)
 
 
 def parse_equities(zip_path) -> pd.DataFrame:
@@ -74,7 +88,7 @@ def parse_equities(zip_path) -> pd.DataFrame:
     if raw is None:
         raise FileNotFoundError(f"BLC_4 nao encontrado em {zip_path}")
 
-    df = _read_csv(raw, BLC4_COLUMNS)
+    df = _read_csv_normalized(raw, BLC4_COLUMNS)
     df = df[df["TP_ATIVO"].isin(TRACKED_TP_ATIVO)].copy()
 
     # Same fund+ticker+month can appear more than once (e.g. held position +
@@ -98,7 +112,7 @@ def parse_nav(zip_path) -> pd.DataFrame:
     raw = extract_member(zip_path, f"PL_{zip_path.stem.split('_')[-1]}.csv")
     if raw is None:
         raise FileNotFoundError(f"PL nao encontrado em {zip_path}")
-    return _read_csv(raw, PL_COLUMNS)
+    return _read_csv_normalized(raw, PL_COLUMNS)
 
 
 def _upsert_funds(db: Session, df: pd.DataFrame) -> dict[str, int]:
@@ -240,4 +254,45 @@ def ingest_month(db: Session, yyyymm: str, force_download: bool = False) -> int:
         db.add(log)
         db.commit()
         logger.exception("cda %s: falhou", yyyymm)
+        raise
+
+
+def ingest_year(db: Session, year: int, force_download: bool = False) -> int:
+    """Ingest one full calendar year from the annual HIST bundle (2005-2022 —
+    see cvm_client.CDA_HIST_*) end-to-end: equities + NAV for all 12 months at
+    once, same upsert pipeline as ingest_month. One IngestionLog per year
+    since the source file itself isn't month-partitioned. Idempotent."""
+    log = IngestionLog(source="cda_hist", ref_date=date(year, 12, 31), status="running")
+    db.add(log)
+    db.flush()
+
+    try:
+        zip_path = download_cda_hist_zip(year, force=force_download)
+
+        equities_df = parse_equities(zip_path)
+        nav_df = parse_nav(zip_path)
+
+        fund_ids = _upsert_funds(db, nav_df)
+        fund_ids.update(_upsert_funds(db, equities_df))
+        asset_ids = _upsert_assets(db, equities_df)
+
+        holdings_rows = _upsert_holdings(db, equities_df, fund_ids, asset_ids, source_file=zip_path.name)
+        nav_rows = _upsert_nav(db, nav_df, fund_ids)
+
+        db.commit()
+
+        log.status = "success"
+        log.rows_processed = holdings_rows + nav_rows
+        log.finished_at = datetime.utcnow()
+        db.commit()
+        logger.info("cda_hist %d: ok — %d holdings, %d nav", year, holdings_rows, nav_rows)
+        return holdings_rows + nav_rows
+    except Exception as exc:  # noqa: BLE001
+        db.rollback()
+        log.status = "failed"
+        log.error_message = str(exc)[:2000]
+        log.finished_at = datetime.utcnow()
+        db.add(log)
+        db.commit()
+        logger.exception("cda_hist %d: falhou", year)
         raise

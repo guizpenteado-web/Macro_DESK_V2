@@ -18,6 +18,18 @@ logger = logging.getLogger(__name__)
 
 CDA_URL_TEMPLATE = f"{settings.cvm_base_url}/FI/DOC/CDA/DADOS/cda_fi_{{yyyymm}}.zip"
 
+# CDA also has an annual HIST/ bundle (verified 11/jul/2026 against the real
+# directory listing): one zip per YEAR for 2005-2022, each containing a single
+# BLC_4_{year}.csv / PL_{year}.csv with all 12 months inside (DT_COMPTC varies
+# per row) — same column layout otherwise. 2023 onward is monthly-only (the
+# DADOS/ pattern above). Column names differ pre-cutover: CNPJ_FUNDO/TP_FUNDO
+# instead of CNPJ_FUNDO_CLASSE/TP_FUNDO_CLASSE (Resolucao CVM 175 renamed
+# them sometime between 2023-01 and 2024-06) — cda_ingestion.py normalizes
+# this per-file by sniffing the header, not by year.
+CDA_HIST_URL_TEMPLATE = f"{settings.cvm_base_url}/FI/DOC/CDA/DADOS/HIST/cda_fi_{{yyyy}}.zip"
+CDA_HIST_FIRST_YEAR = 2005
+CDA_HIST_LAST_YEAR = 2022  # last year still delivered as an annual HIST zip
+
 # Informe Diario has two coexisting locations (verified against real listings,
 # see docs/DATA_SOURCES.md): HIST/ has one zip per YEAR for 2000-2020 (each
 # containing 12 monthly CSVs inside), DADOS/ has one zip per MONTH for 2021+.
@@ -69,6 +81,27 @@ def download_cda_zip(yyyymm: str, force: bool = False) -> Path:
     url = CDA_URL_TEMPLATE.format(yyyymm=yyyymm)
     logger.info("cda %s: baixando %s", yyyymm, url)
     resp = requests.get(url, timeout=120)
+    resp.raise_for_status()
+    dest.write_bytes(resp.content)
+    return dest
+
+
+def cda_hist_zip_path(yyyy: int) -> Path:
+    return Path(settings.data_cache_dir) / "cda_hist" / f"cda_fi_{yyyy}.zip"
+
+
+def download_cda_hist_zip(yyyy: int, force: bool = False) -> Path:
+    """Download (or reuse cached) annual CDA zip, 2005-2022 only. Closed years
+    never get revised by the CVM, so the cache is trustworthy forever —
+    force=True is only useful for re-downloading a corrupted/partial file."""
+    dest = cda_hist_zip_path(yyyy)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if dest.exists() and not force:
+        logger.info("cda_hist %d: usando cache local (%s)", yyyy, dest)
+        return dest
+    url = CDA_HIST_URL_TEMPLATE.format(yyyy=yyyy)
+    logger.info("cda_hist %d: baixando %s", yyyy, url)
+    resp = requests.get(url, timeout=300)
     resp.raise_for_status()
     dest.write_bytes(resp.content)
     return dest
