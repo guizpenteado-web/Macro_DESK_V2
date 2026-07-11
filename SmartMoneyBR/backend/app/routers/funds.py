@@ -1,0 +1,278 @@
+from datetime import date, timedelta
+from typing import Literal
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session, aliased
+
+from app.database import get_db
+from app.models import Asset, Fund, FundAssetMovement, FundHolding, FundNav, FundQuota
+from app.schemas.fund import FundOut, HoldingOut, MovementOut
+from app.services.returns import compute_window_return
+
+router = APIRouter(prefix="/api/funds", tags=["funds"])
+
+RETURN_WINDOW_DAYS = 370  # ~12 meses + folga p/ cobrir fundos com divulgacao atrasada
+SortField = Literal["name", "net_asset_value", "n_shareholders", "financials_ref_date", "return_pct_12m"]
+
+
+def _latest_fund_holdings_date(db: Session, fund_id: int) -> date | None:
+    """Per-FUND latest available month — not the system-wide latest. Many
+    funds lag behind the freshest month (late filers, reporting gaps), so
+    defaulting to a global date silently returns an empty result for them."""
+    return db.execute(
+        select(func.max(FundHolding.ref_date)).where(FundHolding.fund_id == fund_id)
+    ).scalar_one_or_none()
+
+
+def _latest_fund_movements_date(db: Session, fund_id: int) -> date | None:
+    return db.execute(
+        select(func.max(FundAssetMovement.ref_date)).where(FundAssetMovement.fund_id == fund_id)
+    ).scalar_one_or_none()
+
+
+def _latest_quota_by_fund(db: Session, fund_ids: list[int]) -> dict[int, FundQuota]:
+    """Latest fund_quota row (patrimonio + n_cotistas + data) per fund, in one
+    query — DISTINCT ON is Postgres' idiomatic 'latest row per group'."""
+    if not fund_ids:
+        return {}
+    rows = db.execute(
+        select(FundQuota)
+        .where(FundQuota.fund_id.in_(fund_ids))
+        .distinct(FundQuota.fund_id)
+        .order_by(FundQuota.fund_id, FundQuota.ref_date.desc())
+    ).scalars()
+    return {q.fund_id: q for q in rows}
+
+
+def _to_fund_out(fund: Fund, quota: FundQuota | None, return_pct_12m: float | None) -> FundOut:
+    return FundOut(
+        id=fund.id,
+        cnpj=fund.cnpj,
+        name=fund.name,
+        fund_class_type=fund.fund_class_type,
+        net_asset_value=float(quota.net_asset_value) if quota else None,
+        n_shareholders=quota.n_shareholders if quota else None,
+        financials_ref_date=quota.ref_date if quota else None,
+        return_pct_12m=return_pct_12m,
+    )
+
+
+def _return_pct_12m_by_fund(db: Session, fund_ids: list[int], quotas: dict[int, FundQuota]) -> dict[int, float]:
+    """~12-month real return (quota value, rebase-corrected) per fund, anchored
+    to each fund's OWN latest quota date (funds lag differently) rather than a
+    single global date. Fetched in one bounded query, not N+1."""
+    if not fund_ids:
+        return {}
+    last_dates = [quotas[fid].ref_date for fid in fund_ids if fid in quotas]
+    if not last_dates:
+        return {}
+    earliest_needed = min(last_dates) - timedelta(days=RETURN_WINDOW_DAYS)
+
+    rows = db.execute(
+        select(FundQuota.fund_id, FundQuota.ref_date, FundQuota.quota_value)
+        .where(FundQuota.fund_id.in_(fund_ids), FundQuota.ref_date >= earliest_needed)
+        .order_by(FundQuota.fund_id, FundQuota.ref_date)
+    ).all()
+
+    series_by_fund: dict[int, list[tuple[date, float]]] = {}
+    for r in rows:
+        series_by_fund.setdefault(r.fund_id, []).append((r.ref_date, float(r.quota_value)))
+
+    results = {}
+    for fund_id, series in series_by_fund.items():
+        if fund_id not in quotas:
+            continue
+        window_start = quotas[fund_id].ref_date - timedelta(days=RETURN_WINDOW_DAYS)
+        pct_return, _ = compute_window_return(series, window_start)
+        if pct_return is not None:
+            results[fund_id] = pct_return
+    return results
+
+
+@router.get("", response_model=list[FundOut])
+def search_funds(
+    search: str = Query("", min_length=0),
+    limit: int = 25,
+    min_net_asset_value: float | None = None,
+    max_net_asset_value: float | None = None,
+    min_shareholders: int | None = None,
+    max_shareholders: int | None = None,
+    ref_date_from: date | None = None,
+    ref_date_to: date | None = None,
+    min_return_pct: float | None = None,
+    max_return_pct: float | None = None,
+    sort_by: SortField = "name",
+    sort_dir: Literal["asc", "desc"] = "asc",
+    db: Session = Depends(get_db),
+):
+    # Phase 1 only tracks the equities CDA block — most CVM-registered funds
+    # are fixed-income/multimercado/credit vehicles that never hold a single
+    # stock, so listing them here just leads to a fund page with permanently
+    # empty tables. Restrict search to funds that have at least one recorded
+    # equity holding (ever), which is the only subset this app has data for.
+    has_equity = select(FundHolding.fund_id).distinct().subquery()
+
+    # Latest fund_quota row per fund (patrimonio/cotistas/data de divulgacao) —
+    # joined in SQL so nav/cotistas/data filters can run as indexed WHERE
+    # clauses instead of loading everything into Python first.
+    latest_quota_sq = (
+        select(FundQuota)
+        .distinct(FundQuota.fund_id)
+        .order_by(FundQuota.fund_id, FundQuota.ref_date.desc())
+        .subquery()
+    )
+    LatestQuota = aliased(FundQuota, latest_quota_sq)
+
+    stmt = (
+        select(Fund, LatestQuota)
+        .join(LatestQuota, LatestQuota.fund_id == Fund.id)
+        .where(Fund.id.in_(select(has_equity.c.fund_id)))
+    )
+    if search:
+        stmt = stmt.where(Fund.name.ilike(f"%{search}%") | Fund.cnpj.ilike(f"%{search}%"))
+    if min_net_asset_value is not None:
+        stmt = stmt.where(LatestQuota.net_asset_value >= min_net_asset_value)
+    if max_net_asset_value is not None:
+        stmt = stmt.where(LatestQuota.net_asset_value <= max_net_asset_value)
+    if min_shareholders is not None:
+        stmt = stmt.where(LatestQuota.n_shareholders >= min_shareholders)
+    if max_shareholders is not None:
+        stmt = stmt.where(LatestQuota.n_shareholders <= max_shareholders)
+    if ref_date_from is not None:
+        stmt = stmt.where(LatestQuota.ref_date >= ref_date_from)
+    if ref_date_to is not None:
+        stmt = stmt.where(LatestQuota.ref_date <= ref_date_to)
+
+    rows = db.execute(stmt).all()
+    funds = [row[0] for row in rows]
+    quotas = {row[0].id: row[1] for row in rows}
+
+    fund_ids = [f.id for f in funds]
+    return_by_fund = _return_pct_12m_by_fund(db, fund_ids, quotas)
+
+    out = [
+        _to_fund_out(f, quotas.get(f.id), return_by_fund.get(f.id))
+        for f in funds
+    ]
+
+    if min_return_pct is not None:
+        out = [o for o in out if o.return_pct_12m is not None and o.return_pct_12m >= min_return_pct]
+    if max_return_pct is not None:
+        out = [o for o in out if o.return_pct_12m is not None and o.return_pct_12m <= max_return_pct]
+
+    sort_key = {
+        "name": lambda o: o.name,
+        "net_asset_value": lambda o: (o.net_asset_value is None, o.net_asset_value or 0),
+        "n_shareholders": lambda o: (o.n_shareholders is None, o.n_shareholders or 0),
+        "financials_ref_date": lambda o: (o.financials_ref_date is None, o.financials_ref_date or date.min),
+        "return_pct_12m": lambda o: (o.return_pct_12m is None, o.return_pct_12m or 0),
+    }[sort_by]
+    out.sort(key=sort_key, reverse=(sort_dir == "desc"))
+
+    return out[:limit]
+
+
+@router.get("/{fund_id}", response_model=FundOut)
+def get_fund(fund_id: int, db: Session = Depends(get_db)):
+    fund = db.get(Fund, fund_id)
+    if not fund:
+        raise HTTPException(404, "Fundo nao encontrado")
+    quotas = _latest_quota_by_fund(db, [fund_id])
+    return_pct = _return_pct_12m_by_fund(db, [fund_id], quotas).get(fund_id)
+    return _to_fund_out(fund, quotas.get(fund_id), return_pct)
+
+
+@router.get("/{fund_id}/holdings", response_model=list[HoldingOut])
+def get_fund_holdings(fund_id: int, ref_date: date | None = None, db: Session = Depends(get_db)):
+    target_date = ref_date or _latest_fund_holdings_date(db, fund_id)
+    if target_date is None:
+        return []
+
+    rows = db.execute(
+        select(FundHolding.asset_id, Asset.ticker, Asset.company_name, FundHolding.quantity, FundHolding.market_value)
+        .join(Asset, Asset.id == FundHolding.asset_id)
+        .where(FundHolding.fund_id == fund_id, FundHolding.ref_date == target_date)
+        .order_by(FundHolding.market_value.desc())
+    ).all()
+
+    nav = db.execute(
+        select(FundNav.net_asset_value).where(FundNav.fund_id == fund_id, FundNav.ref_date == target_date)
+    ).scalar_one_or_none()
+    total_equities = sum(float(r.market_value) for r in rows) or None
+
+    return [
+        HoldingOut(
+            asset_id=r.asset_id,
+            ticker=r.ticker,
+            company_name=r.company_name,
+            quantity=float(r.quantity),
+            market_value=float(r.market_value),
+            pct_of_equity_book=(float(r.market_value) / total_equities * 100) if total_equities else None,
+            ref_date=target_date,
+        )
+        for r in rows
+    ]
+
+
+@router.get("/{fund_id}/movements", response_model=list[MovementOut])
+def get_fund_movements(fund_id: int, ref_date: date | None = None, db: Session = Depends(get_db)):
+    target_date = ref_date or _latest_fund_movements_date(db, fund_id)
+    if target_date is None:
+        return []
+
+    rows = db.execute(
+        select(FundAssetMovement, Asset.ticker)
+        .join(Asset, Asset.id == FundAssetMovement.asset_id)
+        .where(FundAssetMovement.fund_id == fund_id, FundAssetMovement.ref_date == target_date)
+        .order_by(FundAssetMovement.value_delta.desc())
+    ).all()
+
+    return [
+        MovementOut(
+            asset_id=m.asset_id,
+            ticker=ticker,
+            classification=m.classification.value,
+            ref_date=m.ref_date,
+            prior_ref_date=m.prior_ref_date,
+            qty_current=float(m.qty_current),
+            qty_prior=float(m.qty_prior),
+            value_current=float(m.value_current),
+            value_prior=float(m.value_prior),
+            qty_delta=float(m.qty_delta),
+            value_delta=float(m.value_delta),
+            pct_delta=float(m.pct_delta) if m.pct_delta is not None else None,
+        )
+        for m, ticker in rows
+    ]
+
+
+@router.get("/{fund_id}/history")
+def get_fund_asset_history(fund_id: int, asset_id: int, db: Session = Depends(get_db)):
+    """Full accumulated-position timeline for one fund+asset pair, each point
+    explicitly labeled with its movement classification — the original ask:
+    'evolucao acumulada explicitamente rotulada aumento/reducao'."""
+    holdings = db.execute(
+        select(FundHolding.ref_date, FundHolding.quantity, FundHolding.market_value)
+        .where(FundHolding.fund_id == fund_id, FundHolding.asset_id == asset_id)
+        .order_by(FundHolding.ref_date)
+    ).all()
+
+    movements = {
+        m.ref_date: m
+        for m in db.execute(
+            select(FundAssetMovement)
+            .where(FundAssetMovement.fund_id == fund_id, FundAssetMovement.asset_id == asset_id)
+        ).scalars()
+    }
+
+    return [
+        {
+            "ref_date": h.ref_date,
+            "quantity": float(h.quantity),
+            "market_value": float(h.market_value),
+            "classification": movements[h.ref_date].classification.value if h.ref_date in movements else None,
+            "qty_delta": float(movements[h.ref_date].qty_delta) if h.ref_date in movements else None,
+        }
+        for h in holdings
+    ]

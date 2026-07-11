@@ -497,6 +497,7 @@ body{{
 .tab-content.active{{display:block}}
 /* ─── CARDS ─── */
 .cards{{display:flex;gap:12px;padding:16px 28px;flex-wrap:wrap}}
+#idx-cards{{display:grid;grid-template-columns:repeat(12,1fr);gap:6px}}
 .card{{
   background:linear-gradient(145deg,var(--bg3) 0%,var(--bg2) 100%);
   border:1px solid var(--border);border-radius:12px;
@@ -644,7 +645,7 @@ tr:hover td{{
 /* ─── Y-SCALE HANDLES ─── */
 .chart-area{{display:flex;align-items:stretch;padding:0 28px 12px}}
 .chart-area .chart-box{{flex:1;height:380px;width:0}}
-#chart-idx{{height:400px}}
+#chart-idx{{height:280px}}
 .y-scale-handle{{
   width:22px;flex-shrink:0;cursor:ns-resize;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
@@ -1204,8 +1205,8 @@ function _buildIdxCards(metric) {{
     var color = val === null ? "#484f58" :
                 val >= 70 ? "#2ea043" : val >= 50 ? "#e3b341" :
                 val >= 30 ? "#d29922" : "#f85149";
-    html += '<div class="card" style="border-left:3px solid ' + c.color + ';min-width:140px">'
-          + '<div class="val" style="color:' + color + ';font-size:28px">' + disp + '</div>'
+    html += '<div class="card" style="border-left:3px solid ' + c.color + ';min-width:0;padding:12px 6px">'
+          + '<div class="val" style="color:' + color + ';font-size:19px">' + disp + '</div>'
           + '<div class="lbl" style="color:' + c.color + ';font-weight:700">' + c.label + '</div>'
           + '<div class="sub2">' + labels[metric] + '</div>'
           + '</div>';

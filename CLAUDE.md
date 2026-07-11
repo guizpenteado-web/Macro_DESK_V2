@@ -13,6 +13,7 @@ Leia este arquivo no início de TODA sessão. Contém o mapa completo dos projet
 | **P2 — Market Breadth Ultra** | `Market_BREADTH_ULTRA/` | /breadth/ → :8011 | 8001 |
 | **P3 — Pine Script (TradingView)** | `Mktsentiment/docs/` | — | sem servidor |
 | **P4 — Macro Dashboard** | `MacroDashboard/` | /macro/ → :8012 | 8002 |
+| **P5 — SmartMoney** | `SmartMoneyBR/` | /smartmoney/ → backend :8100 + frontend :3100 | — |
 
 **Para iniciar TUDO:** `c:\Users\Guilherme\Documents\Mktsentiment\start_hub.bat`  
 **URL pública (ngrok):** `https://jawed-sermon-extras.ngrok-free.dev`  

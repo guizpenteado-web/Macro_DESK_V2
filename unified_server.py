@@ -1,7 +1,7 @@
 """
 Macro Desk — servidor unificado.
 
-Sobe os três projetos em portas internas e serve um shell de navegacao na porta 8000.
+Sobe os seis projetos em portas internas e serve um shell de navegacao na porta 8000.
 Proxy reverso integrado: tudo passa pela porta 8000 (compativel com ngrok/Tailscale/URL publica).
 
   http://<host>:8000              -> shell com botoes de navegacao
@@ -9,7 +9,8 @@ Proxy reverso integrado: tudo passa pela porta 8000 (compativel com ngrok/Tailsc
   http://<host>:8000/breadth/     -> Market_BREADTH_ULTRA  (proxy -> :8011)
   http://<host>:8000/macro/       -> Macro Dashboard        (proxy -> :8012)
   http://<host>:8000/ibov/        -> IBOV Calls             (proxy -> :8013)
-  http://<host>:8000/rrg/         -> RRGCOMPLETO (Rotação Relativa) (proxy -> :8014)
+   http://<host>:8000/rrg/         -> RRGCOMPLETO (Rotação Relativa) (proxy -> :8014)
+   http://<host>:8000/smartmoney/  -> SmartMoneyBR (Next.js :3100 + FastAPI :8100 interno via rewrite)
 """
 from __future__ import annotations
 import asyncio
@@ -41,6 +42,13 @@ BREADTH_DIR   = BASE / "Market_BREADTH_ULTRA"
 MACRO_DIR     = BASE / "MacroDashboard"
 IBOV_DIR      = BASE / "IbovCalls"
 RRG_DIR       = BASE / "RRGCOMPLETO"
+# SmartMoneyBR — Next.js (frontend/, porta 3100) + FastAPI (backend/, porta
+# 8100), diferente dos outros modulos (um so processo). O Hub so precisa
+# proxear a porta do frontend: o proprio Next.js (basePath "/smartmoney" +
+# rewrite em next.config.ts) reescreve /smartmoney/api/* pro backend, no seu
+# proprio servidor — sem isso o proxy generico do Hub (regex em href="/,
+# src="/) nao dá conta de _next/static nem de fetch client-side.
+SM_DIR        = BASE / "SmartMoneyBR"
 
 
 PYTHON_1 = str(DASHBOARD_DIR / ".venv" / "Scripts" / "python.exe")
@@ -48,6 +56,8 @@ PYTHON_2 = str(BREADTH_DIR   / ".venv" / "Scripts" / "python.exe")
 PYTHON_3 = str(MACRO_DIR     / ".venv" / "Scripts" / "python.exe")
 PYTHON_4 = str(IBOV_DIR      / ".venv" / "Scripts" / "python.exe")
 PYTHON_5 = str(RRG_DIR       / ".venv" / "Scripts" / "python.exe")
+PYTHON_SM_BACKEND = str(SM_DIR / "backend" / ".venv" / "Scripts" / "python.exe")
+NPM_CMD = "npm.cmd"  # SmartMoneyBR frontend (Next.js)
 
 PORT_SHELL       = 8000
 PORT_INTERMARKET = 8010
@@ -55,6 +65,8 @@ PORT_BREADTH     = 8011
 PORT_MACRO       = 8012
 PORT_IBOV        = 8013
 PORT_RRG         = 8014
+PORT_SMARTMONEY_BACKEND = 8100  # so o Next (rewrite) fala com essa porta, Hub nao proxeia direto
+PORT_SMARTMONEY  = 3100         # frontend — é o que o Hub proxeia em /smartmoney/
 
 _procs: list[subprocess.Popen] = []
 
@@ -66,7 +78,28 @@ def _make_popen(spec: dict) -> subprocess.Popen:
     kwargs: dict = {"cwd": spec["cwd"]}
     if spec.get("env"):
         kwargs["env"] = spec["env"]
+    # npm.cmd (SmartMoneyBR-Frontend) spawns node.js as a grandchild through
+    # cmd.exe — Popen.terminate() only kills the cmd.exe wrapper, leaving the
+    # real dev server orphaned and holding the port (this is exactly the
+    # zombie-process pattern already seen with IbovCalls, see
+    # feedback_zombie_processes.md). CREATE_NEW_PROCESS_GROUP lets us
+    # taskkill /T the whole tree in _kill_proc below instead of relying on
+    # terminate().
+    if sys.platform == "win32":
+        kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
     return subprocess.Popen(spec["cmd"], **kwargs)
+
+
+def _kill_proc(p: subprocess.Popen) -> None:
+    if p.poll() is not None:
+        return
+    if sys.platform == "win32":
+        subprocess.run(
+            ["taskkill", "/T", "/F", "/PID", str(p.pid)],
+            capture_output=True,
+        )
+    else:
+        p.terminate()
 
 
 def _start_subservers() -> None:
@@ -107,6 +140,24 @@ def _start_subservers() -> None:
             "cwd":  str(RRG_DIR),
             "env":  {**__import__("os").environ, "PORT": str(PORT_RRG)},
         },
+        {
+            "name": "SmartMoneyBR-Backend",
+            "port": PORT_SMARTMONEY_BACKEND,
+            "cmd":  [PYTHON_SM_BACKEND, "-m", "app.main"],
+            "cwd":  str(SM_DIR / "backend"),
+        },
+        {
+            # Producao (npm start), nao "npm run dev": em dev o websocket de
+            # hot-reload do Next faz parte da sequencia de hidratacao — como
+            # o proxy do Hub (httpx, so HTTP normal) nao repassa upgrade de
+            # websocket, a conexao trava e a pagina nunca hidrata (fica so o
+            # HTML estatico, nenhum fetch client-side roda). Precisa rodar
+            # "npm run build" (frontend/) de novo a cada mudanca de codigo.
+            "name": "SmartMoneyBR-Frontend",
+            "port": PORT_SMARTMONEY,
+            "cmd":  [NPM_CMD, "start"],
+            "cwd":  str(SM_DIR / "frontend"),
+        },
     ]
 
     for spec in _SUBSERVER_SPECS:
@@ -114,7 +165,7 @@ def _start_subservers() -> None:
         spec["proc"] = p
         _procs.append(p)
 
-    atexit.register(lambda: [p.terminate() for p in _procs if p.poll() is None])
+    atexit.register(lambda: [_kill_proc(p) for p in _procs])
     print("  Aguardando sub-servidores iniciarem...", flush=True)
     time.sleep(4)
 
@@ -336,7 +387,8 @@ _SHELL = """<!DOCTYPE html>
   .nav-btn.active-9 .dot { opacity: 1; }
   .nav-btn.active-5 { border-color: #6e7681; color: #d1d4dc; background: rgba(110,118,129,.12); }
   .nav-btn.active-6 { border-color: #6e7681; color: #d1d4dc; background: rgba(110,118,129,.12); }
-  .nav-btn.active-7 { border-color: #6e7681; color: #d1d4dc; background: rgba(110,118,129,.12); }
+  .nav-btn.active-7 { border-color: var(--c1); color: var(--c1); background: rgba(0,240,255,.08); }
+  .nav-btn.active-7 .dot { opacity: 1; }
 
   /* ── Ticker Panel — oculto por padrão, toggled via botão Overview ── */
   .ticker-hidden .ticker-panel,
@@ -679,6 +731,11 @@ _SHELL = """<!DOCTYPE html>
     RRG
   </button>
 
+  <button class="nav-btn" id="btn7" onclick="show(7)">
+    <span class="dot"></span>
+    SmartMoney
+  </button>
+
   <button class="nav-btn" id="btn5" onclick="show(5)">
     <span class="dot"></span>
     Biblioteca
@@ -772,6 +829,10 @@ _SHELL = """<!DOCTYPE html>
     <div class="spinner" style="border-top-color:var(--c6)"></div>
     Carregando RRG...
   </div>
+  <div class="loader hidden" id="loader7">
+    <div class="spinner" style="border-top-color:var(--c1)"></div>
+    Carregando SmartMoney...
+  </div>
 
   <iframe id="f1" src="" class="visible"
           onload="if(window.loaded)loaded(1)"></iframe>
@@ -785,12 +846,14 @@ _SHELL = """<!DOCTYPE html>
           onload="if(window.loaded)loaded(5)"></iframe>
   <iframe id="f6" src="about:blank"
           onload="if(window.loaded)loaded(6)"></iframe>
+  <iframe id="f7" src="about:blank"
+          onload="if(window.loaded)loaded(7)"></iframe>
 
 </div>
 
 <script>
-  var _loaded    = {1: false, 2: false, 3: false, 4: false, 5: false, 6: false};
-  var _srcSet    = {1: false, 2: false, 3: false, 4: false, 5: false, 6: false};
+  var _loaded    = {1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false};
+  var _srcSet    = {1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false};
   var _current   = 1;
 
   var _cv = Date.now();
@@ -801,6 +864,7 @@ _SHELL = """<!DOCTYPE html>
     4: "/breadth/?v=" + _cv,
     5: "/biblioteca/?v=" + _cv,
     6: "/rrg/?v=" + _cv,
+    7: "/smartmoney/?v=" + _cv,
   };
 
   function loaded(n) {
@@ -818,7 +882,7 @@ _SHELL = """<!DOCTYPE html>
       document.getElementById("f" + n).src = URLS[n];
     }
 
-    [1, 2, 3, 4, 5, 6].forEach(function(i) {
+    [1, 2, 3, 4, 5, 6, 7].forEach(function(i) {
       document.getElementById("f" + i).classList.toggle("visible", i === n);
       document.getElementById("loader" + i).classList.toggle("hidden",
         i !== n || _loaded[i]);
@@ -836,6 +900,8 @@ _SHELL = """<!DOCTYPE html>
       "nav-btn" + (n === 5 ? " active-8" : "");
     document.getElementById("btn6").className =
       "nav-btn" + (n === 6 ? " active-9" : "");
+    document.getElementById("btn7").className =
+      "nav-btn" + (n === 7 ? " active-7" : "");
     if (n === 1) {
       var today = new Date().toISOString().slice(0,10);
       localStorage.setItem("calls_last_seen", today);
@@ -855,7 +921,7 @@ _SHELL = """<!DOCTYPE html>
   // Restaura a última aba visitada ao atualizar a página, em vez de sempre abrir em IBOV Calls
   (function() {
     var saved = parseInt(localStorage.getItem("hub_active_tab"), 10);
-    var initial = (saved >= 1 && saved <= 5) ? saved : 1;
+    var initial = (saved >= 1 && saved <= 7) ? saved : 1;
     applyTab(initial);
   })();
 
@@ -1318,7 +1384,7 @@ def shell() -> str:
 _SKIP_HEADERS = {"host", "content-length", "transfer-encoding", "content-encoding"}
 
 
-async def _proxy(request: Request, target_base: str, strip_prefix: str) -> Response:
+async def _proxy(request: Request, target_base: str, strip_prefix: str, rewrite_html: bool = True) -> Response:
     path = request.url.path[len(strip_prefix):]
     if not path or not path.startswith("/"):
         path = "/" + (path or "")
@@ -1340,7 +1406,7 @@ async def _proxy(request: Request, target_base: str, strip_prefix: str) -> Respo
     content = resp.content
     content_type = resp.headers.get("content-type", "")
 
-    if "text/html" in content_type:
+    if rewrite_html and "text/html" in content_type:
         html = content.decode("utf-8", errors="replace")
         # Reescreve caminhos absolutos internos para o prefixo do proxy
         for attr, q in [("src=", '"'), ("src=", "'"), ("href=", '"'), ("href=", "'"), ("action=", '"'), ("action=", "'")]:
@@ -1386,6 +1452,20 @@ async def proxy_ibov(request: Request, path: str = "") -> Response:
 @app.api_route("/rrg/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
 async def proxy_rrg(request: Request, path: str = "") -> Response:
     return await _proxy(request, f"http://127.0.0.1:{PORT_RRG}", "/rrg")
+
+
+@app.api_route("/smartmoney", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+@app.api_route("/smartmoney/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+async def proxy_smartmoney(request: Request, path: str = "") -> Response:
+    # rewrite_html=False: SmartMoneyBR (Next.js) ja tem basePath="/smartmoney"
+    # configurado nele mesmo (next.config.ts) — todo asset/link que ele gera
+    # ja sai correto. O regex generico do _proxy prefixaria de novo em cima
+    # (double-prefix, quebra tudo), entao pula esse passo so pra essa rota.
+    # strip_prefix="": ao contrario dos outros modulos (montados na raiz do
+    # processo deles, precisam do prefixo removido), o Next.js com basePath
+    # exige o caminho completo COM "/smartmoney" — removê-lo faz toda rota
+    # 404 no servidor Next (confirmado testando direto vs via hub).
+    return await _proxy(request, f"http://127.0.0.1:{PORT_SMARTMONEY}", "", rewrite_html=False)
 
 
 @app.get("/biblioteca")
@@ -2145,6 +2225,7 @@ if __name__ == "__main__":
     print(f"  Breadth     -> http://localhost:{PORT_BREADTH}")
     print(f"  Macro       -> http://localhost:{PORT_MACRO}")
     print(f"  Ibov Calls  -> http://localhost:{PORT_IBOV}")
+    print(f"  SmartMoney  -> http://localhost:{PORT_SMARTMONEY}")
     print("  ==========================================")
     print()
 
