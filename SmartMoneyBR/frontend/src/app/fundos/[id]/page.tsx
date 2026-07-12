@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { api, Fund, Holding, Movement, AssetHistoryPoint, FundPerformance, PerformanceMovement } from "@/lib/api";
+import { api, Fund, Holding, Movement, AssetHistoryPoint, FundPerformance, FundQuotaHistory, PerformanceMovement } from "@/lib/api";
 import MovementBadge from "@/components/MovementBadge";
 import SortableTh from "@/components/SortableTh";
 import { sortRows, useSort } from "@/lib/sort";
@@ -24,16 +24,45 @@ function fmtBookPct(v: number | null) {
   return `${v.toLocaleString("pt-BR", { maximumFractionDigits: 2, minimumFractionDigits: 2 })}%`;
 }
 
-function MiniMovementRow({ m, onClick }: { m: PerformanceMovement; onClick: () => void }) {
+const MONTH_ABBR = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
+function fmtMonth(dateStr: string) {
+  const [y, m] = dateStr.split("-");
+  return `${MONTH_ABBR[Number(m) - 1]}/${y.slice(2)}`;
+}
+
+function MiniMovementRow({
+  m,
+  refDate,
+  showQtyCurrent,
+  showPctDelta,
+  onClick,
+}: {
+  m: PerformanceMovement;
+  refDate: string | null;
+  showQtyCurrent: boolean;
+  showPctDelta: boolean;
+  onClick: () => void;
+}) {
   return (
     <tr style={{ cursor: "pointer" }} onClick={onClick}>
       <td style={{ color: "var(--cyan)" }}>{m.ticker}</td>
       <td>
         <MovementBadge classification={m.classification} />
       </td>
-      <td className="num">{m.qty_current.toLocaleString("pt-BR")}</td>
+      <td className="num">
+        {refDate ? (
+          <span className="smb-badge" style={{ color: "var(--text3)", border: "1px solid var(--border)" }}>
+            {fmtMonth(refDate)}
+          </span>
+        ) : (
+          "—"
+        )}
+      </td>
+      {showQtyCurrent && <td className="num">{m.qty_current.toLocaleString("pt-BR")}</td>}
       <td className="num" style={{ color: m.value_delta >= 0 ? "var(--green)" : "var(--red)" }}>{fmtBRL(m.value_delta)}</td>
-      <td className="num" style={{ color: m.value_delta >= 0 ? "var(--green)" : "var(--red)", fontWeight: 600 }}>{fmtPct(m.pct_delta)}</td>
+      {showPctDelta && (
+        <td className="num" style={{ color: m.value_delta >= 0 ? "var(--green)" : "var(--red)", fontWeight: 600 }}>{fmtPct(m.pct_delta)}</td>
+      )}
       <td className="num" style={{ fontWeight: 600 }}>{fmtBookPct(m.pct_of_equity_book)}</td>
     </tr>
   );
@@ -41,9 +70,24 @@ function MiniMovementRow({ m, onClick }: { m: PerformanceMovement; onClick: () =
 
 type MovementSortKey = "ticker" | "classification" | "qty_current" | "value_delta" | "pct_delta" | "pct_of_equity_book";
 
-function MiniTable({ title, rows, onSelect }: { title: string; rows: PerformanceMovement[]; onSelect: (a: { id: number; ticker: string }) => void }) {
+function MiniTable({
+  title,
+  rows,
+  refDate,
+  onSelect,
+  showQtyCurrent = true,
+  showPctDelta = true,
+}: {
+  title: string;
+  rows: PerformanceMovement[];
+  refDate: string | null;
+  onSelect: (a: { id: number; ticker: string }) => void;
+  showQtyCurrent?: boolean;
+  showPctDelta?: boolean;
+}) {
   const { sortKey, sortDir, toggle } = useSort<MovementSortKey>();
   const sorted = sortKey ? sortRows(rows, (r) => r[sortKey], sortDir) : rows;
+  const colSpan = 4 + (showQtyCurrent ? 1 : 0) + (showPctDelta ? 1 : 0);
 
   return (
     <div className="smb-card smb-table-wrap">
@@ -53,19 +97,31 @@ function MiniTable({ title, rows, onSelect }: { title: string; rows: Performance
           <tr>
             <SortableTh label="Ativo" active={sortKey === "ticker"} dir={sortDir} onClick={() => toggle("ticker")} />
             <SortableTh label="Status" active={sortKey === "classification"} dir={sortDir} onClick={() => toggle("classification")} />
-            <SortableTh label="Qtd atual" align="right" active={sortKey === "qty_current"} dir={sortDir} onClick={() => toggle("qty_current")} />
+            <SortableTh label="Mês" align="right" active={false} dir={sortDir} onClick={() => {}} />
+            {showQtyCurrent && (
+              <SortableTh label="Qtd atual" align="right" active={sortKey === "qty_current"} dir={sortDir} onClick={() => toggle("qty_current")} />
+            )}
             <SortableTh label="Δ Valor" align="right" active={sortKey === "value_delta"} dir={sortDir} onClick={() => toggle("value_delta")} />
-            <SortableTh label="% relativo" align="right" active={sortKey === "pct_delta"} dir={sortDir} onClick={() => toggle("pct_delta")} />
+            {showPctDelta && (
+              <SortableTh label="% relativo" align="right" active={sortKey === "pct_delta"} dir={sortDir} onClick={() => toggle("pct_delta")} />
+            )}
             <SortableTh label="% da carteira" align="right" active={sortKey === "pct_of_equity_book"} dir={sortDir} onClick={() => toggle("pct_of_equity_book")} />
           </tr>
         </thead>
         <tbody>
           {sorted.map((m) => (
-            <MiniMovementRow key={m.asset_id} m={m} onClick={() => onSelect({ id: m.asset_id, ticker: m.ticker })} />
+            <MiniMovementRow
+              key={m.asset_id}
+              m={m}
+              refDate={refDate}
+              showQtyCurrent={showQtyCurrent}
+              showPctDelta={showPctDelta}
+              onClick={() => onSelect({ id: m.asset_id, ticker: m.ticker })}
+            />
           ))}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={6} style={{ color: "var(--text3)" }}>Nenhum item.</td>
+              <td colSpan={colSpan} style={{ color: "var(--text3)" }}>Nenhum item.</td>
             </tr>
           )}
         </tbody>
@@ -82,6 +138,7 @@ export default function FundDetailPage() {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [movements, setMovements] = useState<Movement[]>([]);
   const [perf, setPerf] = useState<FundPerformance | null>(null);
+  const [quotaHistory, setQuotaHistory] = useState<FundQuotaHistory | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<{ id: number; ticker: string } | null>(null);
   const [history, setHistory] = useState<AssetHistoryPoint[]>([]);
 
@@ -97,6 +154,7 @@ export default function FundDetailPage() {
     api.getFundHoldings(fundId).then(setHoldings);
     api.getFundMovements(fundId).then(setMovements);
     api.getFundPerformance(fundId).then(setPerf);
+    api.getFundQuotaHistory(fundId, 20).then(setQuotaHistory);
   }, [fundId]);
 
   useEffect(() => {
@@ -146,6 +204,48 @@ export default function FundDetailPage() {
     ],
   };
 
+  const quotaPoints = quotaHistory?.points ?? [];
+  const quotaTotalReturn = quotaPoints.length > 0 ? quotaPoints[quotaPoints.length - 1].indexed! - 100 : null;
+
+  const quotaChartOption = {
+    backgroundColor: "transparent",
+    grid: { left: 55, right: 20, top: 20, bottom: 40 },
+    xAxis: {
+      type: "category",
+      data: quotaPoints.map((p) => p.ref_date),
+      axisLine: { lineStyle: { color: "#565f75" } },
+      axisLabel: { color: "#8a94ab" },
+    },
+    yAxis: {
+      type: "value",
+      scale: true,
+      axisLine: { lineStyle: { color: "#565f75" } },
+      splitLine: { lineStyle: { color: "#232838" } },
+      axisLabel: { color: "#8a94ab", formatter: "{value}" },
+    },
+    dataZoom: [{ type: "inside", xAxisIndex: [0], yAxisIndex: [0], zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false }],
+    tooltip: {
+      trigger: "axis",
+      formatter: (params: unknown) => {
+        const p = (params as { dataIndex: number }[])[0];
+        const point = quotaPoints[p.dataIndex];
+        if (!point) return "";
+        const pct = point.indexed !== null ? point.indexed - 100 : null;
+        return `${point.ref_date}<br/>Cota: ${point.quota_value.toLocaleString("pt-BR", { maximumFractionDigits: 6 })}<br/>Desde início: ${pct !== null ? fmtPct(pct) : "—"}`;
+      },
+    },
+    series: [
+      {
+        type: "line",
+        data: quotaPoints.map((p) => p.indexed),
+        showSymbol: false,
+        smooth: false,
+        lineStyle: { color: "#00e5ff", width: 1.5 },
+        areaStyle: { color: "rgba(0, 229, 255, 0.08)" },
+      },
+    ],
+  };
+
   if (!fund) return <div style={{ color: "var(--text2)" }}>Carregando...</div>;
 
   return (
@@ -177,6 +277,25 @@ export default function FundDetailPage() {
         </div>
       </div>
 
+      {quotaPoints.length > 1 && (
+        <div className="smb-card p-4">
+          <div className="flex justify-between items-center mb-2">
+            <div className="font-semibold">
+              Cotação — performance{" "}
+              <span style={{ color: "var(--text3)", fontWeight: 400 }}>
+                ({quotaHistory?.window_start} — {quotaPoints[quotaPoints.length - 1].ref_date})
+              </span>
+            </div>
+            {quotaTotalReturn !== null && (
+              <div style={{ color: quotaTotalReturn >= 0 ? "var(--green)" : "var(--red)", fontWeight: 600 }}>
+                {fmtPct(quotaTotalReturn)}
+              </div>
+            )}
+          </div>
+          <ReactECharts option={quotaChartOption} style={{ height: 300 }} />
+        </div>
+      )}
+
       {selectedAsset && (
         <div className="smb-card p-4">
           <div className="flex justify-between items-center mb-2">
@@ -201,28 +320,28 @@ export default function FundDetailPage() {
       {perf && (
         <div>
           <h2 className="font-semibold mb-2">Principais alterações em carteira ({perf.ref_date})</h2>
-          <MiniTable title="Maiores movimentos (por valor absoluto)" rows={perf.principais_alteracoes} onSelect={setSelectedAsset} />
+          <MiniTable title="Maiores movimentos (por valor absoluto)" rows={perf.principais_alteracoes} refDate={perf.ref_date} onSelect={setSelectedAsset} />
         </div>
       )}
 
       {perf && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <MiniTable title="🟢 O que aumentou" rows={perf.o_que_aumentou} onSelect={setSelectedAsset} />
-          <MiniTable title="🔴 O que diminuiu" rows={perf.o_que_diminuiu} onSelect={setSelectedAsset} />
+          <MiniTable title="🟢 O que aumentou" rows={perf.o_que_aumentou} refDate={perf.ref_date} onSelect={setSelectedAsset} />
+          <MiniTable title="🔴 O que diminuiu" rows={perf.o_que_diminuiu} refDate={perf.ref_date} onSelect={setSelectedAsset} />
         </div>
       )}
 
       {perf && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <MiniTable title="🆕 Novas posições" rows={perf.novas_posicoes} onSelect={setSelectedAsset} />
-          <MiniTable title="⚫ Zeragens" rows={perf.zeragens} onSelect={setSelectedAsset} />
+          <MiniTable title="🆕 Novas posições" rows={perf.novas_posicoes} refDate={perf.ref_date} onSelect={setSelectedAsset} showPctDelta={false} />
+          <MiniTable title="⚫ Zeragens" rows={perf.zeragens} refDate={perf.ref_date} onSelect={setSelectedAsset} showQtyCurrent={false} showPctDelta={false} />
         </div>
       )}
 
       {perf && (
         <div>
           <h2 className="font-semibold mb-2">Top posições compradas</h2>
-          <MiniTable title="Maiores compras/aumentos por valor" rows={perf.top_posicoes_compradas} onSelect={setSelectedAsset} />
+          <MiniTable title="Maiores compras/aumentos por valor" rows={perf.top_posicoes_compradas} refDate={perf.ref_date} onSelect={setSelectedAsset} />
         </div>
       )}
 

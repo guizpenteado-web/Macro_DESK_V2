@@ -6,9 +6,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Asset, Fund, FundAssetMovement, FundHolding, FundQuota
+from app.models import Asset, Fund, FundAssetMovement, FundHolding, FundQuota, MovementClassification
 from app.schemas.asset import AssetHolderOut, AssetOut, AssetTimelinePoint
-from app.services.query_helpers import latest_holdings_ref_date, latest_movements_ref_date
+from app.services.query_helpers import latest_movements_ref_date
 
 router = APIRouter(prefix="/api/assets", tags=["assets"])
 
@@ -151,56 +151,152 @@ def get_asset(asset_id: int, db: Session = Depends(get_db)):
     return _to_asset_out(asset, latest, return_by_asset)
 
 
+STALE_HOLDER_LOOKBACK_DAYS = 180  # ~6 meses — cobre atraso normal de entrega de CDA sem ressuscitar fundo genuinamente inativo
+
+
 @router.get("/{asset_id}/holders", response_model=list[AssetHolderOut])
-def get_asset_holders(asset_id: int, ref_date: date | None = None, db: Session = Depends(get_db)):
-    """Who holds this asset this month, ranked by position size, with the
-    movement classification/delta joined in so buyers/sellers are visible
-    at a glance."""
-    target_date = ref_date or latest_holdings_ref_date(db)
-    if target_date is None:
-        return []
+def get_asset_holders(
+    asset_id: int,
+    ref_date: date | None = None,
+    include_closed: bool = False,
+    db: Session = Depends(get_db),
+):
+    """Who holds this asset, ranked by position size, with the movement
+    classification/delta joined in so buyers/sellers are visible at a glance.
 
-    rows = db.execute(
-        select(FundHolding, Fund.name, Fund.cnpj, FundAssetMovement.classification, FundAssetMovement.qty_delta)
-        .join(Fund, Fund.id == FundHolding.fund_id)
-        .outerjoin(
-            FundAssetMovement,
-            (FundAssetMovement.fund_id == FundHolding.fund_id)
-            & (FundAssetMovement.asset_id == FundHolding.asset_id)
-            & (FundAssetMovement.ref_date == FundHolding.ref_date),
+    Sem ref_date explicito, usa a ULTIMA posicao QUE CADA FUNDO JA DECLAROU
+    nesse ativo (nao exige que todos batam na mesma data global). A CVM
+    revisa/atrasa entrega de CDA por semanas conforme administradoras
+    entregam declaracoes atrasadas (ver job_cda_recent) — exigir data exata
+    fazia fundos atrasados sumirem INTEIRAMENTE da lista mesmo ainda muito
+    provavelmente segurando a posicao (confirmado 12/jul/2026: fundo
+    ZUCCHERO RV so tem CDA ate 03/2026 pra SMTO3, sumia da lista mesmo
+    concentrando ~98% do PL dele nesse ativo). Janela de
+    STALE_HOLDER_LOOKBACK_DAYS evita trazer fundo genuinamente inativo ha
+    muito tempo. `ref_date` explicito continua pegando o snapshot exato
+    daquele mes, sem essa logica de "ultimo disponivel".
+
+    `include_closed=True` (equivalente ao "Exibir Zeradas" do layout de
+    referencia) tambem inclui fundos cuja ULTIMA movimentacao nesse ativo
+    foi um zeramento (classification=CLOSED) — eles nao tem mais linha em
+    fund_holdings (posicao=0 nao fica guardada la), entao vem do proprio
+    FundAssetMovement, com quantity/market_value=0."""
+    if ref_date is not None:
+        stmt = (
+            select(FundHolding, Fund.name, Fund.cnpj, FundAssetMovement.classification, FundAssetMovement.qty_delta)
+            .join(Fund, Fund.id == FundHolding.fund_id)
+            .outerjoin(
+                FundAssetMovement,
+                (FundAssetMovement.fund_id == FundHolding.fund_id)
+                & (FundAssetMovement.asset_id == FundHolding.asset_id)
+                & (FundAssetMovement.ref_date == FundHolding.ref_date),
+            )
+            .where(FundHolding.asset_id == asset_id, FundHolding.ref_date == ref_date)
         )
-        .where(FundHolding.asset_id == asset_id, FundHolding.ref_date == target_date)
-        .order_by(FundHolding.market_value.desc())
-    ).all()
+        rows = db.execute(stmt).all()
+        holder_data = [(h.fund_id, name, cnpj, h.ref_date, float(h.quantity), float(h.market_value), classification, qty_delta) for h, name, cnpj, classification, qty_delta in rows]
+    else:
+        cutoff = date.today() - timedelta(days=STALE_HOLDER_LOOKBACK_DAYS)
+        latest_per_fund = (
+            select(FundHolding.fund_id, func.max(FundHolding.ref_date).label("ref_date"))
+            .where(FundHolding.asset_id == asset_id, FundHolding.ref_date >= cutoff)
+            .group_by(FundHolding.fund_id)
+            .subquery()
+        )
+        stmt = (
+            select(FundHolding, Fund.name, Fund.cnpj, FundAssetMovement.classification, FundAssetMovement.qty_delta)
+            .join(Fund, Fund.id == FundHolding.fund_id)
+            .join(
+                latest_per_fund,
+                (latest_per_fund.c.fund_id == FundHolding.fund_id) & (latest_per_fund.c.ref_date == FundHolding.ref_date),
+            )
+            .outerjoin(
+                FundAssetMovement,
+                (FundAssetMovement.fund_id == FundHolding.fund_id)
+                & (FundAssetMovement.asset_id == FundHolding.asset_id)
+                & (FundAssetMovement.ref_date == FundHolding.ref_date),
+            )
+            .where(FundHolding.asset_id == asset_id)
+        )
+        rows = db.execute(stmt).all()
+        holder_data = [(h.fund_id, name, cnpj, h.ref_date, float(h.quantity), float(h.market_value), classification, qty_delta) for h, name, cnpj, classification, qty_delta in rows]
 
-    # Patrimonio/cotistas do fundo como um todo (nao so a posicao neste ativo) —
-    # pega o fund_quota mais recente de cada fundo, em uma unica query.
-    fund_ids = [h.fund_id for h, *_ in rows]
-    quotas = {}
+        if include_closed:
+            current_fund_ids = {r[0] for r in holder_data}
+            latest_movement_per_fund = (
+                select(FundAssetMovement.fund_id, func.max(FundAssetMovement.ref_date).label("ref_date"))
+                .where(FundAssetMovement.asset_id == asset_id, FundAssetMovement.ref_date >= cutoff)
+                .group_by(FundAssetMovement.fund_id)
+                .subquery()
+            )
+            closed_stmt = (
+                select(FundAssetMovement, Fund.name, Fund.cnpj)
+                .join(Fund, Fund.id == FundAssetMovement.fund_id)
+                .join(
+                    latest_movement_per_fund,
+                    (latest_movement_per_fund.c.fund_id == FundAssetMovement.fund_id)
+                    & (latest_movement_per_fund.c.ref_date == FundAssetMovement.ref_date),
+                )
+                .where(FundAssetMovement.asset_id == asset_id, FundAssetMovement.classification == MovementClassification.CLOSED)
+            )
+            for m, name, cnpj in db.execute(closed_stmt).all():
+                if m.fund_id in current_fund_ids:
+                    continue  # fundo zerou e depois recomprou dentro da janela — ja esta em holder_data com qty>0
+                holder_data.append((m.fund_id, name, cnpj, m.ref_date, 0.0, 0.0, m.classification, float(m.qty_delta)))
+
+    # Patrimonio/cotistas do fundo como um todo (nao so a posicao neste ativo).
+    # Cada holding agora pode ter seu PROPRIO ref_date (fundos atrasados
+    # mostram a ultima posicao que declararam, ver acima) — o patrimonio
+    # tem que ser da MESMA epoca da posicao, senao a % fica errada (ex:
+    # posicao de marco / patrimonio de junho, meses depois, %  incoerente).
+    # Por fundo, pega TODAS as quotas e escolhe a mais recente <= ref_date
+    # da posicao (nao a mais recente global do fundo).
+    fund_ids = list({fund_id for fund_id, *_ in holder_data})
+    quotas_by_fund: dict[int, list[FundQuota]] = {}
     if fund_ids:
         quota_rows = db.execute(
-            select(FundQuota)
-            .where(FundQuota.fund_id.in_(fund_ids))
-            .distinct(FundQuota.fund_id)
-            .order_by(FundQuota.fund_id, FundQuota.ref_date.desc())
+            select(FundQuota).where(FundQuota.fund_id.in_(fund_ids)).order_by(FundQuota.fund_id, FundQuota.ref_date)
         ).scalars()
-        quotas = {q.fund_id: q for q in quota_rows}
+        for q in quota_rows:
+            quotas_by_fund.setdefault(q.fund_id, []).append(q)
 
-    return [
-        AssetHolderOut(
-            fund_id=h.fund_id,
-            fund_name=name,
-            fund_cnpj=cnpj,
-            quantity=float(h.quantity),
-            market_value=float(h.market_value),
-            classification=classification.value if classification else None,
-            qty_delta=float(qty_delta) if qty_delta is not None else None,
-            ref_date=h.ref_date,
-            fund_net_asset_value=float(quotas[h.fund_id].net_asset_value) if h.fund_id in quotas else None,
-            fund_n_shareholders=quotas[h.fund_id].n_shareholders if h.fund_id in quotas else None,
+    def quota_as_of(fund_id: int, holding_date: date, position_value: float) -> FundQuota | None:
+        # Pula qualquer quota onde o patrimonio do fundo inteiro sai MENOR
+        # que essa unica posicao em acoes — matematicamente impossivel pra
+        # posicao normal (nao alavancada), e sinal claro de dado inconsistente
+        # do Informe Diario nesse mes especifico (confirmado 12/jul/2026:
+        # alguns fundos "espelho"/master alternam entre patrimonio real e um
+        # residual de ~R$1-2mi com 1 cotista, mes sim mes nao, sem motivo
+        # aparente na fonte — nao e' bug de parsing nosso). Continua a
+        # procura mais pra tras ate achar uma quota plausivel.
+        best = None
+        for q in quotas_by_fund.get(fund_id, []):
+            if q.ref_date > holding_date:
+                break
+            if position_value > 0 and float(q.net_asset_value) < position_value:
+                continue
+            best = q
+        return best
+
+    results = []
+    for fund_id, name, cnpj, h_ref_date, quantity, market_value, classification, qty_delta in holder_data:
+        q = quota_as_of(fund_id, h_ref_date, market_value)
+        results.append(
+            AssetHolderOut(
+                fund_id=fund_id,
+                fund_name=name,
+                fund_cnpj=cnpj,
+                quantity=quantity,
+                market_value=market_value,
+                classification=classification.value if classification else None,
+                qty_delta=float(qty_delta) if qty_delta is not None else None,
+                ref_date=h_ref_date,
+                fund_net_asset_value=float(q.net_asset_value) if q else None,
+                fund_n_shareholders=q.n_shareholders if q else None,
+            )
         )
-        for h, name, cnpj, classification, qty_delta in rows
-    ]
+    results.sort(key=lambda r: r.market_value, reverse=True)
+    return results
 
 
 @router.get("/{asset_id}/movements")

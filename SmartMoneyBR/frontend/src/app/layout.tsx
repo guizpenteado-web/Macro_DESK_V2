@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import AlertsNavLink from "@/components/AlertsNavLink";
+import GlobalSearch from "@/components/GlobalSearch";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -21,7 +22,7 @@ export default function RootLayout({
             <Link href="/" className="font-bold tracking-tight text-xl" style={{ color: "var(--cyan)" }}>
               SmartMoney<span style={{ color: "var(--text)" }}>BR</span>
             </Link>
-            <nav className="flex gap-4 text-sm" style={{ color: "var(--text2)" }}>
+            <nav className="flex items-center gap-4 text-sm" style={{ color: "var(--text2)" }}>
               <Link href="/fundos">Fundos</Link>
               <Link href="/ativos">Ativos</Link>
               <Link href="/rankings">Rankings</Link>
@@ -30,6 +31,7 @@ export default function RootLayout({
               <Link href="/insiders">Insiders</Link>
               <AlertsNavLink />
               <Link href="/evolucao">Evolução</Link>
+              <GlobalSearch />
             </nav>
           </div>
         </header>

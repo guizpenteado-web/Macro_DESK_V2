@@ -91,7 +91,7 @@ function buildChartOption(priceHistory: PricePoint[], insiderTrades: InsiderTrad
     ],
     legend: {
       data: ["Cotação", "Insiders (qtd negociada)"],
-      textStyle: { color: "var(--text2)" },
+      textStyle: { color: "#8b93a7" },
       top: 0,
     },
     xAxis: [
@@ -108,7 +108,7 @@ function buildChartOption(priceHistory: PricePoint[], insiderTrades: InsiderTrad
         gridIndex: 1,
         data: months,
         axisLine: { lineStyle: { color: "#565f75" } },
-        axisLabel: { color: "var(--text3)", interval: Math.ceil(months.length / 12) },
+        axisLabel: { color: "#565f75", interval: Math.ceil(months.length / 12) },
       },
     ],
     yAxis: [
@@ -120,17 +120,17 @@ function buildChartOption(priceHistory: PricePoint[], insiderTrades: InsiderTrad
         name: "R$",
         axisLine: { lineStyle: { color: "#565f75" } },
         splitLine: { lineStyle: { color: "#232838" } },
-        axisLabel: { color: "var(--text3)" },
+        axisLabel: { color: "#565f75" },
       },
       {
         id: "yInsiders",
         type: "value",
         gridIndex: 1,
         name: "Qtd insiders/mês",
-        nameTextStyle: { color: "var(--text3)" },
+        nameTextStyle: { color: "#565f75" },
         axisLine: { lineStyle: { color: "#565f75" } },
         splitLine: { show: false },
-        axisLabel: { color: "var(--text3)" },
+        axisLabel: { color: "#565f75" },
       },
     ],
     // Um dataZoom "inside" POR GRID, cada um controlando X e Y JUNTOS do seu

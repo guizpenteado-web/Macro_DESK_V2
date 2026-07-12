@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Asset, Fund, FundAssetMovement, FundHolding, FundQuota, MovementClassification
-from app.services.returns import compute_window_return
+from app.services.returns import REBASE_RATIO_HIGH, REBASE_RATIO_LOW, compute_window_return
 
 router = APIRouter(prefix="/api", tags=["performance"])
 
@@ -165,6 +165,46 @@ def flow_evolution(db: Session = Depends(get_db)):
         )
 
     return {"months": months, "avg_total_value_bought": avg_value, "avg_n_funds_buying": avg_n_funds}
+
+
+@router.get("/funds/{fund_id}/quota-history")
+def fund_quota_history(fund_id: int, years: int = Query(20, ge=1, le=26), db: Session = Depends(get_db)):
+    """Serie historica de valor de cota (indexada a 100 no inicio) para o
+    grafico de 'cotacao' do fundo. Reusa a mesma logica de deteccao de rebase
+    de app/services/returns.py — se houver uma restruturacao/amortizacao no
+    meio da janela, a serie e' cortada para comecar logo apos o ultimo
+    rebase, em vez de mostrar um salto vertical sem sentido no grafico."""
+    max_date = db.execute(select(func.max(FundQuota.ref_date)).where(FundQuota.fund_id == fund_id)).scalar_one_or_none()
+    if max_date is None:
+        return {"points": [], "window_start": None}
+
+    window_start = date(max_date.year - years, max_date.month, 1)
+    rows = db.execute(
+        select(FundQuota.ref_date, FundQuota.quota_value)
+        .where(FundQuota.fund_id == fund_id, FundQuota.ref_date >= window_start)
+        .order_by(FundQuota.ref_date)
+    ).all()
+    series = [(r.ref_date, float(r.quota_value)) for r in rows]
+    if len(series) < 2:
+        return {"points": [], "window_start": None}
+
+    effective_start_idx = 0
+    for i in range(1, len(series)):
+        prev_v = series[i - 1][1]
+        cur_v = series[i][1]
+        if prev_v <= 0:
+            continue
+        ratio = cur_v / prev_v
+        if ratio > REBASE_RATIO_HIGH or ratio < REBASE_RATIO_LOW:
+            effective_start_idx = i
+
+    clean = series[effective_start_idx:]
+    base_value = clean[0][1]
+    points = [
+        {"ref_date": d, "quota_value": v, "indexed": (v / base_value) * 100 if base_value else None}
+        for d, v in clean
+    ]
+    return {"points": points, "window_start": clean[0][0]}
 
 
 @router.get("/funds/{fund_id}/performance")

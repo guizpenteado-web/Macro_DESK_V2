@@ -277,6 +277,17 @@ export interface FundPerformance {
   evolucao_posicoes_compradas: { ref_date: string; total_bought: number; n_positions: number }[];
 }
 
+export interface QuotaPoint {
+  ref_date: string;
+  quota_value: number;
+  indexed: number | null;
+}
+
+export interface FundQuotaHistory {
+  points: QuotaPoint[];
+  window_start: string | null;
+}
+
 function buildQuery(params: Record<string, string | number | undefined>): string {
   const q = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -309,6 +320,7 @@ export const api = {
   getFundAssetHistory: (id: number, assetId: number) =>
     apiGet<AssetHistoryPoint[]>(`/api/funds/${id}/history?asset_id=${assetId}`),
   getFundPerformance: (id: number) => apiGet<FundPerformance>(`/api/funds/${id}/performance`),
+  getFundQuotaHistory: (id: number, years = 20) => apiGet<FundQuotaHistory>(`/api/funds/${id}/quota-history?years=${years}`),
 
   getTopPerformers: (years: number = 20) =>
     apiGet<{ window_years: number; as_of: string | null; rows: TopPerformerRow[] }>(
@@ -329,7 +341,8 @@ export const api = {
       })}`
     ),
   getAsset: (id: number) => apiGet<Asset>(`/api/assets/${id}`),
-  getAssetHolders: (id: number) => apiGet<AssetHolder[]>(`/api/assets/${id}/holders`),
+  getAssetHolders: (id: number, includeClosed = false) =>
+    apiGet<AssetHolder[]>(`/api/assets/${id}/holders?${buildQuery({ include_closed: includeClosed ? "true" : undefined })}`),
   getAssetMovements: (id: number) =>
     apiGet<{
       ref_date: string;

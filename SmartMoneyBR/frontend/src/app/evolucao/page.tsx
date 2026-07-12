@@ -33,14 +33,14 @@ export default function EvolucaoPage() {
     grid: { left: 70, right: 70, top: 40, bottom: 60 },
     legend: {
       data: ["Valor investido (novas/aumentadas)", "Nº de fundos comprando"],
-      textStyle: { color: "var(--text2)" },
+      textStyle: { color: "#8b93a7" },
       top: 0,
     },
     xAxis: {
       type: "category",
       data: months.map((m) => m.ref_date),
       axisLine: { lineStyle: { color: "#565f75" } },
-      axisLabel: { rotate: 45, color: "var(--text3)" },
+      axisLabel: { rotate: 45, color: "#565f75" },
     },
     yAxis: [
       {
@@ -49,7 +49,7 @@ export default function EvolucaoPage() {
         position: "left",
         axisLine: { lineStyle: { color: "#565f75" } },
         splitLine: { lineStyle: { color: "#232838" } },
-        axisLabel: { formatter: (v: number) => fmtBRL(v), color: "var(--text3)" },
+        axisLabel: { formatter: (v: number) => fmtBRL(v), color: "#565f75" },
       },
       {
         type: "value",
@@ -57,7 +57,7 @@ export default function EvolucaoPage() {
         position: "right",
         axisLine: { lineStyle: { color: "#565f75" } },
         splitLine: { show: false },
-        axisLabel: { color: "var(--text3)" },
+        axisLabel: { color: "#565f75" },
       },
     ],
     tooltip: {
