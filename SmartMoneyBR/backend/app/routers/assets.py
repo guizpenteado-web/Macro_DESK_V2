@@ -151,7 +151,11 @@ def get_asset(asset_id: int, db: Session = Depends(get_db)):
     return _to_asset_out(asset, latest, return_by_asset)
 
 
-STALE_HOLDER_LOOKBACK_DAYS = 180  # ~6 meses — cobre atraso normal de entrega de CDA sem ressuscitar fundo genuinamente inativo
+STALE_HOLDER_LOOKBACK_DAYS = 365  # ~12 meses — 180d excluia fundos reais com atraso de entrega (achado 12/jul/2026: BB TOP
+# ACOES SETOR IMOBILIARIO some da lista de MULT3 por estar 194 dias atrasado, apesar de ter posicao real e ativa).
+# Distribuicao real (12/jul/2026): de ~9.3k fundos com alguma posicao historica, so 815 caem na faixa 366-730d e 4.484
+# estao a mais de 730d (quase certamente fundos encerrados/liquidados sem baixa formal na CDA) — 365d cobre o atraso
+# normal de entrega sem ressuscitar fundo genuinamente morto. O badge de "mes" na UI ja sinaliza posicao desatualizada.
 
 
 @router.get("/{asset_id}/holders", response_model=list[AssetHolderOut])
@@ -260,20 +264,53 @@ def get_asset_holders(
         for q in quota_rows:
             quotas_by_fund.setdefault(q.fund_id, []).append(q)
 
+    # Patrimonio total da carteira do fundo (soma de TODOS os ativos, nao so
+    # o que estamos exibindo) por (fund_id, ref_date) — usado como piso mais
+    # forte que so a posicao individual (ver quota_as_of abaixo). Achado
+    # 12/jul/2026 (MULT3 x KINEA ATLAS II): o piso de "posicao unica" nao
+    # pega o caso em que NENHUMA posicao isolada excede o patrimonio
+    # informado, mas a carteira INTEIRA do fundo (109 ativos, R$294mi) excede
+    # um patrimonio residual de R$2,8mi do mesmo mes — mesma anomalia da
+    # fonte, so que dessa vez distribuida entre varias posicoes pequenas.
+    portfolio_totals: dict[tuple[int, date], float] = {}
+    if fund_ids:
+        portfolio_rows = db.execute(
+            select(FundHolding.fund_id, FundHolding.ref_date, func.sum(FundHolding.market_value))
+            .where(FundHolding.fund_id.in_(fund_ids))
+            .group_by(FundHolding.fund_id, FundHolding.ref_date)
+        ).all()
+        for fid, rd, total in portfolio_rows:
+            portfolio_totals[(fid, rd)] = float(total)
+
+    # Fundos multimercado podem legitimamente ter notional em acoes MAIOR que
+    # o patrimonio (derivativos/margem) — achado 12/jul/2026 (VISTA ON ACCESS
+    # em MULT3): razao carteira/patrimonio ~1.4-1.8x em TODOS os meses
+    # disponiveis, estavel, sem nenhum salto — alavancagem real, nao dado
+    # corrompido. Uma margem generosa (5x) ainda barra o caso degenerado
+    # (KINEA ATLAS II: razao ~100x num unico mes residual) sem esconder
+    # posicao legitima de fundo alavancado.
+    PORTFOLIO_TO_NAV_MAX_RATIO = 5.0
+
     def quota_as_of(fund_id: int, holding_date: date, position_value: float) -> FundQuota | None:
         # Pula qualquer quota onde o patrimonio do fundo inteiro sai MENOR
-        # que essa unica posicao em acoes — matematicamente impossivel pra
-        # posicao normal (nao alavancada), e sinal claro de dado inconsistente
-        # do Informe Diario nesse mes especifico (confirmado 12/jul/2026:
-        # alguns fundos "espelho"/master alternam entre patrimonio real e um
-        # residual de ~R$1-2mi com 1 cotista, mes sim mes nao, sem motivo
-        # aparente na fonte — nao e' bug de parsing nosso). Continua a
-        # procura mais pra tras ate achar uma quota plausivel.
+        # que essa unica posicao em acoes (nunca plausivel, nem alavancado —
+        # seria uma posicao maior que o fundo inteiro) OU muito menor que a
+        # soma de TODA a carteira conhecida (alem da margem de alavancagem
+        # acima) — sinal claro de dado inconsistente do Informe Diario nesse
+        # mes especifico (confirmado 12/jul/2026: alguns fundos
+        # "espelho"/master alternam entre patrimonio real e um residual de
+        # ~R$1-2mi com 1 cotista, mes sim mes nao, sem motivo aparente na
+        # fonte — nao e' bug de parsing nosso). Continua a procura mais pra
+        # tras ate achar uma quota plausivel.
+        portfolio_total = portfolio_totals.get((fund_id, holding_date), 0.0)
         best = None
         for q in quotas_by_fund.get(fund_id, []):
             if q.ref_date > holding_date:
                 break
-            if position_value > 0 and float(q.net_asset_value) < position_value:
+            nav = float(q.net_asset_value)
+            if position_value > 0 and nav < position_value:
+                continue
+            if portfolio_total > 0 and nav * PORTFOLIO_TO_NAV_MAX_RATIO < portfolio_total:
                 continue
             best = q
         return best
