@@ -290,6 +290,19 @@ def get_asset_holders(
     # (KINEA ATLAS II: razao ~100x num unico mes residual) sem esconder
     # posicao legitima de fundo alavancado.
     PORTFOLIO_TO_NAV_MAX_RATIO = 5.0
+    # Tolerancia pra ruido normal de data de marcacao entre a posicao (CDA,
+    # fechamento do mes) e a cota (Informe Diario, pode ser marcada num dia
+    # util ligeiramente diferente) — achado 12/jul/2026 numa auditoria
+    # ampla (todos os ativos, nao so MULT3): fundos como MAKO INR II e HAWK
+    # II FIF EM ACOES tem carteira e patrimonio andando juntos o tempo todo
+    # (mesma tendencia, mesma ordem de grandeza), so que a posicao vem 1-5%
+    # ACIMA do patrimonio registrado nesse mes especifico por puro
+    # descompasso de marcacao — nao e' o padrao "residual" nem alavancagem,
+    # e o piso estrito (1.0x) rejeitava TODAS as cotas do fundo sem excecao
+    # (carteira sempre ligeiramente a frente da cota), zerando o %PL de um
+    # fundo com dado perfeitamente normal. 10% cobre esse ruido sem abrir
+    # espaco pro caso residual de verdade (que salta 100x+, nao 1-5%).
+    FLOOR_TOLERANCE = 1.10
 
     def quota_as_of(fund_id: int, holding_date: date, position_value: float) -> FundQuota | None:
         # Pula qualquer quota onde o patrimonio do fundo inteiro sai MENOR
@@ -308,7 +321,7 @@ def get_asset_holders(
             if q.ref_date > holding_date:
                 break
             nav = float(q.net_asset_value)
-            if position_value > 0 and nav < position_value:
+            if position_value > 0 and nav * FLOOR_TOLERANCE < position_value:
                 continue
             if portfolio_total > 0 and nav * PORTFOLIO_TO_NAV_MAX_RATIO < portfolio_total:
                 continue
