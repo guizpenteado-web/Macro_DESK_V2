@@ -227,6 +227,15 @@ export interface InsiderFilters {
   limit?: number;
 }
 
+export interface PricePoint {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number | null;
+}
+
 export interface Alert {
   id: number;
   type: string;
@@ -368,4 +377,7 @@ export const api = {
   markAllAlertsRead: () => apiPost<{ ok: boolean }>(`/api/alerts/read-all`),
 
   getFlowEvolution: () => apiGet<FlowEvolution>(`/api/evolution/flow`),
+
+  getPriceHistory: (ticker: string, years = 10) =>
+    apiGet<PricePoint[]>(`/api/market/price-history?${buildQuery({ ticker, years })}`),
 };

@@ -6,12 +6,14 @@ from app.models.holding import FundHolding, FundNav
 from app.models.ingestion_log import IngestionLog
 from app.models.insider import InsiderTrade
 from app.models.movement import FundAssetMovement, MovementClassification
+from app.models.price_history import AssetPriceHistory
 from app.models.quota import FundQuota
 from app.models.security import CompanySecurity
 
 __all__ = [
     "Alert",
     "Asset",
+    "AssetPriceHistory",
     "CompanyBuyback",
     "CompanySecurity",
     "Fund",
