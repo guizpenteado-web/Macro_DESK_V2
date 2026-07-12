@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Asset, Fund, FundAssetMovement, FundHolding, FundQuota, MovementClassification
+from app.models import Asset, Fund, FundAssetMovement, FundHolding, FundNav, FundQuota, MovementClassification
 from app.schemas.asset import AssetHolderOut, AssetOut, AssetTimelinePoint
 from app.services.query_helpers import latest_movements_ref_date
 
@@ -248,32 +248,43 @@ def get_asset_holders(
                     continue  # fundo zerou e depois recomprou dentro da janela — ja esta em holder_data com qty>0
                 holder_data.append((m.fund_id, name, cnpj, m.ref_date, 0.0, 0.0, m.classification, float(m.qty_delta)))
 
-    # Patrimonio/cotistas do fundo como um todo (nao so a posicao neste ativo).
-    # Cada holding agora pode ter seu PROPRIO ref_date (fundos atrasados
-    # mostram a ultima posicao que declararam, ver acima) — o patrimonio
-    # tem que ser da MESMA epoca da posicao, senao a % fica errada (ex:
-    # posicao de marco / patrimonio de junho, meses depois, %  incoerente).
-    # Por fundo, pega TODAS as quotas e escolhe a mais recente <= ref_date
-    # da posicao (nao a mais recente global do fundo).
+    # Patrimonio do fundo, pra calcular "% do PL" — fonte PRINCIPAL agora e'
+    # FundNav (campo VL_PATRIM_LIQ do arquivo PL_ dentro do MESMO zip da CDA,
+    # mesma competencia/CNPJ_FUNDO_CLASSE da posicao), nao mais FundQuota
+    # (Informe Diario, dataset SEPARADO). Achado 12/jul/2026 comparando
+    # SMFT3 x CarteiraFundos.com: GENERALE FIF aparecia com %PL errado
+    # (107% via Informe Diario, com toda uma bateria de filtros de
+    # plausibilidade pra chegar nesse numero) quando o certo, usando o
+    # patrimonio da PROPRIA CDA daquele mes, e' 318,9% — batendo quase exato
+    # com a referencia (~320%). FIPs (private equity) tambem passam a
+    # aparecer, porque reportam PL na propria CDA mesmo sem Informe Diario
+    # diario (FIP nao tem cota de liquidez diaria). Cobertura de FundNav:
+    # 100% dos periodos 2023+ (mesmo pipeline/arquivo que FundHolding), so
+    # ~9% pre-2023 (backfill historico do CDA_HIST ainda nao tem o PL_
+    # completo pra esses anos) — fallback abaixo cobre esse gap.
     fund_ids = list({fund_id for fund_id, *_ in holder_data})
+    nav_by_fund_date: dict[tuple[int, date], float] = {}
+    navs_by_fund: dict[int, list[FundNav]] = {}
+    if fund_ids:
+        nav_rows = db.execute(
+            select(FundNav).where(FundNav.fund_id.in_(fund_ids)).order_by(FundNav.fund_id, FundNav.ref_date)
+        ).scalars()
+        for n in nav_rows:
+            nav_by_fund_date[(n.fund_id, n.ref_date)] = float(n.net_asset_value)
+            navs_by_fund.setdefault(n.fund_id, []).append(n)
+
+    # Fallback pra quando FundNav nao cobre o periodo (essencialmente so
+    # pre-2023) — mesma logica de plausibilidade validada antes (piso de
+    # posicao/carteira com folga de alavancagem e ruido de marcacao), agora
+    # so usada como segunda linha, nao mais a fonte principal.
     quotas_by_fund: dict[int, list[FundQuota]] = {}
+    portfolio_totals: dict[tuple[int, date], float] = {}
     if fund_ids:
         quota_rows = db.execute(
             select(FundQuota).where(FundQuota.fund_id.in_(fund_ids)).order_by(FundQuota.fund_id, FundQuota.ref_date)
         ).scalars()
         for q in quota_rows:
             quotas_by_fund.setdefault(q.fund_id, []).append(q)
-
-    # Patrimonio total da carteira do fundo (soma de TODOS os ativos, nao so
-    # o que estamos exibindo) por (fund_id, ref_date) — usado como piso mais
-    # forte que so a posicao individual (ver quota_as_of abaixo). Achado
-    # 12/jul/2026 (MULT3 x KINEA ATLAS II): o piso de "posicao unica" nao
-    # pega o caso em que NENHUMA posicao isolada excede o patrimonio
-    # informado, mas a carteira INTEIRA do fundo (109 ativos, R$294mi) excede
-    # um patrimonio residual de R$2,8mi do mesmo mes — mesma anomalia da
-    # fonte, so que dessa vez distribuida entre varias posicoes pequenas.
-    portfolio_totals: dict[tuple[int, date], float] = {}
-    if fund_ids:
         portfolio_rows = db.execute(
             select(FundHolding.fund_id, FundHolding.ref_date, func.sum(FundHolding.market_value))
             .where(FundHolding.fund_id.in_(fund_ids))
@@ -282,39 +293,10 @@ def get_asset_holders(
         for fid, rd, total in portfolio_rows:
             portfolio_totals[(fid, rd)] = float(total)
 
-    # Fundos multimercado podem legitimamente ter notional em acoes MAIOR que
-    # o patrimonio (derivativos/margem) — achado 12/jul/2026 (VISTA ON ACCESS
-    # em MULT3): razao carteira/patrimonio ~1.4-1.8x em TODOS os meses
-    # disponiveis, estavel, sem nenhum salto — alavancagem real, nao dado
-    # corrompido. Uma margem generosa (5x) ainda barra o caso degenerado
-    # (KINEA ATLAS II: razao ~100x num unico mes residual) sem esconder
-    # posicao legitima de fundo alavancado.
     PORTFOLIO_TO_NAV_MAX_RATIO = 5.0
-    # Tolerancia pra ruido normal de data de marcacao entre a posicao (CDA,
-    # fechamento do mes) e a cota (Informe Diario, pode ser marcada num dia
-    # util ligeiramente diferente) — achado 12/jul/2026 numa auditoria
-    # ampla (todos os ativos, nao so MULT3): fundos como MAKO INR II e HAWK
-    # II FIF EM ACOES tem carteira e patrimonio andando juntos o tempo todo
-    # (mesma tendencia, mesma ordem de grandeza), so que a posicao vem 1-5%
-    # ACIMA do patrimonio registrado nesse mes especifico por puro
-    # descompasso de marcacao — nao e' o padrao "residual" nem alavancagem,
-    # e o piso estrito (1.0x) rejeitava TODAS as cotas do fundo sem excecao
-    # (carteira sempre ligeiramente a frente da cota), zerando o %PL de um
-    # fundo com dado perfeitamente normal. 10% cobre esse ruido sem abrir
-    # espaco pro caso residual de verdade (que salta 100x+, nao 1-5%).
     FLOOR_TOLERANCE = 1.10
 
-    def quota_as_of(fund_id: int, holding_date: date, position_value: float) -> FundQuota | None:
-        # Pula qualquer quota onde o patrimonio do fundo inteiro sai MENOR
-        # que essa unica posicao em acoes (nunca plausivel, nem alavancado —
-        # seria uma posicao maior que o fundo inteiro) OU muito menor que a
-        # soma de TODA a carteira conhecida (alem da margem de alavancagem
-        # acima) — sinal claro de dado inconsistente do Informe Diario nesse
-        # mes especifico (confirmado 12/jul/2026: alguns fundos
-        # "espelho"/master alternam entre patrimonio real e um residual de
-        # ~R$1-2mi com 1 cotista, mes sim mes nao, sem motivo aparente na
-        # fonte — nao e' bug de parsing nosso). Continua a procura mais pra
-        # tras ate achar uma quota plausivel.
+    def quota_fallback(fund_id: int, holding_date: date, position_value: float) -> FundQuota | None:
         portfolio_total = portfolio_totals.get((fund_id, holding_date), 0.0)
         best = None
         for q in quotas_by_fund.get(fund_id, []):
@@ -328,9 +310,52 @@ def get_asset_holders(
             best = q
         return best
 
+    # Teto de sanidade generoso pro FundNav — so pra pegar o caso degenerado
+    # de patrimonio essencialmente zero (achado 12/jul/2026: SKOPOS TOP
+    # TRADES EQUITY HEDGE tinha FundNav=R$0,03 num mes, contra uma carteira
+    # de R$300mi+ em 20 ativos — razao ~10,6 MILHOES de vezes). Auditoria
+    # completa mostrou que casos genuinamente concentrados/alavancados (ex:
+    # GENERALE em SMFT3, validado contra a referencia) ficam ate ~46x no
+    # maximo — 200x da uma folga enorme sem esconder concentracao real.
+    NAV_SANITY_MAX_RATIO = 200.0
+
+    def nav_as_of(fund_id: int, holding_date: date) -> float | None:
+        portfolio_total = portfolio_totals.get((fund_id, holding_date), 0.0)
+
+        def is_sane(nav: float) -> bool:
+            if nav <= 0:
+                return False
+            if portfolio_total > 0 and portfolio_total / nav > NAV_SANITY_MAX_RATIO:
+                return False
+            return True
+
+        exact = nav_by_fund_date.get((fund_id, holding_date))
+        if exact is not None and is_sane(exact):
+            return exact
+        for n in reversed(navs_by_fund.get(fund_id, [])):
+            nav = float(n.net_asset_value)
+            if n.ref_date <= holding_date and is_sane(nav):
+                return nav
+        return None
+
+    def n_shareholders_as_of(fund_id: int, holding_date: date) -> int | None:
+        # So informativo (nao entra na conta de %PL, que agora usa FundNav) —
+        # FundNav nao tem contagem de cotistas, entao continua vindo do
+        # Informe Diario, sem filtro de plausibilidade (nao afeta nenhum
+        # calculo, so exibicao).
+        best = None
+        for q in quotas_by_fund.get(fund_id, []):
+            if q.ref_date > holding_date:
+                break
+            best = q
+        return best.n_shareholders if best else None
+
     results = []
     for fund_id, name, cnpj, h_ref_date, quantity, market_value, classification, qty_delta in holder_data:
-        q = quota_as_of(fund_id, h_ref_date, market_value)
+        nav = nav_as_of(fund_id, h_ref_date)
+        if nav is None:
+            q = quota_fallback(fund_id, h_ref_date, market_value)
+            nav = float(q.net_asset_value) if q else None
         results.append(
             AssetHolderOut(
                 fund_id=fund_id,
@@ -341,8 +366,8 @@ def get_asset_holders(
                 classification=classification.value if classification else None,
                 qty_delta=float(qty_delta) if qty_delta is not None else None,
                 ref_date=h_ref_date,
-                fund_net_asset_value=float(q.net_asset_value) if q else None,
-                fund_n_shareholders=q.n_shareholders if q else None,
+                fund_net_asset_value=nav,
+                fund_n_shareholders=n_shareholders_as_of(fund_id, h_ref_date),
             )
         )
     results.sort(key=lambda r: r.market_value, reverse=True)
