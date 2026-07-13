@@ -10,3 +10,5 @@ python-dateutil
 httpx
 apscheduler
 curl_cffi
+itsdangerous
+bcrypt

@@ -30,8 +30,9 @@ import httpx
 import uvicorn
 import yfinance as yf
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from bs4 import BeautifulSoup
+from starlette.middleware.sessions import SessionMiddleware
 
 BASE          = Path(__file__).resolve().parent
 DASHBOARD_DIR = BASE / "dashboard"
@@ -49,6 +50,9 @@ RRG_DIR       = BASE / "RRGCOMPLETO"
 # proprio servidor — sem isso o proxy generico do Hub (regex em href="/,
 # src="/) nao dá conta de _next/static nem de fetch client-side.
 SM_DIR        = BASE / "SmartMoneyBR"
+AUTH_DIR      = BASE / "auth"
+
+sys.path.insert(0, str(BASE))
 
 
 # venv layout difference: Windows usa .venv/Scripts/python.exe, Linux/macOS
@@ -776,6 +780,7 @@ _SHELL = """<!DOCTYPE html>
     <span style="font-size:13px">◫</span>
     Overview
   </button>
+  <!--USER_NAV-->
 </nav>
 
 <!-- ── News Panel ── -->
@@ -1327,8 +1332,10 @@ _SHELL = """<!DOCTYPE html>
 app = FastAPI(title="Macro Desk")
 
 # CORS liberado: o artifact "Análises Macro Desk" roda em claude.ai (origem diferente
-# desta) e precisa poder chamar a API da Biblioteca aqui hospedada. Não há autenticação
-# nem dados sensíveis de terceiros neste servidor pessoal, então liberar geral é aceitável.
+# desta) e precisa poder chamar a API da Biblioteca aqui hospedada (GET, leitura
+# publica de posts). A autenticacao de verdade (sessao/login) é feita abaixo,
+# via cookie proprio deste dominio — CORS liberado nao afeta isso, cookies de
+# sessao nunca sao expostos a origem cruzada por padrao (SameSite).
 from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
@@ -1337,6 +1344,163 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Login (admin/usuario) ────────────────────────────────────────────────────
+# Duas camadas: admin (acesso total, inclusive cadastro de usuarios em /admin)
+# e usuario (só leitura — qualquer metodo de escrita leva 403). Banco proprio
+# do Hub (auth/hub_users.db, SQLite) — nao depende do Postgres do SmartMoneyBR
+# nem do MySQL do Trading Dashboard, login é uma preocupacao do Hub em si.
+import bcrypt
+
+sys.path.insert(0, str(BASE))
+from auth.schema import DB_PATH as HUB_USERS_DB, init_db as _init_auth_db  # noqa: E402
+
+_init_auth_db()
+
+_SESSION_SECRET_FILE = AUTH_DIR / ".session_secret"
+if not _SESSION_SECRET_FILE.exists():
+    import secrets as _secrets
+
+    _SESSION_SECRET_FILE.write_text(_secrets.token_hex(32), encoding="utf-8")
+_SESSION_SECRET = _SESSION_SECRET_FILE.read_text(encoding="utf-8").strip()
+
+
+def _auth_get_user(username: str) -> dict | None:
+    conn = _sqlite3.connect(HUB_USERS_DB)
+    conn.row_factory = _sqlite3.Row
+    row = conn.execute("SELECT * FROM users WHERE username = ? AND ativo = 1", (username,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def _auth_verify(username: str, password: str) -> dict | None:
+    user = _auth_get_user(username)
+    if not user:
+        return None
+    if not bcrypt.checkpw(password.encode(), user["password_hash"].encode()):
+        return None
+    return user
+
+
+def _auth_touch_last_login(username: str) -> None:
+    conn = _sqlite3.connect(HUB_USERS_DB)
+    conn.execute("UPDATE users SET ultimo_login = datetime('now') WHERE username = ?", (username,))
+    conn.commit()
+    conn.close()
+
+
+_LOGIN_PAGE = """<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Macro Desk — Login</title>
+<style>
+  *{{box-sizing:border-box;margin:0;padding:0}}
+  body{{height:100vh;display:flex;align-items:center;justify-content:center;
+    background:#0d1117;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}}
+  .box{{width:340px;background:#161b22;border:1px solid #21262d;border-radius:12px;padding:32px}}
+  .logo{{font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase;
+    color:#8b949e;margin-bottom:4px}}
+  .logo span{{color:#e6edf3}}
+  h1{{font-size:18px;color:#e6edf3;margin:4px 0 22px;font-weight:600}}
+  label{{font-size:12px;color:#8b949e;display:block;margin-bottom:5px}}
+  input{{width:100%;padding:9px 11px;margin-bottom:16px;background:#0d1117;
+    border:1px solid #30363d;border-radius:6px;color:#e6edf3;font-size:14px}}
+  input:focus{{outline:none;border-color:#00BFFF}}
+  button{{width:100%;padding:10px;background:#00BFFF;border:none;border-radius:6px;
+    color:#04141c;font-weight:700;font-size:14px;cursor:pointer}}
+  button:hover{{background:#33cfff}}
+  .err{{color:#f85149;font-size:12.5px;margin-bottom:14px}}
+</style></head>
+<body>
+  <div class="box">
+    <div class="logo">&#9670; <span>Macro Desk</span></div>
+    <h1>Entrar</h1>
+    {error_html}
+    <form method="post" action="/api/auth/login">
+      <label>Usuário</label>
+      <input type="text" name="username" autofocus required>
+      <label>Senha</label>
+      <input type="password" name="password" required>
+      <button type="submit">Entrar</button>
+    </form>
+  </div>
+</body></html>"""
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(erro: str = "") -> str:
+    error_html = '<div class="err">Usuário ou senha inválidos.</div>' if erro else ""
+    return _LOGIN_PAGE.format(error_html=error_html)
+
+
+@app.post("/api/auth/login")
+async def login_submit(request: Request) -> Response:
+    form = await request.form()
+    username = str(form.get("username", "")).strip()
+    password = str(form.get("password", ""))
+    user = _auth_verify(username, password)
+    if not user:
+        return RedirectResponse("/login?erro=1", status_code=303)
+    request.session["user"] = {"username": user["username"], "role": user["role"], "nome": user["nome"]}
+    _auth_touch_last_login(username)
+    return RedirectResponse("/", status_code=303)
+
+
+@app.post("/api/auth/logout")
+async def logout(request: Request) -> Response:
+    request.session.clear()
+    return RedirectResponse("/login", status_code=303)
+
+
+_AUTH_ALLOWLIST = {"/login", "/api/auth/login", "/api/auth/logout"}
+# Biblioteca tem uma cópia hospedada no claude.ai (artifact) que lê os posts
+# cross-origin, sem sessão — leitura continua pública de propósito (decisão do
+# usuário 13/jul/2026) pra não quebrar esse espelho externo. Escrita continua
+# exigindo admin (cai no mesmo bloco de "método != GET e não-admin" abaixo).
+_PUBLIC_READ_PREFIXES = ("/biblioteca", "/api/biblioteca/")
+
+
+@app.middleware("http")
+async def _auth_gate(request: Request, call_next):
+    path = request.url.path
+    if path in _AUTH_ALLOWLIST:
+        return await call_next(request)
+
+    is_public_read = request.method in ("GET", "HEAD", "OPTIONS") and (
+        path == "/biblioteca" or path.startswith(_PUBLIC_READ_PREFIXES)
+    )
+
+    user = request.session.get("user")
+    if not user and not is_public_read:
+        if "text/html" in request.headers.get("accept", ""):
+            return RedirectResponse("/login", status_code=303)
+        return JSONResponse({"detail": "Não autenticado."}, status_code=401)
+
+    is_admin = (user or {}).get("role") == "admin"
+
+    if (path == "/admin" or path.startswith("/api/admin/")) and not is_admin:
+        return JSONResponse({"detail": "Acesso restrito a administradores."}, status_code=403)
+
+    if request.method not in ("GET", "HEAD", "OPTIONS") and not is_admin:
+        return JSONResponse({"detail": "Usuário tem acesso só de leitura."}, status_code=403)
+
+    return await call_next(request)
+
+
+# SessionMiddleware precisa ser registrado DEPOIS de _auth_gate: no Starlette,
+# o middleware registrado por ÚLTIMO fica mais "por fora" (roda primeiro na
+# entrada da requisição) — o inverso do que eu assumi na primeira tentativa,
+# que quebrava com "SessionMiddleware must be installed to access
+# request.session" porque _auth_gate rodava antes da sessão existir.
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=_SESSION_SECRET,
+    session_cookie="hub_session",
+    max_age=12 * 3600,
+    same_site="lax",
+    https_only=(sys.platform != "win32"),  # dev local no Windows costuma ser http puro
+)
+
 
 # ── Log de acessos (IP, rota, hora) ─────────────────────────────────────────
 # Registra toda requisição ao Hub (todas as abas) num SQLite local, pra dar
@@ -1397,8 +1561,139 @@ app.include_router(biblioteca_api_router)
 
 
 @app.get("/", response_class=HTMLResponse)
-def shell() -> str:
-    return _SHELL
+async def shell(request: Request) -> str:
+    user = request.session.get("user") or {}
+    admin_link = (
+        '<a href="/admin" class="nav-btn" style="text-decoration:none">'
+        '<span style="font-size:13px">⚙</span> Admin</a>'
+        if user.get("role") == "admin"
+        else ""
+    )
+    user_nav = f"""
+  <span style="color:var(--muted);font-size:12px;margin-left:8px">{user.get('nome') or user.get('username', '')}</span>
+  {admin_link}
+  <form method="post" action="/api/auth/logout" style="display:inline">
+    <button class="nav-btn" type="submit"><span style="font-size:13px">⏻</span> Sair</button>
+  </form>"""
+    return _SHELL.replace("<!--USER_NAV-->", user_nav)
+
+
+_ADMIN_PAGE = """<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Macro Desk — Administração de Usuários</title>
+<style>
+  *{{box-sizing:border-box;margin:0;padding:0}}
+  body{{background:#0d1117;color:#e6edf3;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:32px}}
+  .wrap{{max-width:720px;margin:0 auto}}
+  h1{{font-size:20px;margin-bottom:4px}}
+  .back{{color:#8b949e;font-size:13px;text-decoration:none}}
+  .card{{background:#161b22;border:1px solid #21262d;border-radius:10px;padding:20px;margin-top:20px}}
+  table{{width:100%;border-collapse:collapse;font-size:13px}}
+  th{{text-align:left;color:#8b949e;font-size:11px;text-transform:uppercase;letter-spacing:.04em;
+    padding:6px 10px;border-bottom:1px solid #21262d}}
+  td{{padding:8px 10px;border-bottom:1px solid #161b22}}
+  .badge{{padding:2px 8px;border-radius:5px;font-size:11px;font-weight:700}}
+  .badge.admin{{background:rgba(0,191,255,.15);color:#00BFFF}}
+  .badge.user{{background:rgba(139,148,158,.15);color:#8b949e}}
+  .badge.ativo{{background:rgba(52,211,153,.15);color:#34d399}}
+  .badge.inativo{{background:rgba(248,81,73,.15);color:#f85149}}
+  form.inline{{display:inline}}
+  button.small{{background:#21262d;border:1px solid #30363d;color:#c9d1d9;border-radius:5px;
+    padding:3px 9px;font-size:11.5px;cursor:pointer}}
+  button.small:hover{{background:#30363d}}
+  label{{font-size:12px;color:#8b949e;display:block;margin-bottom:5px}}
+  input,select{{width:100%;padding:8px 10px;margin-bottom:14px;background:#0d1117;
+    border:1px solid #30363d;border-radius:6px;color:#e6edf3;font-size:13.5px}}
+  .row{{display:flex;gap:12px}}
+  .row > div{{flex:1}}
+  button.primary{{padding:9px;background:#00BFFF;border:none;border-radius:6px;
+    color:#04141c;font-weight:700;font-size:13.5px;cursor:pointer;width:100%}}
+</style></head>
+<body>
+<div class="wrap">
+  <a class="back" href="/">← Voltar pro Hub</a>
+  <h1>Administração de Usuários</h1>
+  <div class="card">
+    <table>
+      <thead><tr><th>Usuário</th><th>Nome</th><th>Papel</th><th>Status</th><th>Último login</th><th></th></tr></thead>
+      <tbody>
+        {rows}
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <form method="post" action="/api/admin/users">
+      <div class="row">
+        <div><label>Usuário</label><input name="username" required></div>
+        <div><label>Nome</label><input name="nome"></div>
+      </div>
+      <div class="row">
+        <div><label>Senha</label><input type="password" name="password" required></div>
+        <div><label>Papel</label>
+          <select name="role"><option value="user">Usuário (só leitura)</option><option value="admin">Admin</option></select>
+        </div>
+      </div>
+      <button class="primary" type="submit">Criar usuário</button>
+    </form>
+  </div>
+</div>
+</body></html>"""
+
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_page() -> str:
+    conn = _sqlite3.connect(HUB_USERS_DB)
+    conn.row_factory = _sqlite3.Row
+    users = conn.execute("SELECT * FROM users ORDER BY id").fetchall()
+    conn.close()
+
+    rows = ""
+    for u in users:
+        status = "ativo" if u["ativo"] else "inativo"
+        toggle_label = "Desativar" if u["ativo"] else "Ativar"
+        rows += f"""<tr>
+          <td>{u['username']}</td><td>{u['nome'] or ''}</td>
+          <td><span class="badge {u['role']}">{u['role']}</span></td>
+          <td><span class="badge {status}">{status}</span></td>
+          <td>{u['ultimo_login'] or '—'}</td>
+          <td><form class="inline" method="post" action="/api/admin/users/{u['id']}/toggle">
+            <button class="small" type="submit">{toggle_label}</button></form></td>
+        </tr>"""
+    return _ADMIN_PAGE.format(rows=rows or '<tr><td colspan="6">Nenhum usuário ainda.</td></tr>')
+
+
+@app.post("/api/admin/users")
+async def admin_create_user(request: Request) -> Response:
+    form = await request.form()
+    username = str(form.get("username", "")).strip()
+    nome = str(form.get("nome", "")).strip() or username
+    password = str(form.get("password", ""))
+    role = str(form.get("role", "user"))
+    if role not in ("admin", "user") or not username or not password:
+        return JSONResponse({"detail": "Dados inválidos."}, status_code=400)
+    pw_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    conn = _sqlite3.connect(HUB_USERS_DB)
+    try:
+        conn.execute(
+            "INSERT INTO users (username, password_hash, nome, role, ativo) VALUES (?,?,?,?,1) "
+            "ON CONFLICT(username) DO UPDATE SET password_hash=excluded.password_hash, "
+            "nome=excluded.nome, role=excluded.role, ativo=1",
+            (username, pw_hash, nome, role),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return RedirectResponse("/admin", status_code=303)
+
+
+@app.post("/api/admin/users/{user_id}/toggle")
+async def admin_toggle_user(user_id: int) -> Response:
+    conn = _sqlite3.connect(HUB_USERS_DB)
+    conn.execute("UPDATE users SET ativo = 1 - ativo WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+    return RedirectResponse("/admin", status_code=303)
 
 
 # ── Proxy reverso ─────────────────────────────────────────────────────────────

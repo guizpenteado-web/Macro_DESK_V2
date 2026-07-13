@@ -576,26 +576,21 @@ function isNew(ts) { return Date.now() - ts < 86400e3; }
 // A cópia do artifact claude.ai usa uma URL absoluta (ngrok) pra chamar o mesmo servidor.
 const API_BASE = '';
 
-// Ações de escrita (publicar, curtir, comentar, chat, editar, apagar) exigem uma
-// senha guardada só em sessionStorage (nunca no HTML/JS servido) — pede uma vez por
-// aba via prompt() e reusa daí em diante. Sem isso, quem só descobrir a URL pública
-// (ngrok) não consegue escrever/apagar nada, só ler.
-const WRITE_KEY_STORAGE = 'mdash_write_key';
-let writeKey = sessionStorage.getItem(WRITE_KEY_STORAGE) || null;
+// Ações de escrita (publicar, curtir, comentar, chat, editar, apagar) eram
+// protegidas por uma senha em sessionStorage (prompt() + header X-Api-Key).
+// Substituído pelo login de duas camadas do Hub — a sessão (cookie) já viaja
+// junto em toda requisição same-origin, o servidor decide se o usuário logado
+// pode escrever ou não (ver unified_server.py::_auth_gate).
 async function authedFetch(url, options = {}) {
-  if (!writeKey) {
-    const pass = prompt('Digite a senha para habilitar ações de escrita (publicar, curtir, comentar, editar, apagar) nesta aba:');
-    if (pass === null) throw new Error('Ação cancelada.');
-    writeKey = pass;
-    sessionStorage.setItem(WRITE_KEY_STORAGE, pass);
-  }
-  const headers = { ...(options.headers || {}), 'X-Api-Key': writeKey };
-  const res = await fetch(url, { ...options, headers });
+  const res = await fetch(url, options);
   if (res.status === 401) {
-    writeKey = null;
-    sessionStorage.removeItem(WRITE_KEY_STORAGE);
-    alert('Senha incorreta.');
-    throw new Error('Senha incorreta.');
+    alert('Sua sessão expirou — faça login de novo.');
+    window.location.href = '/login';
+    throw new Error('Sessão expirada.');
+  }
+  if (res.status === 403) {
+    alert('Seu usuário só tem permissão de leitura nesta página.');
+    throw new Error('Sem permissão de escrita.');
   }
   return res;
 }

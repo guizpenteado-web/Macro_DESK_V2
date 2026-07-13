@@ -11,46 +11,28 @@ Montado em unified_server.py via app.include_router(router).
 from __future__ import annotations
 
 import mimetypes
-import secrets
 import sqlite3
 import time
 import uuid
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Form, Header, HTTPException, UploadFile
+from fastapi import APIRouter, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 
 BASE = Path(__file__).parent
 DATA_DIR = BASE / "data"
 MEDIA_DIR = DATA_DIR / "media"
 DB_PATH = DATA_DIR / "biblioteca.db"
-API_KEY_PATH = DATA_DIR / "api_key.txt"
 DATA_DIR.mkdir(exist_ok=True)
 MEDIA_DIR.mkdir(exist_ok=True)
 
-
-def _load_or_create_api_key() -> str:
-    # Fica em biblioteca/data/ (no .gitignore — nunca é commitada, nunca aparece em
-    # nenhuma resposta HTTP nem é embutida em nenhum HTML servido). O usuário digita
-    # esse valor manualmente, uma vez por sessão de navegador, num prompt() para
-    # "desbloquear" ações de escrita (publicar, curtir, comentar, editar, apagar);
-    # o navegador guarda em sessionStorage só depois de digitado. Ler o valor: abrir
-    # este arquivo diretamente no servidor.
-    if API_KEY_PATH.exists():
-        return API_KEY_PATH.read_text(encoding="utf-8").strip()
-    key = secrets.token_urlsafe(12)
-    API_KEY_PATH.write_text(key, encoding="utf-8")
-    return key
-
-
-API_KEY = _load_or_create_api_key()
-
-
-def require_api_key(x_api_key: str = Header(default="")):
-    if x_api_key != API_KEY:
-        raise HTTPException(401, "Chave de API inválida ou ausente")
-
+# Escrita (publicar, curtir, comentar, editar, apagar) era protegida por uma
+# chave de API digitada manualmente no navegador (prompt + sessionStorage).
+# Substituído pelo login de duas camadas do Hub (unified_server.py::_auth_gate) —
+# esse middleware já bloqueia qualquer metodo != GET/HEAD/OPTIONS pra quem não
+# é admin, antes mesmo da requisição chegar aqui. Mais seguro (sessão validada
+# no servidor, não um valor client-supplied) e um único mecanismo pro Hub inteiro.
 
 router = APIRouter(prefix="/api/biblioteca")
 
@@ -187,7 +169,7 @@ async def get_post(post_id: int):
     return out
 
 
-@router.post("/posts", dependencies=[Depends(require_api_key)])
+@router.post("/posts")
 async def create_post(
     section: str = Form(...),
     subcat: str = Form(""),
@@ -209,7 +191,7 @@ async def create_post(
     return out
 
 
-@router.patch("/posts/{post_id}/text", dependencies=[Depends(require_api_key)])
+@router.patch("/posts/{post_id}/text")
 async def update_post_text(post_id: int, text: str = Form(...)):
     conn = get_db()
     row = conn.execute("SELECT * FROM posts WHERE id=?", (post_id,)).fetchone()
@@ -224,7 +206,7 @@ async def update_post_text(post_id: int, text: str = Form(...)):
     return out
 
 
-@router.delete("/posts/{post_id}", dependencies=[Depends(require_api_key)])
+@router.delete("/posts/{post_id}")
 async def delete_post(post_id: int):
     conn = get_db()
     row = conn.execute("SELECT * FROM posts WHERE id=?", (post_id,)).fetchone()
@@ -242,7 +224,7 @@ async def delete_post(post_id: int):
     return {"ok": True}
 
 
-@router.post("/posts/{post_id}/media", dependencies=[Depends(require_api_key)])
+@router.post("/posts/{post_id}/media")
 async def add_media(post_id: int, file: UploadFile, thumb_src: Optional[str] = Form(None)):
     conn = get_db()
     row = conn.execute("SELECT * FROM posts WHERE id=?", (post_id,)).fetchone()
@@ -270,7 +252,7 @@ async def add_media(post_id: int, file: UploadFile, thumb_src: Optional[str] = F
     return out
 
 
-@router.delete("/posts/{post_id}/media/{media_id}", dependencies=[Depends(require_api_key)])
+@router.delete("/posts/{post_id}/media/{media_id}")
 async def remove_media(post_id: int, media_id: int):
     conn = get_db()
     m = conn.execute("SELECT * FROM media WHERE id=? AND post_id=?", (media_id, post_id)).fetchone()
@@ -296,7 +278,7 @@ async def remove_media(post_id: int, media_id: int):
     return out
 
 
-@router.post("/posts/{post_id}/like", dependencies=[Depends(require_api_key)])
+@router.post("/posts/{post_id}/like")
 async def like_post(post_id: int):
     conn = get_db()
     row = conn.execute("SELECT * FROM posts WHERE id=?", (post_id,)).fetchone()
@@ -334,7 +316,7 @@ async def list_comments(post_id: int):
     return [{"id": r["id"], "author": r["author"], "text": r["text"], "ts": r["ts"]} for r in rows]
 
 
-@router.post("/posts/{post_id}/comments", dependencies=[Depends(require_api_key)])
+@router.post("/posts/{post_id}/comments")
 async def add_comment(post_id: int, author: str = Form(...), text: str = Form(...)):
     conn = get_db()
     row = conn.execute("SELECT * FROM posts WHERE id=?", (post_id,)).fetchone()
@@ -368,7 +350,7 @@ async def list_chat(section: Optional[str] = None):
     ]
 
 
-@router.post("/chat", dependencies=[Depends(require_api_key)])
+@router.post("/chat")
 async def add_chat(section: str = Form(...), author: str = Form(...), text: str = Form(...)):
     conn = get_db()
     ts = int(time.time() * 1000)
@@ -391,7 +373,7 @@ async def get_media(filename: str):
     return FileResponse(f, media_type=mime or "application/octet-stream")
 
 
-@router.post("/import", dependencies=[Depends(require_api_key)])
+@router.post("/import")
 async def import_bundle(payload: dict):
     """
     Importação única de um bundle exportado pela versão antiga (localStorage/IndexedDB).

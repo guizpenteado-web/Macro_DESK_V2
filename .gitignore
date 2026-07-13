@@ -20,6 +20,9 @@ server_err.txt
 # Dados da Biblioteca (posts reais do usuário, mídias e chave de API) — nunca no git
 biblioteca/data/
 
+# Segredo de sessão do login do Hub (gerado por ambiente, nunca compartilhado)
+auth/.session_secret
+
 # Arquivos de configuração local do Claude
 .claude/
 
