@@ -45,3 +45,8 @@ class Settings:
 
 # Singleton — importe de qualquer módulo
 settings = Settings()
+# Settings nao e' um @dataclass, entao __post_init__ nunca era chamado
+# automaticamente (e' um hook especifico de dataclass) — os diretorios
+# nunca eram criados, e sqlite3 falhava com "unable to open database file"
+# quando database/ não existia (achado 13/07/2026, atualizacao de dados).
+settings.__post_init__()
