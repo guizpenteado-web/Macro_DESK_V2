@@ -51,13 +51,23 @@ RRG_DIR       = BASE / "RRGCOMPLETO"
 SM_DIR        = BASE / "SmartMoneyBR"
 
 
-PYTHON_1 = str(DASHBOARD_DIR / ".venv" / "Scripts" / "python.exe")
-PYTHON_2 = str(BREADTH_DIR   / ".venv" / "Scripts" / "python.exe")
-PYTHON_3 = str(MACRO_DIR     / ".venv" / "Scripts" / "python.exe")
-PYTHON_4 = str(IBOV_DIR      / ".venv" / "Scripts" / "python.exe")
-PYTHON_5 = str(RRG_DIR       / ".venv" / "Scripts" / "python.exe")
-PYTHON_SM_BACKEND = str(SM_DIR / "backend" / ".venv" / "Scripts" / "python.exe")
-NPM_CMD = "npm.cmd"  # SmartMoneyBR frontend (Next.js)
+# venv layout difference: Windows usa .venv/Scripts/python.exe, Linux/macOS
+# usa .venv/bin/python — mesma logica pro npm (npm.cmd vs npm), ja que o Hub
+# roda em ambos (dev local no Windows, producao no VPS Linux).
+_VENV_SUBDIR = ("Scripts", "python.exe") if sys.platform == "win32" else ("bin", "python")
+
+
+def _venv_python(project_dir: Path) -> str:
+    return str(project_dir / ".venv" / _VENV_SUBDIR[0] / _VENV_SUBDIR[1])
+
+
+PYTHON_1 = _venv_python(DASHBOARD_DIR)
+PYTHON_2 = _venv_python(BREADTH_DIR)
+PYTHON_3 = _venv_python(MACRO_DIR)
+PYTHON_4 = _venv_python(IBOV_DIR)
+PYTHON_5 = _venv_python(RRG_DIR)
+PYTHON_SM_BACKEND = _venv_python(SM_DIR / "backend")
+NPM_CMD = "npm.cmd" if sys.platform == "win32" else "npm"  # SmartMoneyBR frontend (Next.js)
 
 PORT_SHELL       = 8000
 PORT_INTERMARKET = 8010
@@ -78,15 +88,17 @@ def _make_popen(spec: dict) -> subprocess.Popen:
     kwargs: dict = {"cwd": spec["cwd"]}
     if spec.get("env"):
         kwargs["env"] = spec["env"]
-    # npm.cmd (SmartMoneyBR-Frontend) spawns node.js as a grandchild through
-    # cmd.exe — Popen.terminate() only kills the cmd.exe wrapper, leaving the
-    # real dev server orphaned and holding the port (this is exactly the
+    # npm (SmartMoneyBR-Frontend) spawns node.js as a grandchild — no
+    # Windows.terminate()/Linux SIGTERM to just the parent PID reliably kills
+    # the real dev server, leaving it orphaned holding the port (the
     # zombie-process pattern already seen with IbovCalls, see
-    # feedback_zombie_processes.md). CREATE_NEW_PROCESS_GROUP lets us
-    # taskkill /T the whole tree in _kill_proc below instead of relying on
-    # terminate().
+    # feedback_zombie_processes.md). CREATE_NEW_PROCESS_GROUP (Windows) /
+    # start_new_session (Linux, equivalent to setsid) let _kill_proc below
+    # kill the whole process TREE instead of just the direct child.
     if sys.platform == "win32":
         kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+    else:
+        kwargs["start_new_session"] = True
     return subprocess.Popen(spec["cmd"], **kwargs)
 
 
@@ -99,7 +111,17 @@ def _kill_proc(p: subprocess.Popen) -> None:
             capture_output=True,
         )
     else:
-        p.terminate()
+        import os
+        import signal
+
+        try:
+            pgid = os.getpgid(p.pid)
+            os.killpg(pgid, signal.SIGTERM)
+            time.sleep(1)
+            if p.poll() is None:
+                os.killpg(pgid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
 
 
 def _start_subservers() -> None:
