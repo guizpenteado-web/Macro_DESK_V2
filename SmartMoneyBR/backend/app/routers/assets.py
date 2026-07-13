@@ -296,12 +296,31 @@ def get_asset_holders(
     PORTFOLIO_TO_NAV_MAX_RATIO = 5.0
     FLOOR_TOLERANCE = 1.10
 
+    # Achado 13/07/2026 (investigacao dos "302% do PL"): a checagem de
+    # plausibilidade (razao carteira/PL) so pega patrimonio ABSURDAMENTE
+    # baixo, mas nao pega patrimonio ANTIGO — fundo que cresce rapido
+    # (captacao forte) pode ter o ultimo FundNav/FundQuota disponivel de
+    # varios meses atras, ainda "razoavel" pela razao mas ja completamente
+    # desatualizado. Caso confirmado: ITAU MASTER VALE ACOES (fundo
+    # essencialmente 100% VALE3), FundNav so tinha 2021-01-31 (R$33mi) e
+    # 2022-01-31 seguintes — pra uma posicao em 2021-05-31 (carteira ja em
+    # R$1bi), a razao 30x passava no teto de 200x e retornava %PL de 3026%.
+    # O FundQuota (Informe Diario, mensal e completo) tinha o valor certo
+    # exatamente nessa data (R$1,000bi, ~99,97% do PL). Auditoria completa
+    # 2020-2022 (2,48mi linhas): sem o teto de atraso, 152 linhas ficavam
+    # acima de 1000% e 1111 entre 300-1000%; com o teto de 45 dias, caem pra
+    # 12 e 44 respectivamente — mesma folga de plausibilidade, so que agora
+    # exige que o NAV usado seja de fato contemporaneo aa posicao.
+    NAV_STALENESS_MAX_DAYS = 45
+
     def quota_fallback(fund_id: int, holding_date: date, position_value: float) -> FundQuota | None:
         portfolio_total = portfolio_totals.get((fund_id, holding_date), 0.0)
         best = None
         for q in quotas_by_fund.get(fund_id, []):
             if q.ref_date > holding_date:
                 break
+            if (holding_date - q.ref_date).days > NAV_STALENESS_MAX_DAYS:
+                continue
             nav = float(q.net_asset_value)
             if position_value > 0 and nav * FLOOR_TOLERANCE < position_value:
                 continue
@@ -333,8 +352,12 @@ def get_asset_holders(
         if exact is not None and is_sane(exact):
             return exact
         for n in reversed(navs_by_fund.get(fund_id, [])):
+            if n.ref_date > holding_date:
+                continue
+            if (holding_date - n.ref_date).days > NAV_STALENESS_MAX_DAYS:
+                break
             nav = float(n.net_asset_value)
-            if n.ref_date <= holding_date and is_sane(nav):
+            if is_sane(nav):
                 return nav
         return None
 
