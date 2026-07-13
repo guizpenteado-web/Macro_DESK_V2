@@ -8,3 +8,5 @@ openpyxl
 yfinance
 python-dateutil
 httpx
+apscheduler
+curl_cffi
