@@ -151,6 +151,16 @@ def get_asset(asset_id: int, db: Session = Depends(get_db)):
     return _to_asset_out(asset, latest, return_by_asset)
 
 
+# Erro de preenchimento pontual confirmado na propria fonte CVM (nao no
+# nosso pipeline): VC ENERGIA II FIP reporta VL_PATRIM_LIQ=R$1,76mi em
+# 2025-06-30, contra R$29,5mi no mes anterior e R$295mi no mes seguinte —
+# padrao em V que nenhuma estrutura de fundo real produziria de um mes pro
+# outro. Excluido explicitamente (nao e' uma heuristica geral, so essa
+# competencia especifica) — sem fallback via FundQuota (FIP nao tem Informe
+# Diario), a posicao fica sem %PL exibido nesse mes em vez de mostrar um
+# numero absurdo.
+KNOWN_BAD_NAV_POINTS: set[tuple[int, date]] = {(823199, date(2025, 6, 30))}
+
 STALE_HOLDER_LOOKBACK_DAYS = 365  # ~12 meses — 180d excluia fundos reais com atraso de entrega (achado 12/jul/2026: BB TOP
 # ACOES SETOR IMOBILIARIO some da lista de MULT3 por estar 194 dias atrasado, apesar de ter posicao real e ativa).
 # Distribuicao real (12/jul/2026): de ~9.3k fundos com alguma posicao historica, so 815 caem na faixa 366-730d e 4.484
@@ -270,6 +280,8 @@ def get_asset_holders(
             select(FundNav).where(FundNav.fund_id.in_(fund_ids)).order_by(FundNav.fund_id, FundNav.ref_date)
         ).scalars()
         for n in nav_rows:
+            if (n.fund_id, n.ref_date) in KNOWN_BAD_NAV_POINTS:
+                continue
             nav_by_fund_date[(n.fund_id, n.ref_date)] = float(n.net_asset_value)
             navs_by_fund.setdefault(n.fund_id, []).append(n)
 

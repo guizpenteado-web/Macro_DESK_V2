@@ -111,7 +111,11 @@ export default function AssetDetailPage() {
         const arr = params as { dataIndex: number }[];
         const h = top10[arr[0].dataIndex];
         if (!h) return "";
-        return `${h.fund_name}<br/>% do PL: ${fmtPct(h.pct_of_fund)}<br/>Valor: ${fmtBRL(h.market_value)}`;
+        const leverageNote =
+          (h.pct_of_fund ?? 0) > 100
+            ? "<br/><span style=\"color:#8a8f98;font-size:11px\">fundo alavancado/colateralizado — PL líquido de dívida</span>"
+            : "";
+        return `${h.fund_name}<br/>% do PL: ${fmtPct(h.pct_of_fund)}<br/>Valor: ${fmtBRL(h.market_value)}${leverageNote}`;
       },
     },
     series: [
@@ -208,6 +212,13 @@ export default function AssetDetailPage() {
               </div>
             </div>
             <ReactECharts option={topChartOption} style={{ height: TOP_N * 34 + 40 }} notMerge />
+            {topMetric === "pct" && top10.some((h) => (h.pct_of_fund ?? 0) > 100) && (
+              <div className="text-xs mt-2" style={{ color: "var(--text3)" }}>
+                % acima de 100% pode ocorrer em fundos com estrutura de dívida/alavancagem
+                que usam o ativo como garantia — o patrimônio líquido divulgado pela CVM já é
+                líquido dessas obrigações, podendo ficar menor que o valor de mercado da posição.
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -298,7 +309,17 @@ export default function AssetDetailPage() {
                   <td>{h.classification && <MovementBadge classification={h.classification} />}</td>
                   <td className="num">{h.quantity.toLocaleString("pt-BR")}</td>
                   <td className="num">{fmtBRL(h.market_value)}</td>
-                  <td className="num" style={{ fontWeight: 600 }}>{fmtPct(h.pct_of_fund)}</td>
+                  <td
+                    className="num"
+                    style={{ fontWeight: 600, color: (h.pct_of_fund ?? 0) > 100 ? "var(--amber)" : undefined }}
+                    title={
+                      (h.pct_of_fund ?? 0) > 100
+                        ? "Fundo com estrutura de dívida/alavancagem que usa o ativo como garantia — o patrimônio líquido divulgado já é líquido dessas obrigações."
+                        : undefined
+                    }
+                  >
+                    {fmtPct(h.pct_of_fund)}
+                  </td>
                   <td className="num" style={{ color: "var(--text2)" }}>{h.fund_net_asset_value !== null ? fmtBRL(h.fund_net_asset_value) : "—"}</td>
                   <td className="num" style={{ color: "var(--text2)" }}>{h.fund_n_shareholders !== null ? h.fund_n_shareholders.toLocaleString("pt-BR") : "—"}</td>
                   <td className="num">
