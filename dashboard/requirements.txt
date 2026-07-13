@@ -12,3 +12,4 @@ apscheduler
 curl_cffi
 itsdangerous
 bcrypt
+cloudscraper
