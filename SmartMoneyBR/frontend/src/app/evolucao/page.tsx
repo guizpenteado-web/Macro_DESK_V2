@@ -33,31 +33,31 @@ export default function EvolucaoPage() {
     grid: { left: 70, right: 70, top: 40, bottom: 60 },
     legend: {
       data: ["Valor investido (novas/aumentadas)", "Nº de fundos comprando"],
-      textStyle: { color: "#8b93a7" },
+      textStyle: { color: "#7d90a8" },
       top: 0,
     },
     xAxis: {
       type: "category",
       data: months.map((m) => m.ref_date),
-      axisLine: { lineStyle: { color: "#565f75" } },
-      axisLabel: { rotate: 45, color: "#565f75" },
+      axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } },
+      axisLabel: { rotate: 45, color: "#4a5b73" },
     },
     yAxis: [
       {
         type: "value",
         name: "Valor (R$)",
         position: "left",
-        axisLine: { lineStyle: { color: "#565f75" } },
-        splitLine: { lineStyle: { color: "#232838" } },
-        axisLabel: { formatter: (v: number) => fmtBRL(v), color: "#565f75" },
+        axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } },
+        splitLine: { lineStyle: { color: "rgba(255,255,255,.05)" } },
+        axisLabel: { formatter: (v: number) => fmtBRL(v), color: "#4a5b73" },
       },
       {
         type: "value",
         name: "Nº fundos",
         position: "right",
-        axisLine: { lineStyle: { color: "#565f75" } },
+        axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } },
         splitLine: { show: false },
-        axisLabel: { color: "#565f75" },
+        axisLabel: { color: "#4a5b73" },
       },
     ],
     tooltip: {
@@ -81,8 +81,8 @@ export default function EvolucaoPage() {
         type: "line",
         yAxisIndex: 1,
         data: months.map((m) => m.n_funds_buying),
-        lineStyle: { color: "#00e5ff", width: 2 },
-        itemStyle: { color: "#00e5ff" },
+        lineStyle: { color: "#c9a227", width: 2 },
+        itemStyle: { color: "#c9a227" },
         symbol: "circle",
         symbolSize: 6,
       },
@@ -149,7 +149,7 @@ export default function EvolucaoPage() {
                     {m.n_funds_buying} / {m.n_funds_active}
                   </td>
                   <td className="num" style={{ color: "var(--text3)" }}>{m.pct_funds_buying !== null ? `${(m.pct_funds_buying * 100).toFixed(0)}%` : "—"}</td>
-                  <td className="num" style={{ color: "var(--cyan)" }}>{fmtX(m.funds_vs_avg)}</td>
+                  <td className="num" style={{ color: "var(--gold)" }}>{fmtX(m.funds_vs_avg)}</td>
                   <td className="num" style={{ fontWeight: 700, color: "var(--amber)" }}>{m.coordination_score.toFixed(2)}</td>
                 </tr>
               ))}

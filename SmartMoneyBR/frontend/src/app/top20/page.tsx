@@ -75,7 +75,7 @@ export default function Top20Page() {
               <tr key={r.fund_id}>
                 <td className="num" style={{ color: i < 3 ? "var(--amber)" : "var(--text3)" }}>{i + 1}º</td>
                 <td>
-                  <Link href={`/fundos/${r.fund_id}`} style={{ color: "var(--cyan)" }}>
+                  <Link href={`/fundos/${r.fund_id}`} style={{ color: "var(--gold)" }}>
                     {r.fund_name}
                   </Link>
                   <div className="text-xs" style={{ color: "var(--text3)" }}>{r.fund_cnpj}</div>

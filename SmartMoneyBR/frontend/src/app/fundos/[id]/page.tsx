@@ -45,7 +45,7 @@ function MiniMovementRow({
 }) {
   return (
     <tr style={{ cursor: "pointer" }} onClick={onClick}>
-      <td style={{ color: "var(--cyan)" }}>{m.ticker}</td>
+      <td style={{ color: "var(--gold)" }}>{m.ticker}</td>
       <td>
         <MovementBadge classification={m.classification} />
       </td>
@@ -165,8 +165,8 @@ export default function FundDetailPage() {
   const assetChartOption = {
     backgroundColor: "transparent",
     grid: { left: 50, right: 20, top: 20, bottom: 30 },
-    xAxis: { type: "category", data: history.map((h) => h.ref_date), axisLine: { lineStyle: { color: "#565f75" } } },
-    yAxis: { type: "value", axisLine: { lineStyle: { color: "#565f75" } }, splitLine: { lineStyle: { color: "#232838" } } },
+    xAxis: { type: "category", data: history.map((h) => h.ref_date), axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } } },
+    yAxis: { type: "value", axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } }, splitLine: { lineStyle: { color: "rgba(255,255,255,.05)" } } },
     tooltip: {
       trigger: "axis",
       formatter: (params: unknown) => {
@@ -179,7 +179,7 @@ export default function FundDetailPage() {
       {
         type: "bar",
         data: history.map((h) => h.quantity),
-        itemStyle: { color: "#00e5ff" },
+        itemStyle: { color: "#c9a227" },
       },
     ],
   };
@@ -190,9 +190,9 @@ export default function FundDetailPage() {
     xAxis: {
       type: "category",
       data: perf.evolucao_posicoes_compradas.map((e) => e.ref_date),
-      axisLine: { lineStyle: { color: "#565f75" } },
+      axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } },
     },
-    yAxis: { type: "value", axisLine: { lineStyle: { color: "#565f75" } }, splitLine: { lineStyle: { color: "#232838" } } },
+    yAxis: { type: "value", axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } }, splitLine: { lineStyle: { color: "rgba(255,255,255,.05)" } } },
     tooltip: { trigger: "axis" },
     series: [
       {
@@ -213,14 +213,14 @@ export default function FundDetailPage() {
     xAxis: {
       type: "category",
       data: quotaPoints.map((p) => p.ref_date),
-      axisLine: { lineStyle: { color: "#565f75" } },
+      axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } },
       axisLabel: { color: "#8a94ab" },
     },
     yAxis: {
       type: "value",
       scale: true,
-      axisLine: { lineStyle: { color: "#565f75" } },
-      splitLine: { lineStyle: { color: "#232838" } },
+      axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } },
+      splitLine: { lineStyle: { color: "rgba(255,255,255,.05)" } },
       axisLabel: { color: "#8a94ab", formatter: "{value}" },
     },
     dataZoom: [{ type: "inside", xAxisIndex: [0], yAxisIndex: [0], zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false }],
@@ -240,7 +240,7 @@ export default function FundDetailPage() {
         data: quotaPoints.map((p) => p.indexed),
         showSymbol: false,
         smooth: false,
-        lineStyle: { color: "#00e5ff", width: 1.5 },
+        lineStyle: { color: "#c9a227", width: 1.5 },
         areaStyle: { color: "rgba(0, 229, 255, 0.08)" },
       },
     ],
@@ -300,7 +300,7 @@ export default function FundDetailPage() {
         <div className="smb-card p-4">
           <div className="flex justify-between items-center mb-2">
             <div className="font-semibold">
-              Evolução da posição em <span style={{ color: "var(--cyan)" }}>{selectedAsset.ticker}</span>
+              Evolução da posição em <span style={{ color: "var(--gold)" }}>{selectedAsset.ticker}</span>
             </div>
             <button onClick={() => setSelectedAsset(null)} style={{ color: "var(--text3)" }}>
               fechar ✕
@@ -370,7 +370,7 @@ export default function FundDetailPage() {
             <tbody>
               {sortedMovements.map((m) => (
                 <tr key={m.asset_id} style={{ cursor: "pointer" }} onClick={() => setSelectedAsset({ id: m.asset_id, ticker: m.ticker })}>
-                  <td style={{ color: "var(--cyan)" }}>{m.ticker}</td>
+                  <td style={{ color: "var(--gold)" }}>{m.ticker}</td>
                   <td>
                     <MovementBadge classification={m.classification} />
                   </td>
@@ -416,7 +416,7 @@ export default function FundDetailPage() {
             <tbody>
               {sortedHoldings.map((h) => (
                 <tr key={h.asset_id} style={{ cursor: "pointer" }} onClick={() => setSelectedAsset({ id: h.asset_id, ticker: h.ticker })}>
-                  <td style={{ color: "var(--cyan)" }}>{h.ticker}</td>
+                  <td style={{ color: "var(--gold)" }}>{h.ticker}</td>
                   <td className="num">{h.quantity.toLocaleString("pt-BR")}</td>
                   <td className="num">{fmtBRL(h.market_value)}</td>
                   <td className="num">{h.pct_of_equity_book?.toFixed(2)}%</td>

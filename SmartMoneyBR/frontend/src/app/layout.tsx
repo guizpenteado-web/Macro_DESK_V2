@@ -19,7 +19,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <header className="border-b" style={{ borderColor: "var(--border)", background: "var(--bg2)" }}>
           <div className="max-w-6xl mx-auto px-6 py-3 flex items-center gap-6">
-            <Link href="/" className="font-bold tracking-tight text-xl" style={{ color: "var(--cyan)" }}>
+            <Link href="/" className="font-bold tracking-tight text-xl" style={{ color: "var(--gold)" }}>
               SmartMoney<span style={{ color: "var(--text)" }}>BR</span>
             </Link>
             <nav className="flex items-center gap-4 text-sm" style={{ color: "var(--text2)" }}>

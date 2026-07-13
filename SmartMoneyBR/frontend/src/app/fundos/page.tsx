@@ -131,7 +131,7 @@ export default function FundosPage() {
             {funds.map((f) => (
               <tr key={f.id}>
                 <td>
-                  <Link href={`/fundos/${f.id}`} style={{ color: "var(--cyan)" }}>
+                  <Link href={`/fundos/${f.id}`} style={{ color: "var(--gold)" }}>
                     {f.name}
                   </Link>
                 </td>

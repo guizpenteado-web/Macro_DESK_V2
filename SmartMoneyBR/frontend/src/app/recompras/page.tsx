@@ -82,7 +82,7 @@ export default function RecomprasPage() {
               key={o.value}
               onClick={() => setStatus(o.value)}
               className="smb-card px-3 py-1.5 text-sm"
-              style={{ color: status === o.value ? "var(--cyan)" : "var(--text2)" }}
+              style={{ color: status === o.value ? "var(--gold)" : "var(--text2)" }}
             >
               {o.label}
             </button>

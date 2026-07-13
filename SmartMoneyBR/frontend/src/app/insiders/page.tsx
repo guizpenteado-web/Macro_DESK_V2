@@ -91,7 +91,7 @@ function buildChartOption(priceHistory: PricePoint[], insiderTrades: InsiderTrad
     ],
     legend: {
       data: ["Cotação", "Insiders (qtd negociada)"],
-      textStyle: { color: "#8b93a7" },
+      textStyle: { color: "#7d90a8" },
       top: 0,
     },
     xAxis: [
@@ -99,7 +99,7 @@ function buildChartOption(priceHistory: PricePoint[], insiderTrades: InsiderTrad
         type: "category",
         gridIndex: 0,
         data: dates,
-        axisLine: { lineStyle: { color: "#565f75" } },
+        axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } },
         axisLabel: { show: false },
         axisTick: { show: false },
       },
@@ -107,8 +107,8 @@ function buildChartOption(priceHistory: PricePoint[], insiderTrades: InsiderTrad
         type: "category",
         gridIndex: 1,
         data: months,
-        axisLine: { lineStyle: { color: "#565f75" } },
-        axisLabel: { color: "#565f75", interval: Math.ceil(months.length / 12) },
+        axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } },
+        axisLabel: { color: "#4a5b73", interval: Math.ceil(months.length / 12) },
       },
     ],
     yAxis: [
@@ -118,19 +118,19 @@ function buildChartOption(priceHistory: PricePoint[], insiderTrades: InsiderTrad
         gridIndex: 0,
         scale: true,
         name: "R$",
-        axisLine: { lineStyle: { color: "#565f75" } },
-        splitLine: { lineStyle: { color: "#232838" } },
-        axisLabel: { color: "#565f75" },
+        axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } },
+        splitLine: { lineStyle: { color: "rgba(255,255,255,.05)" } },
+        axisLabel: { color: "#4a5b73" },
       },
       {
         id: "yInsiders",
         type: "value",
         gridIndex: 1,
         name: "Qtd insiders/mês",
-        nameTextStyle: { color: "#565f75" },
-        axisLine: { lineStyle: { color: "#565f75" } },
+        nameTextStyle: { color: "#4a5b73" },
+        axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } },
         splitLine: { show: false },
-        axisLabel: { color: "#565f75" },
+        axisLabel: { color: "#4a5b73" },
       },
     ],
     // Um dataZoom "inside" POR GRID, cada um controlando X e Y JUNTOS do seu
@@ -268,7 +268,7 @@ export default function InsidersPage() {
         <div className="smb-card p-4">
           <div className="flex justify-between items-center mb-2">
             <div className="font-semibold">
-              Cotação ({PRICE_YEARS} anos) — <span style={{ color: "var(--cyan)" }}>{selectedTicker}</span>
+              Cotação ({PRICE_YEARS} anos) — <span style={{ color: "var(--gold)" }}>{selectedTicker}</span>
             </div>
             <button onClick={() => setSelectedTicker(null)} style={{ color: "var(--text3)" }}>
               fechar ✕
@@ -309,7 +309,7 @@ export default function InsidersPage() {
               key={o.value}
               onClick={() => setDirection(o.value)}
               className="smb-card px-3 py-1.5 text-sm"
-              style={{ color: direction === o.value ? "var(--cyan)" : "var(--text2)" }}
+              style={{ color: direction === o.value ? "var(--gold)" : "var(--text2)" }}
             >
               {o.label}
             </button>
@@ -356,7 +356,7 @@ export default function InsidersPage() {
                   style={{ color: "var(--text)", cursor: r.ticker ? "pointer" : "default" }}
                   onClick={() => r.ticker && setSelectedTicker(r.ticker)}
                 >
-                  <div style={{ fontWeight: 600, color: r.ticker ? "var(--cyan)" : "var(--text)" }}>{r.ticker ?? "—"}</div>
+                  <div style={{ fontWeight: 600, color: r.ticker ? "var(--gold)" : "var(--text)" }}>{r.ticker ?? "—"}</div>
                   <div className="text-xs" style={{ color: "var(--text3)" }}>{r.company_name}</div>
                 </td>
                 <td style={{ color: "var(--text3)" }}>{r.tipo_cargo ?? "—"}</td>

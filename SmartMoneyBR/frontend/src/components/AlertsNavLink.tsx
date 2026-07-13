@@ -25,7 +25,7 @@ export default function AlertsNavLink() {
       {unread > 0 && (
         <span
           className="smb-badge"
-          style={{ color: "var(--bg)", background: "var(--cyan)", fontSize: "10px", padding: "1px 6px" }}
+          style={{ color: "var(--bg)", background: "var(--gold)", fontSize: "10px", padding: "1px 6px" }}
         >
           {unread > 99 ? "99+" : unread}
         </span>

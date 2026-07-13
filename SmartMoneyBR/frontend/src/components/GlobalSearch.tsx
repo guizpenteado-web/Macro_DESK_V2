@@ -100,7 +100,7 @@ export default function GlobalSearch() {
                   onMouseDown={(e) => e.preventDefault()}
                 >
                   <span>
-                    <span style={{ color: "var(--cyan)", fontWeight: 600 }}>{a.ticker}</span>
+                    <span style={{ color: "var(--gold)", fontWeight: 600 }}>{a.ticker}</span>
                     {a.company_name && (
                       <span className="ml-2 text-xs" style={{ color: "var(--text3)" }}>
                         {a.company_name}

@@ -64,7 +64,7 @@ export default function RankingsPage() {
               setKind(k.key);
             }}
             className="smb-card px-3 py-1.5 text-sm"
-            style={{ color: !consensus && kind === k.key ? "var(--cyan)" : "var(--text2)" }}
+            style={{ color: !consensus && kind === k.key ? "var(--gold)" : "var(--text2)" }}
           >
             {k.label}
           </button>
@@ -72,7 +72,7 @@ export default function RankingsPage() {
         <button
           onClick={() => setConsensus(true)}
           className="smb-card px-3 py-1.5 text-sm"
-          style={{ color: consensus ? "var(--cyan)" : "var(--text2)" }}
+          style={{ color: consensus ? "var(--gold)" : "var(--text2)" }}
         >
           Consenso institucional
         </button>
@@ -94,7 +94,7 @@ export default function RankingsPage() {
                 <tr key={r.asset_id}>
                   <td className="num" style={{ color: "var(--text3)" }}>{i + 1}</td>
                   <td>
-                    <Link href={`/ativos/${r.asset_id}`} style={{ color: "var(--cyan)" }}>
+                    <Link href={`/ativos/${r.asset_id}`} style={{ color: "var(--gold)" }}>
                       {r.ticker}
                     </Link>
                     <span className="ml-2 text-xs" style={{ color: "var(--text3)" }}>{r.company_name}</span>
@@ -121,7 +121,7 @@ export default function RankingsPage() {
                 <tr key={r.asset_id}>
                   <td className="num" style={{ color: "var(--text3)" }}>{i + 1}</td>
                   <td>
-                    <Link href={`/ativos/${r.asset_id}`} style={{ color: "var(--cyan)" }}>
+                    <Link href={`/ativos/${r.asset_id}`} style={{ color: "var(--gold)" }}>
                       {r.ticker}
                     </Link>
                     <span className="ml-2 text-xs" style={{ color: "var(--text3)" }}>{r.company_name}</span>

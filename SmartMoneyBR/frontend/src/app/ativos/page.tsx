@@ -93,7 +93,7 @@ export default function AtivosPage() {
               key={o.value}
               onClick={() => setAssetType(o.value)}
               className="smb-card px-3 py-1.5 text-sm"
-              style={{ color: assetType === o.value ? "var(--cyan)" : "var(--text2)" }}
+              style={{ color: assetType === o.value ? "var(--gold)" : "var(--text2)" }}
             >
               {o.label}
             </button>
@@ -134,7 +134,7 @@ export default function AtivosPage() {
         {assets.map((a) => (
           <Link key={a.id} href={`/ativos/${a.id}`} className="smb-card p-4 block hover:opacity-90">
             <div className="flex items-center gap-1.5">
-              <span className="font-bold" style={{ color: "var(--cyan)" }}>
+              <span className="font-bold" style={{ color: "var(--gold)" }}>
                 {a.ticker}
               </span>
               {a.asset_type === "bdr" && (

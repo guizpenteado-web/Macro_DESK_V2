@@ -20,7 +20,7 @@ const TYPE_OPTIONS = [
 function severityColor(sev: string) {
   if (sev === "success") return "var(--green)";
   if (sev === "warning") return "var(--amber)";
-  return "var(--cyan)";
+  return "var(--gold)";
 }
 
 function entityHref(a: Alert): string | null {
@@ -71,7 +71,7 @@ export default function AlertasPage() {
       <div className="smb-card p-3 flex flex-wrap gap-3 items-end">
         <button
           className="smb-card px-3 py-1.5 text-sm"
-          style={{ color: onlyUnread ? "var(--cyan)" : "var(--text2)" }}
+          style={{ color: onlyUnread ? "var(--gold)" : "var(--text2)" }}
           onClick={() => setOnlyUnread(!onlyUnread)}
         >
           {onlyUnread ? "Mostrando não lidos" : "Mostrando todos"}
@@ -82,7 +82,7 @@ export default function AlertasPage() {
               key={o.value}
               onClick={() => setType(o.value)}
               className="smb-card px-3 py-1.5 text-sm"
-              style={{ color: type === o.value ? "var(--cyan)" : "var(--text2)" }}
+              style={{ color: type === o.value ? "var(--gold)" : "var(--text2)" }}
             >
               {o.label}
             </button>
@@ -103,7 +103,7 @@ export default function AlertasPage() {
                   <span className="text-xs" style={{ color: "var(--text3)" }}>
                     {a.ref_date}
                   </span>
-                  {!a.is_read && <span className="w-2 h-2 rounded-full" style={{ background: "var(--cyan)" }} />}
+                  {!a.is_read && <span className="w-2 h-2 rounded-full" style={{ background: "var(--gold)" }} />}
                 </div>
                 <div className="font-semibold mt-1" style={{ color: "var(--text)" }}>
                   {a.title}

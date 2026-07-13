@@ -88,21 +88,21 @@ export default function AssetDetailPage() {
     grid: { left: 210, right: 50, top: 10, bottom: 30 },
     xAxis: {
       type: "value",
-      axisLine: { lineStyle: { color: "#565f75" } },
-      splitLine: { lineStyle: { color: "#232838" } },
+      axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } },
+      splitLine: { lineStyle: { color: "rgba(255,255,255,.05)" } },
       axisLabel: {
         // ECharts desenha em canvas, nao em CSS/DOM — var(--x) do globals.css
         // nao resolve aqui (cai no preto padrao do canvas). Precisa ser hex
         // literal, sempre, em qualquer cor dentro do "option" do ECharts.
-        color: "#565f75",
+        color: "#4a5b73",
         formatter: (v: number) => (topMetric === "pct" ? `${v}%` : fmtBRLmi(v)),
       },
     },
     yAxis: {
       type: "category",
       data: top10.map((h) => truncateName(h.fund_name)),
-      axisLine: { lineStyle: { color: "#565f75" } },
-      axisLabel: { color: "#00e5ff", fontSize: 11 },
+      axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } },
+      axisLabel: { color: "#c9a227", fontSize: 11 },
     },
     tooltip: {
       trigger: "axis",
@@ -118,7 +118,7 @@ export default function AssetDetailPage() {
       {
         type: "bar",
         data: top10.map((h) => (topMetric === "pct" ? h.pct_of_fund ?? 0 : h.market_value)),
-        itemStyle: { color: "#00e5ff", borderRadius: [0, 4, 4, 0] },
+        itemStyle: { color: "#c9a227", borderRadius: [0, 4, 4, 0] },
         barMaxWidth: 22,
       },
     ],
@@ -194,14 +194,14 @@ export default function AssetDetailPage() {
                 <button
                   onClick={() => setTopMetric("pct")}
                   className="smb-card px-3 py-1.5 text-sm"
-                  style={{ color: topMetric === "pct" ? "var(--cyan)" : "var(--text2)" }}
+                  style={{ color: topMetric === "pct" ? "var(--gold)" : "var(--text2)" }}
                 >
                   % PL
                 </button>
                 <button
                   onClick={() => setTopMetric("valor")}
                   className="smb-card px-3 py-1.5 text-sm"
-                  style={{ color: topMetric === "valor" ? "var(--cyan)" : "var(--text2)" }}
+                  style={{ color: topMetric === "valor" ? "var(--gold)" : "var(--text2)" }}
                 >
                   Valor
                 </button>
@@ -291,7 +291,7 @@ export default function AssetDetailPage() {
               {sortedHolders.map((h) => (
                 <tr key={h.fund_id}>
                   <td>
-                    <Link href={`/fundos/${h.fund_id}`} style={{ color: "var(--cyan)" }}>
+                    <Link href={`/fundos/${h.fund_id}`} style={{ color: "var(--gold)" }}>
                       {h.fund_name}
                     </Link>
                   </td>
