@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { api, Buyback, BuybackSortField, PricePoint } from "@/lib/api";
 import SortableTh from "@/components/SortableTh";
@@ -40,9 +40,11 @@ function attachVerticalPan(chart: any, gridIndex: number, dataZoomId: string) {
     const end = dz.end ?? 100;
     const span = end - start;
     const height = chart.getHeight();
+    // arrastar pra baixo revela valores mais altos, como arrastar um mapa
+    // (achado 14/jul/2026: sinal estava invertido).
     const deltaPct = (dy / height) * span;
-    let newStart = start - deltaPct;
-    let newEnd = end - deltaPct;
+    let newStart = start + deltaPct;
+    let newEnd = end + deltaPct;
     if (newStart < 0) {
       newEnd += -newStart;
       newStart = 0;
@@ -99,6 +101,77 @@ const STATUS_OPTIONS: { value: "" | "Em Andamento" | "Encerrado"; label: string 
   { value: "Encerrado", label: "Encerrados" },
   { value: "", label: "Todos" },
 ];
+
+function parseISODate(s: string): Date {
+  return new Date(`${s}T00:00:00`);
+}
+
+// A CVM so divulga o PROGRAMA declarado (quantidade autorizada + prazo), nao
+// a execucao diaria — entao nao existe "% das acoes ja recompradas" pra
+// mostrar aqui (pedido do usuario: usar so o dado que a CVM disponibiliza,
+// sem inventar/estimar execucao). A barra abaixo mostra % do PRAZO decorrido
+// (tempo, nao quantidade) — proxy honesto e claramente rotulado como tal.
+function timeProgress(declaredAt: string, deadline: string | null): { pct: number; daysLeft: number | null; overdue: boolean } | null {
+  if (!deadline) return null;
+  const start = parseISODate(declaredAt).getTime();
+  const end = parseISODate(deadline).getTime();
+  const now = Date.now();
+  if (end <= start) return null;
+  const pct = Math.max(0, Math.min(100, ((now - start) / (end - start)) * 100));
+  const daysLeft = Math.round((end - now) / 86400000);
+  return { pct, daysLeft, overdue: daysLeft < 0 };
+}
+
+function BuybackCard({ b, onSelect }: { b: Buyback; onSelect: (ticker: string) => void }) {
+  const totalQty = (b.qty_common_shares ?? 0) + (b.qty_preferred_shares ?? 0);
+  const isActive = b.status === "Em Andamento";
+  const progress = isActive ? timeProgress(b.declared_at, b.deadline) : null;
+  const barColor = progress?.overdue ? "var(--red)" : progress && progress.daysLeft !== null && progress.daysLeft <= 30 ? "var(--amber)" : "var(--green)";
+
+  return (
+    <div className="smb-card p-4 space-y-2" title={b.reason ?? undefined}>
+      <div className="flex items-start justify-between gap-2">
+        <div
+          style={{ cursor: b.ticker ? "pointer" : "default" }}
+          onClick={() => b.ticker && onSelect(b.ticker)}
+        >
+          <div style={{ fontWeight: 600, color: b.ticker ? "var(--gold)" : "var(--text)" }}>{b.ticker ?? "—"}</div>
+          <div className="text-xs" style={{ color: "var(--text3)" }}>{b.company_name}</div>
+        </div>
+        <StatusBadge status={b.status} />
+      </div>
+
+      <div className="text-sm" style={{ color: "var(--text)" }}>
+        <span style={{ fontWeight: 600 }}>{fmtNum(totalQty)}</span>{" "}
+        <span style={{ color: "var(--text3)" }}>ações autorizadas (ON+PN)</span>
+      </div>
+
+      {isActive && progress && (
+        <div className="space-y-1">
+          <div style={{ height: 6, borderRadius: 3, background: "var(--border)", overflow: "hidden" }}>
+            <div style={{ width: `${progress.pct}%`, height: "100%", background: barColor }} />
+          </div>
+          <div className="text-xs" style={{ color: "var(--text3)" }}>
+            {progress.overdue
+              ? `Prazo encerrado há ${Math.abs(progress.daysLeft!)} dia(s) — aguardando atualização da CVM`
+              : `${progress.pct.toFixed(0)}% do prazo decorrido · faltam ${progress.daysLeft} dia(s)`}
+          </div>
+        </div>
+      )}
+      {isActive && !progress && (
+        <div className="text-xs" style={{ color: "var(--text3)" }}>Sem prazo final definido</div>
+      )}
+      {!isActive && (
+        <div style={{ height: 6, borderRadius: 3, background: "var(--border)" }} />
+      )}
+
+      <div className="text-xs flex justify-between" style={{ color: "var(--text3)" }}>
+        <span>Declarado: {b.declared_at}</span>
+        <span>Prazo: {b.deadline ?? "—"}</span>
+      </div>
+    </div>
+  );
+}
 
 // Mesmo padrao visual/interacao do grafico de cotacao da aba Insiders
 // (candlestick + histograma embaixo, dataZoom combinado X+Y, min/max fixo
@@ -257,6 +330,7 @@ function buildChartOption(priceHistory: PricePoint[], buybacks: Buyback[]) {
 }
 
 export default function RecomprasPage() {
+  const [view, setView] = useState<"tabela" | "monitor">("monitor");
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<"" | "Em Andamento" | "Encerrado">("Em Andamento");
   const [sortBy, setSortBy] = useState<BuybackSortField>("declared_at");
@@ -319,6 +393,23 @@ export default function RecomprasPage() {
     }
   }
 
+  // Ordenacao propria do monitor (independente dos controles de sort da
+  // tabela): em andamento primeiro, mais urgentes (prazo mais proximo) no
+  // topo; encerrados depois, mais recentes primeiro.
+  const monitorRows = useMemo(() => {
+    return [...rows].sort((a, b) => {
+      const aActive = a.status === "Em Andamento";
+      const bActive = b.status === "Em Andamento";
+      if (aActive !== bActive) return aActive ? -1 : 1;
+      if (aActive) {
+        const aDeadline = a.deadline ? parseISODate(a.deadline).getTime() : Infinity;
+        const bDeadline = b.deadline ? parseISODate(b.deadline).getTime() : Infinity;
+        return aDeadline - bDeadline;
+      }
+      return parseISODate(b.declared_at).getTime() - parseISODate(a.declared_at).getTime();
+    });
+  }, [rows]);
+
   return (
     <div className="space-y-4">
       <div>
@@ -371,7 +462,7 @@ export default function RecomprasPage() {
         onChange={(e) => setQ(e.target.value)}
       />
 
-      <div className="smb-card p-3 flex flex-wrap gap-3 items-end">
+      <div className="smb-card p-3 flex flex-wrap gap-3 items-end justify-between">
         <div className="flex gap-2">
           {STATUS_OPTIONS.map((o) => (
             <button
@@ -384,8 +475,40 @@ export default function RecomprasPage() {
             </button>
           ))}
         </div>
+        <div className="flex gap-2">
+          {(["monitor", "tabela"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className="smb-card px-3 py-1.5 text-sm"
+              style={{ color: view === v ? "var(--gold)" : "var(--text2)" }}
+            >
+              {v === "monitor" ? "Monitor" : "Tabela"}
+            </button>
+          ))}
+        </div>
       </div>
 
+      {view === "monitor" && (
+        <div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {monitorRows.map((b) => (
+              <BuybackCard key={b.id} b={b} onSelect={setSelectedTicker} />
+            ))}
+          </div>
+          {!loading && monitorRows.length === 0 && (
+            <div className="smb-card p-4 text-sm" style={{ color: "var(--text3)" }}>
+              Nenhum programa de recompra encontrado.
+            </div>
+          )}
+          <div className="text-xs mt-2" style={{ color: "var(--text3)" }}>
+            A barra mostra % do PRAZO decorrido (tempo), não da quantidade recomprada — a CVM só divulga o programa
+            declarado (quantidade autorizada + prazo final), não a execução diária.
+          </div>
+        </div>
+      )}
+
+      {view === "tabela" && (
       <div className="smb-card smb-table-wrap">
         <table className="smb-table w-full">
           <thead>
@@ -431,6 +554,7 @@ export default function RecomprasPage() {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }

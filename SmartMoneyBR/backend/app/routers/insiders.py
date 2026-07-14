@@ -21,6 +21,10 @@ def search_insider_trades(
     cargo: str = Query("", min_length=0),
     date_from: date | None = None,
     date_to: date | None = None,
+    min_quantidade: float | None = None,
+    max_quantidade: float | None = None,
+    min_volume: float | None = None,
+    max_volume: float | None = None,
     only_dated: bool = True,
     limit: int = 100,
     sort_by: InsiderSortField = "data_movimentacao",
@@ -57,6 +61,14 @@ def search_insider_trades(
         stmt = stmt.where(InsiderTrade.data_movimentacao >= date_from)
     if date_to is not None:
         stmt = stmt.where(InsiderTrade.data_movimentacao <= date_to)
+    if min_quantidade is not None:
+        stmt = stmt.where(InsiderTrade.quantidade >= min_quantidade)
+    if max_quantidade is not None:
+        stmt = stmt.where(InsiderTrade.quantidade <= max_quantidade)
+    if min_volume is not None:
+        stmt = stmt.where(InsiderTrade.volume >= min_volume)
+    if max_volume is not None:
+        stmt = stmt.where(InsiderTrade.volume <= max_volume)
     if only_dated:
         stmt = stmt.where(InsiderTrade.data_movimentacao.is_not(None))
 

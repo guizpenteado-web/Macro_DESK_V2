@@ -17,6 +17,17 @@ const TYPE_OPTIONS = [
   { value: "fund_reopened", label: "Fundos" },
 ];
 
+const TYPE_SOURCE: Record<string, string> = {
+  buyback_new: "CVM — Programas de Recompra",
+  insider_buy: "CVM — VLMO (Negociações de Insiders)",
+  fund_reopened: "CVM — CDA (Composição da Carteira dos Fundos)",
+};
+
+function formatDetectedAt(iso: string): string {
+  const d = new Date(iso + (iso.endsWith("Z") ? "" : "Z"));
+  return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
 function severityColor(sev: string) {
   if (sev === "success") return "var(--green)";
   if (sev === "warning") return "var(--amber)";
@@ -32,18 +43,29 @@ export default function AlertasPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [onlyUnread, setOnlyUnread] = useState(true);
   const [type, setType] = useState("");
+  const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    const handle = setTimeout(() => {
+      api
+        .getAlerts(onlyUnread, type, q)
+        .then(setAlerts)
+        .catch(() => setAlerts([]))
+        .finally(() => setLoading(false));
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [onlyUnread, type, q]);
 
   function load() {
     setLoading(true);
     api
-      .getAlerts(onlyUnread, type)
+      .getAlerts(onlyUnread, type, q)
       .then(setAlerts)
       .catch(() => setAlerts([]))
       .finally(() => setLoading(false));
   }
-
-  useEffect(load, [onlyUnread, type]);
 
   function markRead(id: number) {
     api.markAlertRead(id).then(() => setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, is_read: true } : a))));
@@ -67,6 +89,13 @@ export default function AlertasPage() {
           Marcar tudo como lido
         </button>
       </div>
+
+      <input
+        className="smb-card w-full px-4 py-2 outline-none"
+        placeholder="Buscar por ticker, empresa ou fundo..."
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+      />
 
       <div className="smb-card p-3 flex flex-wrap gap-3 items-end">
         <button
@@ -113,6 +142,9 @@ export default function AlertasPage() {
                     {a.message}
                   </div>
                 )}
+                <div className="text-xs mt-1.5" style={{ color: "var(--text3)" }}>
+                  Detectado em {formatDetectedAt(a.created_at)} · Fonte: {TYPE_SOURCE[a.type] ?? "CVM"}
+                </div>
               </div>
               {!a.is_read && (
                 <button

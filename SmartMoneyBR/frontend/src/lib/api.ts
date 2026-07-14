@@ -232,6 +232,10 @@ export interface InsiderFilters {
   cargo?: string;
   dateFrom?: string;
   dateTo?: string;
+  minQuantidade?: number;
+  maxQuantidade?: number;
+  minVolume?: number;
+  maxVolume?: number;
   sortBy?: InsiderSortField;
   sortDir?: "asc" | "desc";
   limit?: number;
@@ -386,6 +390,10 @@ export const api = {
         cargo: filters.cargo,
         date_from: filters.dateFrom,
         date_to: filters.dateTo,
+        min_quantidade: filters.minQuantidade,
+        max_quantidade: filters.maxQuantidade,
+        min_volume: filters.minVolume,
+        max_volume: filters.maxVolume,
         sort_by: filters.sortBy,
         sort_dir: filters.sortDir,
         limit: filters.limit,
@@ -393,8 +401,8 @@ export const api = {
     ),
   getInsiderCargos: () => apiGet<string[]>(`/api/insiders/cargos`),
 
-  getAlerts: (onlyUnread = false, type = "") =>
-    apiGet<Alert[]>(`/api/alerts?${buildQuery({ only_unread: onlyUnread ? "true" : undefined, type, limit: 200 })}`),
+  getAlerts: (onlyUnread = false, type = "", search = "") =>
+    apiGet<Alert[]>(`/api/alerts?${buildQuery({ only_unread: onlyUnread ? "true" : undefined, type, search, limit: 200 })}`),
   getUnreadAlertCount: () => apiGet<{ unread: number }>(`/api/alerts/unread-count`),
   markAlertRead: (id: number) => apiPost<Alert>(`/api/alerts/${id}/read`),
   markAllAlertsRead: () => apiPost<{ ok: boolean }>(`/api/alerts/read-all`),

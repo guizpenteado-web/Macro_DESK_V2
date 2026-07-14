@@ -43,9 +43,11 @@ function attachVerticalPan(chart: any, yAxisIndex: number) {
     const end = dz.end ?? 100;
     const span = end - start;
     const height = chart.getHeight();
+    // arrastar pra baixo revela valores mais altos, como arrastar um mapa
+    // (achado 14/jul/2026: sinal estava invertido).
     const deltaPct = (dy / height) * span;
-    let newStart = start - deltaPct;
-    let newEnd = end - deltaPct;
+    let newStart = start + deltaPct;
+    let newEnd = end + deltaPct;
     if (newStart < 0) {
       newEnd += -newStart;
       newStart = 0;

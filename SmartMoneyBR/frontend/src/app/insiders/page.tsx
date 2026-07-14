@@ -7,6 +7,36 @@ import SortableTh from "@/components/SortableTh";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
+function NumField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <label className="flex flex-col gap-1 text-xs" style={{ color: "var(--text3)" }}>
+      {label}
+      <input
+        type="number"
+        className="smb-card px-2 py-1 outline-none text-sm"
+        style={{ color: "var(--text)" }}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </label>
+  );
+}
+
+function DateField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <label className="flex flex-col gap-1 text-xs" style={{ color: "var(--text3)" }}>
+      {label}
+      <input
+        type="date"
+        className="smb-card px-2 py-1 outline-none text-sm"
+        style={{ color: "var(--text)" }}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </label>
+  );
+}
+
 // dataZoom "inside" nao suporta arrasto vertical nativo combinado com o
 // horizontal (achado 14/jul/2026) — pan vertical feito manualmente via
 // zrender + dispatchAction. Duas causas raiz do "travado" that a 1a tentativa
@@ -47,11 +77,12 @@ function attachVerticalPan(chart: any, gridIndex: number, dataZoomId: string) {
     const end = dz.end ?? 100;
     const span = end - start;
     const height = chart.getHeight();
-    // arrastar pra baixo revela valores mais baixos (segue o cursor, como
-    // arrastar um mapa) — por isso o sinal invertido no delta.
+    // arrastar pra baixo revela valores mais altos, como arrastar um mapa
+    // (achado 14/jul/2026: sinal estava invertido — usuario reportou eixo
+    // vertical de tras pra frente).
     const deltaPct = (dy / height) * span;
-    let newStart = start - deltaPct;
-    let newEnd = end - deltaPct;
+    let newStart = start + deltaPct;
+    let newEnd = end + deltaPct;
     if (newStart < 0) {
       newEnd += -newStart;
       newStart = 0;
@@ -301,6 +332,13 @@ export default function InsidersPage() {
   const [direction, setDirection] = useState<"COMPRA" | "VENDA" | "">("COMPRA");
   const [cargo, setCargo] = useState("");
   const [cargos, setCargos] = useState<string[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [minQuantidade, setMinQuantidade] = useState("");
+  const [maxQuantidade, setMaxQuantidade] = useState("");
+  const [minVolume, setMinVolume] = useState("");
+  const [maxVolume, setMaxVolume] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [sortBy, setSortBy] = useState<InsiderSortField>("data_movimentacao");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [rows, setRows] = useState<InsiderTrade[]>([]);
@@ -325,13 +363,26 @@ export default function InsidersPage() {
     setLoading(true);
     const handle = setTimeout(() => {
       api
-        .getInsiderTrades({ search: q, direction, cargo, sortBy, sortDir, limit: 150 })
+        .getInsiderTrades({
+          search: q,
+          direction,
+          cargo,
+          dateFrom: dateFrom || undefined,
+          dateTo: dateTo || undefined,
+          minQuantidade: minQuantidade ? Number(minQuantidade) : undefined,
+          maxQuantidade: maxQuantidade ? Number(maxQuantidade) : undefined,
+          minVolume: minVolume ? Number(minVolume) : undefined,
+          maxVolume: maxVolume ? Number(maxVolume) : undefined,
+          sortBy,
+          sortDir,
+          limit: 150,
+        })
         .then(setRows)
         .catch(() => setRows([]))
         .finally(() => setLoading(false));
     }, 300);
     return () => clearTimeout(handle);
-  }, [q, direction, cargo, sortBy, sortDir]);
+  }, [q, direction, cargo, dateFrom, dateTo, minQuantidade, maxQuantidade, minVolume, maxVolume, sortBy, sortDir]);
 
   useEffect(() => {
     if (!selectedTicker) return;
@@ -452,7 +503,40 @@ export default function InsidersPage() {
             ))}
           </select>
         </label>
+
+        <button
+          className="smb-card px-3 py-1.5 text-sm"
+          style={{ color: showFilters ? "var(--gold)" : "var(--text2)" }}
+          onClick={() => setShowFilters((v) => !v)}
+        >
+          Filtros {showFilters ? "▲" : "▼"}
+        </button>
       </div>
+
+      {showFilters && (
+        <div className="smb-card p-3 flex flex-wrap gap-3 items-end">
+          <NumField label="Qtd mín" value={minQuantidade} onChange={setMinQuantidade} />
+          <NumField label="Qtd máx" value={maxQuantidade} onChange={setMaxQuantidade} />
+          <NumField label="Volume mín (R$)" value={minVolume} onChange={setMinVolume} />
+          <NumField label="Volume máx (R$)" value={maxVolume} onChange={setMaxVolume} />
+          <DateField label="Data de" value={dateFrom} onChange={setDateFrom} />
+          <DateField label="Data até" value={dateTo} onChange={setDateTo} />
+          <button
+            className="smb-card px-3 py-1.5 text-sm"
+            style={{ color: "var(--text3)" }}
+            onClick={() => {
+              setMinQuantidade("");
+              setMaxQuantidade("");
+              setMinVolume("");
+              setMaxVolume("");
+              setDateFrom("");
+              setDateTo("");
+            }}
+          >
+            Limpar filtros
+          </button>
+        </div>
+      )}
 
       <div className="smb-card smb-table-wrap">
         <table className="smb-table w-full">

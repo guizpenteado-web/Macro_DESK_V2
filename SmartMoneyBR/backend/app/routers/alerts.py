@@ -1,7 +1,7 @@
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -16,6 +16,7 @@ router = APIRouter(prefix="/api/alerts", tags=["alerts"])
 def list_alerts(
     only_unread: bool = False,
     type: str = Query("", min_length=0),
+    search: str = Query("", min_length=0),
     limit: int = 100,
     db: Session = Depends(get_db),
 ):
@@ -24,6 +25,9 @@ def list_alerts(
         stmt = stmt.where(Alert.is_read.is_(False))
     if type:
         stmt = stmt.where(Alert.type == type)
+    if search:
+        like = f"%{search}%"
+        stmt = stmt.where(or_(Alert.title.ilike(like), Alert.message.ilike(like)))
     stmt = stmt.order_by(Alert.ref_date.desc(), Alert.created_at.desc()).limit(limit)
     return db.execute(stmt).scalars().all()
 
