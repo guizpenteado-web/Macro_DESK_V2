@@ -1,11 +1,75 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { api, InsiderTrade, InsiderSortField, PricePoint } from "@/lib/api";
 import SortableTh from "@/components/SortableTh";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
+
+// dataZoom "inside" do ECharts, mesmo configurado com xAxisIndex+yAxisIndex
+// juntos, na pratica so responde ao arrasto HORIZONTAL nesta versao —
+// vertical fica preso (achado 14/jul/2026, confirmado pelo usuario mesmo
+// depois de tirar o yAxis.scale:true que era a hipotese inicial). Em vez de
+// depender do gesto embutido pro eixo Y, cada grid passa a ter seu proprio
+// pan vertical manual: mousedown+mousemove no canvas (via zrender) calcula
+// o delta em pixels, converte pra % da janela atual do dataZoom daquele
+// yAxisIndex e despacha 'dataZoom' diretamente — X continua 100% com o
+// gesto nativo do ECharts (que já funciona), sem nenhuma mudança.
+function attachVerticalPan(chart: any, yAxisIndex: number) {
+  const zr = chart.getZr();
+  let dragging = false;
+  let lastY = 0;
+
+  function onDown(params: any) {
+    dragging = true;
+    lastY = params.offsetY;
+  }
+  function onMove(params: any) {
+    if (!dragging) return;
+    const dy = params.offsetY - lastY;
+    lastY = params.offsetY;
+    if (!dy) return;
+
+    const opt = chart.getOption();
+    const dzList: any[] = opt.dataZoom || [];
+    const dz = dzList.find((d) => Array.isArray(d.yAxisIndex) && d.yAxisIndex.includes(yAxisIndex));
+    if (!dz) return;
+    const start = dz.start ?? 0;
+    const end = dz.end ?? 100;
+    const span = end - start;
+    const height = chart.getHeight();
+    // arrastar pra baixo revela valores mais baixos (segue o cursor, como
+    // arrastar um mapa) — por isso o sinal invertido no delta.
+    const deltaPct = (dy / height) * span;
+    let newStart = start - deltaPct;
+    let newEnd = end - deltaPct;
+    if (newStart < 0) {
+      newEnd += -newStart;
+      newStart = 0;
+    }
+    if (newEnd > 100) {
+      newStart -= newEnd - 100;
+      newEnd = 100;
+    }
+    chart.dispatchAction({ type: "dataZoom", yAxisIndex, start: newStart, end: newEnd });
+  }
+  function onUp() {
+    dragging = false;
+  }
+
+  zr.on("mousedown", onDown);
+  zr.on("mousemove", onMove);
+  zr.on("mouseup", onUp);
+  zr.on("globalout", onUp);
+
+  return () => {
+    zr.off("mousedown", onDown);
+    zr.off("mousemove", onMove);
+    zr.off("mouseup", onUp);
+    zr.off("globalout", onUp);
+  };
+}
 
 const PRICE_YEARS = 10;
 
@@ -158,15 +222,17 @@ function buildChartOption(priceHistory: PricePoint[], insiderTrades: InsiderTrad
         axisLabel: { color: "#4a5b73" },
       },
     ],
-    // Um dataZoom "inside" POR GRID, cada um controlando X e Y JUNTOS do seu
-    // proprio grid (nao compartilhados entre si) — arrastar em qualquer
-    // direcao move o grafico (tempo E escala vertical ao mesmo tempo), rolar
-    // o mouse da zoom nos dois eixos. Ter os dois eixos no MESMO componente
-    // (em vez de um componente so pra X e outro so pra Y) evita a disputa de
-    // gesto que já causou bug antes — cada grid e' totalmente independente.
+    // X mantem o dataZoom "inside" nativo (arrastar horizontal ja funciona
+    // bem). Y fica num componente PROPRIO com moveOnMouseMove desligado —
+    // o pan vertical e' feito manualmente por attachVerticalPan (o gesto
+    // embutido do ECharts pra eixo Y combinado com X nao respondia ao
+    // arrasto vertical, achado 14/jul/2026). Zoom por scroll continua nos
+    // dois eixos normalmente.
     dataZoom: [
-      { type: "inside", xAxisIndex: [0], yAxisIndex: [0], zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
-      { type: "inside", xAxisIndex: [1], yAxisIndex: [1], zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
+      { type: "inside", xAxisIndex: [0], zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
+      { type: "inside", yAxisIndex: [0], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
+      { type: "inside", xAxisIndex: [1], zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
+      { type: "inside", yAxisIndex: [1], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
     ],
     tooltip: {
       trigger: "axis",
@@ -227,6 +293,12 @@ export default function InsidersPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [rows, setRows] = useState<InsiderTrade[]>([]);
   const [loading, setLoading] = useState(false);
+  const panCleanupRef = useRef<(() => void)[]>([]);
+
+  function onChartReady(chart: any) {
+    panCleanupRef.current.forEach((fn) => fn());
+    panCleanupRef.current = [attachVerticalPan(chart, 0), attachVerticalPan(chart, 1)];
+  }
 
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const [priceHistory, setPriceHistory] = useState<PricePoint[]>([]);
@@ -307,7 +379,12 @@ export default function InsidersPage() {
           )}
           {!chartLoading && priceHistory.length > 0 && (
             <>
-              <ReactECharts option={buildChartOption(priceHistory, tickerTrades)} style={{ height: 620 }} notMerge />
+              <ReactECharts
+                option={buildChartOption(priceHistory, tickerTrades)}
+                style={{ height: 620 }}
+                notMerge
+                onChartReady={onChartReady}
+              />
               <div className="text-xs mt-1" style={{ color: "var(--text3)" }}>
                 Candlestick = cotação diária real via B3 (COTAHIST), não vem da CVM. Histograma embaixo = negociações
                 de insider dessa empresa agregadas por mês (verde = compra líquida, vermelho = venda líquida) — mesma
