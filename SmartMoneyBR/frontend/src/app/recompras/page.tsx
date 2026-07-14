@@ -12,12 +12,18 @@ const PRICE_YEARS = 10;
 // Mesmo motivo/implementacao do insiders/page.tsx: dataZoom "inside" do
 // ECharts nao respondia ao arrasto vertical mesmo com xAxisIndex+yAxisIndex
 // juntos — pan vertical feito manualmente via zrender + dispatchAction.
-function attachVerticalPan(chart: any, yAxisIndex: number) {
+// dispatchAction por yAxisIndex (sem dataZoomId) atualizava os 4 componentes
+// (X e Y dos dois grids) ao mesmo tempo, e os dois handlers reagiam ao
+// arrasto em qualquer grid — corrigido com dataZoomId proprio por componente
+// e containPixel pra restringir cada handler ao seu grid (achado 14/jul/2026,
+// mesma correcao aplicada em insiders/page.tsx).
+function attachVerticalPan(chart: any, gridIndex: number, dataZoomId: string) {
   const zr = chart.getZr();
   let dragging = false;
   let lastY = 0;
 
   function onDown(params: any) {
+    if (!chart.containPixel({ gridIndex }, [params.offsetX, params.offsetY])) return;
     dragging = true;
     lastY = params.offsetY;
   }
@@ -28,8 +34,7 @@ function attachVerticalPan(chart: any, yAxisIndex: number) {
     if (!dy) return;
 
     const opt = chart.getOption();
-    const dzList: any[] = opt.dataZoom || [];
-    const dz = dzList.find((d) => Array.isArray(d.yAxisIndex) && d.yAxisIndex.includes(yAxisIndex));
+    const dz = (opt.dataZoom || []).find((d: any) => d.id === dataZoomId);
     if (!dz) return;
     const start = dz.start ?? 0;
     const end = dz.end ?? 100;
@@ -46,7 +51,7 @@ function attachVerticalPan(chart: any, yAxisIndex: number) {
       newStart -= newEnd - 100;
       newEnd = 100;
     }
-    chart.dispatchAction({ type: "dataZoom", yAxisIndex, start: newStart, end: newEnd });
+    chart.dispatchAction({ type: "dataZoom", dataZoomId, start: newStart, end: newEnd });
   }
   function onUp() {
     dragging = false;
@@ -197,10 +202,10 @@ function buildChartOption(priceHistory: PricePoint[], buybacks: Buyback[]) {
       },
     ],
     dataZoom: [
-      { type: "inside", xAxisIndex: [0], zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
-      { type: "inside", yAxisIndex: [0], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
-      { type: "inside", xAxisIndex: [1], zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
-      { type: "inside", yAxisIndex: [1], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
+      { id: "xz0", type: "inside", xAxisIndex: [0], zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
+      { id: "yz0", type: "inside", yAxisIndex: [0], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
+      { id: "xz1", type: "inside", xAxisIndex: [1], zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
+      { id: "yz1", type: "inside", yAxisIndex: [1], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
     ],
     tooltip: {
       trigger: "axis",
@@ -262,7 +267,7 @@ export default function RecomprasPage() {
 
   function onChartReady(chart: any) {
     panCleanupRef.current.forEach((fn) => fn());
-    panCleanupRef.current = [attachVerticalPan(chart, 0), attachVerticalPan(chart, 1)];
+    panCleanupRef.current = [attachVerticalPan(chart, 0, "yz0"), attachVerticalPan(chart, 1, "yz1")];
   }
 
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
@@ -288,8 +293,11 @@ export default function RecomprasPage() {
     Promise.all([
       api.getPriceHistory(selectedTicker, PRICE_YEARS),
       // todos os programas do ticker, sem depender do filtro de status da
-      // tabela — o grafico mostra tudo, sempre.
-      api.getBuybacks({ search: selectedTicker, status: "", limit: 500 }),
+      // tabela — o grafico mostra tudo, sempre. limit alto pelo mesmo motivo
+      // do insiders/page.tsx (achado 14/jul/2026) — programas de recompra
+      // sao bem mais raros que negociacoes de insider, mas nao ha razao pra
+      // arriscar o mesmo corte silencioso.
+      api.getBuybacks({ search: selectedTicker, status: "", limit: 20000 }),
     ])
       .then(([price, programs]) => {
         setPriceHistory(price);

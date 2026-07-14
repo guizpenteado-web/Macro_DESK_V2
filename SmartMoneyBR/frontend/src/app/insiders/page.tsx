@@ -7,21 +7,30 @@ import SortableTh from "@/components/SortableTh";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
-// dataZoom "inside" do ECharts, mesmo configurado com xAxisIndex+yAxisIndex
-// juntos, na pratica so responde ao arrasto HORIZONTAL nesta versao —
-// vertical fica preso (achado 14/jul/2026, confirmado pelo usuario mesmo
-// depois de tirar o yAxis.scale:true que era a hipotese inicial). Em vez de
-// depender do gesto embutido pro eixo Y, cada grid passa a ter seu proprio
-// pan vertical manual: mousedown+mousemove no canvas (via zrender) calcula
-// o delta em pixels, converte pra % da janela atual do dataZoom daquele
-// yAxisIndex e despacha 'dataZoom' diretamente — X continua 100% com o
-// gesto nativo do ECharts (que já funciona), sem nenhuma mudança.
-function attachVerticalPan(chart: any, yAxisIndex: number) {
+// dataZoom "inside" nao suporta arrasto vertical nativo combinado com o
+// horizontal (achado 14/jul/2026) — pan vertical feito manualmente via
+// zrender + dispatchAction. Duas causas raiz do "travado" that a 1a tentativa
+// (so tirar yAxis.scale:true) e a 2a tentativa (mousedown/mousemove sem
+// containPixel nem dataZoomId, achando o componente por yAxisIndex) nao
+// resolveram, confirmadas com instrumentacao (achado 14/jul/2026):
+// 1. dispatchAction({type:'dataZoom', yAxisIndex, start, end}) SEM
+//    dataZoomIndex/dataZoomId explicito atualiza os 4 componentes (X e Y dos
+//    dois grids) ao MESMO tempo com os MESMOS valores -- arrastar o eixo Y do
+//    candlestick tambem reescrevia o zoom X dos dois graficos, produzindo
+//    comportamento erratico que parecia "travado". Fix: cada dataZoom tem um
+//    id proprio, dispatch usa dataZoomId (nao axisIndex) pra atingir so um.
+// 2. Os dois handlers (grid 0 e grid 1) ficavam escutando o zrender inteiro
+//    sem checar sobre qual grid o mouse estava -- arrastar no candlestick
+//    tambem disparava o pan do histograma embaixo. Fix: chart.containPixel
+//    checa se o ponto do mousedown cai dentro do grid antes de comecar o
+//    drag.
+function attachVerticalPan(chart: any, gridIndex: number, dataZoomId: string) {
   const zr = chart.getZr();
   let dragging = false;
   let lastY = 0;
 
   function onDown(params: any) {
+    if (!chart.containPixel({ gridIndex }, [params.offsetX, params.offsetY])) return;
     dragging = true;
     lastY = params.offsetY;
   }
@@ -32,8 +41,7 @@ function attachVerticalPan(chart: any, yAxisIndex: number) {
     if (!dy) return;
 
     const opt = chart.getOption();
-    const dzList: any[] = opt.dataZoom || [];
-    const dz = dzList.find((d) => Array.isArray(d.yAxisIndex) && d.yAxisIndex.includes(yAxisIndex));
+    const dz = (opt.dataZoom || []).find((d: any) => d.id === dataZoomId);
     if (!dz) return;
     const start = dz.start ?? 0;
     const end = dz.end ?? 100;
@@ -52,7 +60,7 @@ function attachVerticalPan(chart: any, yAxisIndex: number) {
       newStart -= newEnd - 100;
       newEnd = 100;
     }
-    chart.dispatchAction({ type: "dataZoom", yAxisIndex, start: newStart, end: newEnd });
+    chart.dispatchAction({ type: "dataZoom", dataZoomId, start: newStart, end: newEnd });
   }
   function onUp() {
     dragging = false;
@@ -229,10 +237,10 @@ function buildChartOption(priceHistory: PricePoint[], insiderTrades: InsiderTrad
     // arrasto vertical, achado 14/jul/2026). Zoom por scroll continua nos
     // dois eixos normalmente.
     dataZoom: [
-      { type: "inside", xAxisIndex: [0], zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
-      { type: "inside", yAxisIndex: [0], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
-      { type: "inside", xAxisIndex: [1], zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
-      { type: "inside", yAxisIndex: [1], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
+      { id: "xz0", type: "inside", xAxisIndex: [0], zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
+      { id: "yz0", type: "inside", yAxisIndex: [0], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
+      { id: "xz1", type: "inside", xAxisIndex: [1], zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
+      { id: "yz1", type: "inside", yAxisIndex: [1], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
     ],
     tooltip: {
       trigger: "axis",
@@ -297,7 +305,7 @@ export default function InsidersPage() {
 
   function onChartReady(chart: any) {
     panCleanupRef.current.forEach((fn) => fn());
-    panCleanupRef.current = [attachVerticalPan(chart, 0), attachVerticalPan(chart, 1)];
+    panCleanupRef.current = [attachVerticalPan(chart, 0, "yz0"), attachVerticalPan(chart, 1, "yz1")];
   }
 
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
@@ -328,7 +336,13 @@ export default function InsidersPage() {
       api.getPriceHistory(selectedTicker, PRICE_YEARS),
       // todas as negociacoes do ticker, direction="" (compra+venda), sem
       // depender do filtro da tabela — o grafico mostra tudo, sempre.
-      api.getInsiderTrades({ search: selectedTicker, direction: "", limit: 500 }),
+      // limit alto (nao 500): achado 14/jul/2026 — RADL3 sozinho tem 5.853
+      // negociacoes datadas, ITUB3 3.227, BBDC3 2.460 etc.; com limit:500 e
+      // sort padrao (data desc), o grafico "Qtd insiders/mes" silenciosamente
+      // cortava tudo que fosse mais antigo que as ~500 negociacoes mais
+      // recentes — sumindo meses inteiros de historico pra qualquer acao
+      // com muitos insiders/anos de negociacao.
+      api.getInsiderTrades({ search: selectedTicker, direction: "", limit: 20000 }),
     ])
       .then(([price, trades]) => {
         setPriceHistory(price);
