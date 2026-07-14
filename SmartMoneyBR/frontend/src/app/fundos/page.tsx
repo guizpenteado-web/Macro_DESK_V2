@@ -91,6 +91,11 @@ export default function FundosPage() {
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold">Fundos</h1>
+      <p className="text-xs" style={{ color: "var(--text3)" }}>
+        Rent. Mês / Rent. Ano / Retorno (12m) usam a cota do último mês oficialmente fechado (CVM Informe Diário, granularidade
+        mensal) — diferente de plataformas com cota diária, que já refletem o mês corrente em andamento. Podem divergir de
+        rankings de terceiros por não estarem no mesmo corte de data.
+      </p>
       {error && (
         <div className="smb-card p-3 text-sm" style={{ color: "var(--red)", border: "1px solid var(--red)" }}>
           Erro ao buscar fundos: {error}
