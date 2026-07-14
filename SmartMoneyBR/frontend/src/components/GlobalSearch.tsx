@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, Asset, Fund } from "@/lib/api";
 
+function fmtBRLmi(v: number) {
+  return `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}mi`;
+}
+
 export default function GlobalSearch() {
   const router = useRouter();
   const boxRef = useRef<HTMLDivElement>(null);
@@ -130,8 +134,12 @@ export default function GlobalSearch() {
                   onMouseDown={(e) => e.preventDefault()}
                 >
                   {f.name}
-                  <div className="text-xs" style={{ color: "var(--text3)" }}>
-                    {f.cnpj}
+                  <div className="text-xs flex items-center gap-2 flex-wrap" style={{ color: "var(--text3)" }}>
+                    <span>{f.cnpj}</span>
+                    <span>•</span>
+                    <span>{f.net_asset_value !== null ? fmtBRLmi(f.net_asset_value) : "PL —"}</span>
+                    <span>•</span>
+                    <span>{f.n_shareholders !== null ? `${f.n_shareholders.toLocaleString("pt-BR")} cotistas` : "cotistas —"}</span>
                   </div>
                 </button>
               ))}
