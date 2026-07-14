@@ -21,6 +21,15 @@ from app.utils.logger import logger
 
 app = FastAPI(title="IBOV Market Breadth")
 
+# init_database() so rodava dentro de `if __name__ == "__main__"` (linha
+# ~169), mas o Hub sobe este servico via `uvicorn server:app` (import como
+# modulo), que nunca executa esse bloco — o banco nunca era criado (achado
+# 13/07/2026: "no such table: assets" na primeira atualizacao real depois
+# do fix do settings.py). Chamando aqui, em import-time, garante que roda
+# nos dois modos de execucao (import pelo uvicorn ou `python server.py`).
+from app.database.connection import init_database
+init_database()
+
 _state: dict = {
     "running": False,
     "step": "",
@@ -166,7 +175,5 @@ def get_status():
 # ── Entry point ──────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    from app.database.connection import init_database
-    init_database()
     logger.info("Servidor iniciado em http://localhost:8001")
     uvicorn.run(app, host="127.0.0.1", port=8001, log_level="warning")
