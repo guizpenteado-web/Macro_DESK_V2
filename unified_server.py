@@ -1049,6 +1049,9 @@ _SHELL = """<!DOCTYPE html>
       if (!code) return cur || "";
       return "<img src='https://flagcdn.com/w20/" + code + ".png' title='" + cur + "' style='vertical-align:middle;border-radius:1px;max-width:22px;'>";
     }
+    function _escAttr(s) {
+      return (s || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    }
     events.forEach(function(e) {
       if (e.date !== lastDate) {
         html += "<div class='cal-date-hdr'>" + e.date + "</div>";
@@ -1066,7 +1069,7 @@ _SHELL = """<!DOCTYPE html>
         "<span class='cal-time'>" + e.time + "</span>" +
         "<span class='cal-curr'>" + flag + "</span>" +
         "<span class='cal-imp'>" + dots + "</span>" +
-        "<span class='cal-name'>" + e.event + "</span>" +
+        "<span class='cal-name' title='" + _escAttr(e.event) + "'>" + e.event + "</span>" +
         "<span class='" + actualCls + "'>" + (e.actual || "—") + "</span>" +
         "<span class='cal-val'>" + (e.forecast || "—") + "</span>" +
         "<span class='cal-val'>" + (e.previous || "—") + "</span>" +
