@@ -1,6 +1,6 @@
 {
   "_instrucoes": "Atualizar manualmente quando os bancos revisarem targets. Verificar fontes listadas abaixo.",
-  "last_updated": "2026-07-06",
+  "last_updated": "2026-07-14",
 
   "macro_snapshot": {
     "fed_rate": {
@@ -98,6 +98,15 @@
       "view": "N/D",
       "date_published": null,
       "source_url": null
+    },
+    {
+      "bank": "Wells Fargo",
+      "target": 7950,
+      "analyst": "N/D",
+      "rationale": "Elevou de 7.300 para 7.950 (~16/jun/26). EPS 2026 revisado para $340 (de $315); EPS 2027 para $390 (de $365). Maior parte da alta vem de lucros revisados pra cima, não de expansão de múltiplo (~23,4x vs 23,2x do target anterior). Vê risco macro arrefecendo e sentimento de IA renovado.",
+      "view": "BULLISH",
+      "date_published": "2026-06-16",
+      "source_url": "https://www.bloomberg.com/news/articles/2026-06-16/wells-fargo-boosts-s-p-500-year-end-target-as-us-iran-deal-nears"
     }
   ],
 
@@ -178,14 +187,16 @@
 
   "brazil_macro": {
     "ipca": {
-      "yoy": 4.72,
-      "mom": 0.58,
-      "period": "Mai/2026",
+      "yoy": 4.64,
+      "mom": 0.16,
+      "period": "Jun/2026",
       "meta": 3.0,
       "teto": 4.5,
       "projecao_fim_2026": 5.33,
-      "next_release": "2026-07-09",
-      "source": "IBGE"
+      "release_date": "2026-07-10",
+      "next_release": "2026-08-11",
+      "source": "IBGE",
+      "note": "IPCA de junho veio bem abaixo do esperado (0,16% vs. ~0,31% de mediana), levando o acumulado 12m de 4,72% para 4,64%. Ibovespa subiu 2,86% no dia (10/jul), maior patamar em 2 meses, com mercado precificando maior chance de corte da Selic no Copom de 4-5/ago."
     },
     "selic": {
       "value": 14.25,
