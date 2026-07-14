@@ -19,6 +19,13 @@ class FundOut(BaseModel):
         from_attributes = True
 
 
+class FundPositionHistoryPoint(BaseModel):
+    ref_date: date
+    quantity: float
+    market_value: float
+    pct_of_fund: float | None = None  # % do PL do fundo nessa data (mesma logica de get_asset_holders)
+
+
 class HoldingOut(BaseModel):
     asset_id: int
     ticker: str

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Asset, Fund, FundAssetMovement, FundHolding, FundNav, FundQuota, MovementClassification
 from app.schemas.asset import AssetHolderOut, AssetOut, AssetTimelinePoint
+from app.services import nav_lookup
 from app.services.query_helpers import latest_movements_ref_date
 
 router = APIRouter(prefix="/api/assets", tags=["assets"])
@@ -305,73 +306,25 @@ def get_asset_holders(
         for fid, rd, total in portfolio_rows:
             portfolio_totals[(fid, rd)] = float(total)
 
-    PORTFOLIO_TO_NAV_MAX_RATIO = 5.0
-    FLOOR_TOLERANCE = 1.10
+    # navs/quotas em (date, float) ordenado — formato que app.services.nav_lookup
+    # espera. Mantem navs_by_fund/quotas_by_fund (objetos ORM) so pra
+    # n_shareholders_as_of, que precisa de campos que o helper compartilhado
+    # nao carrega.
+    navs_f_by_fund: dict[int, list[tuple[date, float]]] = {
+        fid: [(n.ref_date, float(n.net_asset_value)) for n in navs] for fid, navs in navs_by_fund.items()
+    }
+    quotas_f_by_fund: dict[int, list[tuple[date, float]]] = {
+        fid: [(q.ref_date, float(q.net_asset_value)) for q in quotas] for fid, quotas in quotas_by_fund.items()
+    }
 
-    # Achado 13/07/2026 (investigacao dos "302% do PL"): a checagem de
-    # plausibilidade (razao carteira/PL) so pega patrimonio ABSURDAMENTE
-    # baixo, mas nao pega patrimonio ANTIGO — fundo que cresce rapido
-    # (captacao forte) pode ter o ultimo FundNav/FundQuota disponivel de
-    # varios meses atras, ainda "razoavel" pela razao mas ja completamente
-    # desatualizado. Caso confirmado: ITAU MASTER VALE ACOES (fundo
-    # essencialmente 100% VALE3), FundNav so tinha 2021-01-31 (R$33mi) e
-    # 2022-01-31 seguintes — pra uma posicao em 2021-05-31 (carteira ja em
-    # R$1bi), a razao 30x passava no teto de 200x e retornava %PL de 3026%.
-    # O FundQuota (Informe Diario, mensal e completo) tinha o valor certo
-    # exatamente nessa data (R$1,000bi, ~99,97% do PL). Auditoria completa
-    # 2020-2022 (2,48mi linhas): sem o teto de atraso, 152 linhas ficavam
-    # acima de 1000% e 1111 entre 300-1000%; com o teto de 45 dias, caem pra
-    # 12 e 44 respectivamente — mesma folga de plausibilidade, so que agora
-    # exige que o NAV usado seja de fato contemporaneo aa posicao.
-    NAV_STALENESS_MAX_DAYS = 45
-
-    def quota_fallback(fund_id: int, holding_date: date, position_value: float) -> FundQuota | None:
+    def quota_fallback(fund_id: int, holding_date: date, position_value: float) -> float | None:
         portfolio_total = portfolio_totals.get((fund_id, holding_date), 0.0)
-        best = None
-        for q in quotas_by_fund.get(fund_id, []):
-            if q.ref_date > holding_date:
-                break
-            if (holding_date - q.ref_date).days > NAV_STALENESS_MAX_DAYS:
-                continue
-            nav = float(q.net_asset_value)
-            if position_value > 0 and nav * FLOOR_TOLERANCE < position_value:
-                continue
-            if portfolio_total > 0 and nav * PORTFOLIO_TO_NAV_MAX_RATIO < portfolio_total:
-                continue
-            best = q
-        return best
-
-    # Teto de sanidade generoso pro FundNav — so pra pegar o caso degenerado
-    # de patrimonio essencialmente zero (achado 12/jul/2026: SKOPOS TOP
-    # TRADES EQUITY HEDGE tinha FundNav=R$0,03 num mes, contra uma carteira
-    # de R$300mi+ em 20 ativos — razao ~10,6 MILHOES de vezes). Auditoria
-    # completa mostrou que casos genuinamente concentrados/alavancados (ex:
-    # GENERALE em SMFT3, validado contra a referencia) ficam ate ~46x no
-    # maximo — 200x da uma folga enorme sem esconder concentracao real.
-    NAV_SANITY_MAX_RATIO = 200.0
+        return nav_lookup.quota_fallback(holding_date, position_value, portfolio_total, quotas_f_by_fund.get(fund_id, []))
 
     def nav_as_of(fund_id: int, holding_date: date) -> float | None:
         portfolio_total = portfolio_totals.get((fund_id, holding_date), 0.0)
-
-        def is_sane(nav: float) -> bool:
-            if nav <= 0:
-                return False
-            if portfolio_total > 0 and portfolio_total / nav > NAV_SANITY_MAX_RATIO:
-                return False
-            return True
-
         exact = nav_by_fund_date.get((fund_id, holding_date))
-        if exact is not None and is_sane(exact):
-            return exact
-        for n in reversed(navs_by_fund.get(fund_id, [])):
-            if n.ref_date > holding_date:
-                continue
-            if (holding_date - n.ref_date).days > NAV_STALENESS_MAX_DAYS:
-                break
-            nav = float(n.net_asset_value)
-            if is_sane(nav):
-                return nav
-        return None
+        return nav_lookup.nav_as_of(holding_date, portfolio_total, exact, navs_f_by_fund.get(fund_id, []))
 
     def n_shareholders_as_of(fund_id: int, holding_date: date) -> int | None:
         # So informativo (nao entra na conta de %PL, que agora usa FundNav) —
@@ -389,8 +342,7 @@ def get_asset_holders(
     for fund_id, name, cnpj, h_ref_date, quantity, market_value, classification, qty_delta in holder_data:
         nav = nav_as_of(fund_id, h_ref_date)
         if nav is None:
-            q = quota_fallback(fund_id, h_ref_date, market_value)
-            nav = float(q.net_asset_value) if q else None
+            nav = quota_fallback(fund_id, h_ref_date, market_value)
         results.append(
             AssetHolderOut(
                 fund_id=fund_id,
