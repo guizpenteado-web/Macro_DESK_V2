@@ -34,15 +34,14 @@ function NumField({ label, value, onChange }: { label: string; value: string; on
   );
 }
 
-const TYPE_OPTIONS: { value: "equity" | "bdr" | ""; label: string }[] = [
-  { value: "", label: "Todos" },
+const TYPE_OPTIONS: { value: "equity" | "bdr"; label: string }[] = [
   { value: "equity", label: "Ações" },
   { value: "bdr", label: "BDRs" },
 ];
 
 export default function AtivosPage() {
   const [q, setQ] = useState("");
-  const [assetType, setAssetType] = useState<"equity" | "bdr" | "">("");
+  const [assetType, setAssetType] = useState<"equity" | "bdr">("equity");
   const [minValue, setMinValue] = useState("");
   const [minReturn, setMinReturn] = useState("");
   const [maxReturn, setMaxReturn] = useState("");
