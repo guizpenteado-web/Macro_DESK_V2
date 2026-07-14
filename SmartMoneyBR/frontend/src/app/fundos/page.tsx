@@ -123,6 +123,8 @@ export default function FundosPage() {
               <th>Tipo</th>
               <SortableTh label="Patrimônio líquido" align="right" active={sortBy === "net_asset_value"} dir={sortDir} onClick={() => toggleSort("net_asset_value")} />
               <SortableTh label="Cotistas" align="right" active={sortBy === "n_shareholders"} dir={sortDir} onClick={() => toggleSort("n_shareholders")} />
+              <SortableTh label="Rent. Mês" align="right" active={sortBy === "return_pct_mtd"} dir={sortDir} onClick={() => toggleSort("return_pct_mtd")} />
+              <SortableTh label="Rent. Ano" align="right" active={sortBy === "return_pct_ytd"} dir={sortDir} onClick={() => toggleSort("return_pct_ytd")} />
               <SortableTh label="Retorno (12m)" align="right" active={sortBy === "return_pct_12m"} dir={sortDir} onClick={() => toggleSort("return_pct_12m")} />
               <SortableTh label="Divulgação" align="right" active={sortBy === "financials_ref_date"} dir={sortDir} onClick={() => toggleSort("financials_ref_date")} />
             </tr>
@@ -139,6 +141,12 @@ export default function FundosPage() {
                 <td style={{ color: "var(--text3)" }}>{f.fund_class_type}</td>
                 <td className="num">{f.net_asset_value !== null ? fmtBRL(f.net_asset_value) : "—"}</td>
                 <td className="num">{f.n_shareholders !== null ? f.n_shareholders.toLocaleString("pt-BR") : "—"}</td>
+                <td className="num" style={{ color: (f.return_pct_mtd ?? 0) >= 0 ? "var(--green)" : "var(--red)", fontWeight: 600 }}>
+                  {fmtPct(f.return_pct_mtd)}
+                </td>
+                <td className="num" style={{ color: (f.return_pct_ytd ?? 0) >= 0 ? "var(--green)" : "var(--red)", fontWeight: 600 }}>
+                  {fmtPct(f.return_pct_ytd)}
+                </td>
                 <td className="num" style={{ color: (f.return_pct_12m ?? 0) >= 0 ? "var(--green)" : "var(--red)", fontWeight: 600 }}>
                   {fmtPct(f.return_pct_12m)}
                 </td>
@@ -147,7 +155,7 @@ export default function FundosPage() {
             ))}
             {!loading && funds.length === 0 && (
               <tr>
-                <td colSpan={7} style={{ color: "var(--text3)" }}>
+                <td colSpan={9} style={{ color: "var(--text3)" }}>
                   Nenhum fundo encontrado.
                 </td>
               </tr>

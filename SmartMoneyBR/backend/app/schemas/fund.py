@@ -12,6 +12,8 @@ class FundOut(BaseModel):
     n_shareholders: int | None = None  # numero de cotistas, same source
     financials_ref_date: date | None = None  # date those two figures are as-of — NOT necessarily the same month as equity holdings
     return_pct_12m: float | None = None  # retorno real (valor da cota) nos ultimos ~12 meses ate financials_ref_date
+    return_pct_mtd: float | None = None  # retorno do mes corrente (ultima cota vs cota do fechamento do mes anterior)
+    return_pct_ytd: float | None = None  # retorno acumulado no ano (ultima cota vs fechamento de dezembro do ano anterior)
 
     class Config:
         from_attributes = True

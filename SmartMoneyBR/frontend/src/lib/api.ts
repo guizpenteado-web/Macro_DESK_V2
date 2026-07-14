@@ -29,9 +29,18 @@ export interface Fund {
   n_shareholders: number | null;
   financials_ref_date: string | null;
   return_pct_12m: number | null;
+  return_pct_mtd: number | null;
+  return_pct_ytd: number | null;
 }
 
-export type FundSortField = "name" | "net_asset_value" | "n_shareholders" | "financials_ref_date" | "return_pct_12m";
+export type FundSortField =
+  | "name"
+  | "net_asset_value"
+  | "n_shareholders"
+  | "financials_ref_date"
+  | "return_pct_12m"
+  | "return_pct_mtd"
+  | "return_pct_ytd";
 
 export interface FundFilters {
   search?: string;

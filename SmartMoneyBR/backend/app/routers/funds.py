@@ -13,7 +13,9 @@ from app.services.returns import compute_window_return
 router = APIRouter(prefix="/api/funds", tags=["funds"])
 
 RETURN_WINDOW_DAYS = 370  # ~12 meses + folga p/ cobrir fundos com divulgacao atrasada
-SortField = Literal["name", "net_asset_value", "n_shareholders", "financials_ref_date", "return_pct_12m"]
+SortField = Literal[
+    "name", "net_asset_value", "n_shareholders", "financials_ref_date", "return_pct_12m", "return_pct_mtd", "return_pct_ytd"
+]
 
 
 def _latest_fund_holdings_date(db: Session, fund_id: int) -> date | None:
@@ -45,7 +47,13 @@ def _latest_quota_by_fund(db: Session, fund_ids: list[int]) -> dict[int, FundQuo
     return {q.fund_id: q for q in rows}
 
 
-def _to_fund_out(fund: Fund, quota: FundQuota | None, return_pct_12m: float | None) -> FundOut:
+def _to_fund_out(
+    fund: Fund,
+    quota: FundQuota | None,
+    return_pct_12m: float | None,
+    return_pct_mtd: float | None = None,
+    return_pct_ytd: float | None = None,
+) -> FundOut:
     return FundOut(
         id=fund.id,
         cnpj=fund.cnpj,
@@ -55,6 +63,8 @@ def _to_fund_out(fund: Fund, quota: FundQuota | None, return_pct_12m: float | No
         n_shareholders=quota.n_shareholders if quota else None,
         financials_ref_date=quota.ref_date if quota else None,
         return_pct_12m=return_pct_12m,
+        return_pct_mtd=return_pct_mtd,
+        return_pct_ytd=return_pct_ytd,
     )
 
 
@@ -88,6 +98,62 @@ def _return_pct_12m_by_fund(db: Session, fund_ids: list[int], quotas: dict[int, 
         if pct_return is not None:
             results[fund_id] = pct_return
     return results
+
+
+def _return_window_by_fund(
+    db: Session, fund_ids: list[int], quotas: dict[int, FundQuota], window_start_fn
+) -> dict[int, float]:
+    """Generic helper for MTD/YTD — same rebase-safe logic as
+    _return_pct_12m_by_fund, just with a caller-supplied window_start per
+    fund instead of a fixed ~365-day lookback. window_start_fn(latest_ref_date)
+    -> date."""
+    if not fund_ids:
+        return {}
+    starts = {fid: window_start_fn(quotas[fid].ref_date) for fid in fund_ids if fid in quotas}
+    if not starts:
+        return {}
+    earliest_needed = min(starts.values())
+
+    rows = db.execute(
+        select(FundQuota.fund_id, FundQuota.ref_date, FundQuota.quota_value)
+        .where(FundQuota.fund_id.in_(fund_ids), FundQuota.ref_date >= earliest_needed)
+        .order_by(FundQuota.fund_id, FundQuota.ref_date)
+    ).all()
+
+    series_by_fund: dict[int, list[tuple[date, float]]] = {}
+    for r in rows:
+        series_by_fund.setdefault(r.fund_id, []).append((r.ref_date, float(r.quota_value)))
+
+    results = {}
+    for fund_id, series in series_by_fund.items():
+        if fund_id not in starts:
+            continue
+        pct_return, _ = compute_window_return(series, starts[fund_id])
+        if pct_return is not None:
+            results[fund_id] = pct_return
+    return results
+
+
+def _return_mtd_by_fund(db: Session, fund_ids: list[int], quotas: dict[int, FundQuota]) -> dict[int, float]:
+    """Retorno do mes corrente: ultima cota vs cota do fechamento do mes
+    anterior. FundQuota so tem granularidade mensal (uma linha por mes),
+    entao "mes corrente" na pratica e' sempre "ultimo mes fechado vs
+    penultimo" — window_start alguns dias antes do inicio do mes da
+    ultima cota garante que o fechamento anterior entre na janela."""
+    def window_start(last_ref_date: date) -> date:
+        first_of_month = last_ref_date.replace(day=1)
+        return first_of_month - timedelta(days=5)
+
+    return _return_window_by_fund(db, fund_ids, quotas, window_start)
+
+
+def _return_ytd_by_fund(db: Session, fund_ids: list[int], quotas: dict[int, FundQuota]) -> dict[int, float]:
+    """Retorno acumulado no ano: ultima cota vs fechamento de dezembro do
+    ano anterior (base do YTD)."""
+    def window_start(last_ref_date: date) -> date:
+        return date(last_ref_date.year - 1, 12, 1)
+
+    return _return_window_by_fund(db, fund_ids, quotas, window_start)
 
 
 @router.get("", response_model=list[FundOut])
@@ -150,9 +216,11 @@ def search_funds(
 
     fund_ids = [f.id for f in funds]
     return_by_fund = _return_pct_12m_by_fund(db, fund_ids, quotas)
+    mtd_by_fund = _return_mtd_by_fund(db, fund_ids, quotas)
+    ytd_by_fund = _return_ytd_by_fund(db, fund_ids, quotas)
 
     out = [
-        _to_fund_out(f, quotas.get(f.id), return_by_fund.get(f.id))
+        _to_fund_out(f, quotas.get(f.id), return_by_fund.get(f.id), mtd_by_fund.get(f.id), ytd_by_fund.get(f.id))
         for f in funds
     ]
 
@@ -167,6 +235,8 @@ def search_funds(
         "n_shareholders": lambda o: (o.n_shareholders is None, o.n_shareholders or 0),
         "financials_ref_date": lambda o: (o.financials_ref_date is None, o.financials_ref_date or date.min),
         "return_pct_12m": lambda o: (o.return_pct_12m is None, o.return_pct_12m or 0),
+        "return_pct_mtd": lambda o: (o.return_pct_mtd is None, o.return_pct_mtd or 0),
+        "return_pct_ytd": lambda o: (o.return_pct_ytd is None, o.return_pct_ytd or 0),
     }[sort_by]
     out.sort(key=sort_key, reverse=(sort_dir == "desc"))
 
@@ -180,7 +250,9 @@ def get_fund(fund_id: int, db: Session = Depends(get_db)):
         raise HTTPException(404, "Fundo nao encontrado")
     quotas = _latest_quota_by_fund(db, [fund_id])
     return_pct = _return_pct_12m_by_fund(db, [fund_id], quotas).get(fund_id)
-    return _to_fund_out(fund, quotas.get(fund_id), return_pct)
+    mtd = _return_mtd_by_fund(db, [fund_id], quotas).get(fund_id)
+    ytd = _return_ytd_by_fund(db, [fund_id], quotas).get(fund_id)
+    return _to_fund_out(fund, quotas.get(fund_id), return_pct, mtd, ytd)
 
 
 @router.get("/{fund_id}/holdings", response_model=list[HoldingOut])
