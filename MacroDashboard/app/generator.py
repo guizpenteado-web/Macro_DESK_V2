@@ -891,19 +891,19 @@ td.num {{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
   <div class="grid2" style="align-items:start">
     <div style="overflow-x:auto">{nfp_table}</div>
     <div style="display:flex;flex-direction:column;gap:16px">
-      <div class="chart-box" style="min-height:360px">
+      <div class="chart-box" style="min-height:260px">
         <div class="chart-title">Evolução NFP — First Print (K/mês)</div>
         <div style="font-size:11px;color:var(--muted);margin:4px 0 10px;line-height:1.5">
           Cada barra = valor da primeira divulgação (BLS press release). Eixo cortado em ±900K — valores extremos de 2020 anotados na barra.
         </div>
-        <div id="ch-nfp-fp" style="height:300px"></div>
+        <div id="ch-nfp-fp" style="height:200px"></div>
       </div>
-      <div class="chart-box" style="min-height:360px">
+      <div class="chart-box" style="min-height:260px">
         <div class="chart-title">Evolução Wage Growth — Average Hourly Earnings YoY (%)</div>
         <div style="font-size:11px;color:var(--muted);margin:4px 0 10px;line-height:1.5">
           Variação anual do salário-hora médio (Average Hourly Earnings YoY, BLS/FRED — série CES0500000003). Dado mais recente disponível (revisões de wage growth são pequenas — tipicamente ≤0,2pp — então não usamos "first print").
         </div>
-        <div id="ch-wage-growth" style="height:300px"></div>
+        <div id="ch-wage-growth" style="height:200px"></div>
       </div>
     </div>
   </div>
