@@ -155,7 +155,20 @@ const DIRECTION_OPTIONS: { value: "COMPRA" | "VENDA"; label: string }[] = [
 // (nao por dia) — com 10 anos de dado diario cada barra ficaria com menos de
 // 1px de largura e sumiria sem dar zoom; agregado por mes vira ~120 barras,
 // sempre visiveis, sem precisar de zoom nenhum nesse grafico.
-function buildChartOption(priceHistory: PricePoint[], insiderTrades: InsiderTrade[]) {
+// Log aplicado ao eixo Y do candlestick (grid 0) usa yAxis.type:"log" direto
+// (preco e' sempre positivo). Ja o histograma de insiders (grid 1) tem
+// barra negativa (venda liquida) — log axis nativo do ECharts exige valor
+// estritamente positivo, entao "log" ali e' feito transformando o proprio
+// dado (sign(v) * log10(1+abs(v))) em vez do tipo do eixo, com o
+// axisLabel formatado de volta pra escala real (achado 14/jul/2026).
+function symlog(v: number) {
+  return Math.sign(v) * Math.log10(1 + Math.abs(v));
+}
+function invSymlog(v: number) {
+  return Math.sign(v) * (Math.pow(10, Math.abs(v)) - 1);
+}
+
+function buildChartOption(priceHistory: PricePoint[], insiderTrades: InsiderTrade[], logPrice: boolean, logInsiders: boolean) {
   const dates = priceHistory.map((p) => p.date);
 
   // min/max fixo (calculado uma vez, com folga de 8%) em vez de yAxis.scale:true
@@ -170,8 +183,11 @@ function buildChartOption(priceHistory: PricePoint[], insiderTrades: InsiderTrad
     priceMax = Math.max(priceMax, p.high);
   }
   const pricePad = (priceMax - priceMin) * 0.08 || 1;
-  const yPriceMin = priceHistory.length ? priceMin - pricePad : undefined;
+  const yPriceMinRaw = priceHistory.length ? priceMin - pricePad : undefined;
   const yPriceMax = priceHistory.length ? priceMax + pricePad : undefined;
+  // eixo log nao aceita min <= 0 — se o padding linear derrubar o piso pra
+  // zero/negativo, deixa o ECharts auto-calcular o minimo em modo log.
+  const yPriceMin = logPrice && yPriceMinRaw !== undefined && yPriceMinRaw <= 0 ? undefined : yPriceMinRaw;
 
   const tradesByDate = new Map<string, InsiderTrade[]>();
   for (const t of insiderTrades) {
@@ -212,6 +228,7 @@ function buildChartOption(priceHistory: PricePoint[], insiderTrades: InsiderTrad
     const signedQty = t.direction === "VENDA" ? -t.quantidade : t.quantidade;
     insiderMonthlyData[idx] = (insiderMonthlyData[idx] ?? 0) + signedQty;
   }
+  const insiderMonthlyPlotData = logInsiders ? insiderMonthlyData.map((v) => (v === null ? null : symlog(v))) : insiderMonthlyData;
 
   return {
     backgroundColor: "transparent",
@@ -245,10 +262,10 @@ function buildChartOption(priceHistory: PricePoint[], insiderTrades: InsiderTrad
     yAxis: [
       {
         id: "yPrice",
-        type: "value",
+        type: logPrice ? "log" : "value",
         gridIndex: 0,
         min: yPriceMin,
-        max: yPriceMax,
+        max: logPrice ? undefined : yPriceMax,
         name: "R$",
         axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } },
         splitLine: { lineStyle: { color: "rgba(255,255,255,.05)" } },
@@ -262,7 +279,10 @@ function buildChartOption(priceHistory: PricePoint[], insiderTrades: InsiderTrad
         nameTextStyle: { color: "#4a5b73" },
         axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } },
         splitLine: { show: false },
-        axisLabel: { color: "#4a5b73" },
+        axisLabel: {
+          color: "#4a5b73",
+          formatter: logInsiders ? (val: number) => fmtNum(Math.round(invSymlog(val))) : undefined,
+        },
       },
     ],
     // X mantem o dataZoom "inside" nativo (arrastar horizontal ja funciona
@@ -317,7 +337,7 @@ function buildChartOption(priceHistory: PricePoint[], insiderTrades: InsiderTrad
         type: "bar",
         xAxisIndex: 1,
         yAxisIndex: 1,
-        data: insiderMonthlyData,
+        data: insiderMonthlyPlotData,
         barMaxWidth: 14,
         itemStyle: {
           color: (p: { value: number | null }) => ((p.value ?? 0) >= 0 ? "#22c55e" : "#ef4444"),
@@ -354,6 +374,8 @@ export default function InsidersPage() {
   const [priceHistory, setPriceHistory] = useState<PricePoint[]>([]);
   const [tickerTrades, setTickerTrades] = useState<InsiderTrade[]>([]);
   const [chartLoading, setChartLoading] = useState(false);
+  const [logPrice, setLogPrice] = useState(false);
+  const [logInsiders, setLogInsiders] = useState(false);
 
   useEffect(() => {
     api.getInsiderCargos().then(setCargos).catch(() => setCargos([]));
@@ -436,9 +458,27 @@ export default function InsidersPage() {
             <div className="font-semibold">
               Cotação ({PRICE_YEARS} anos) — <span style={{ color: "var(--gold)" }}>{selectedTicker}</span>
             </div>
-            <button onClick={() => setSelectedTicker(null)} style={{ color: "var(--text3)" }}>
-              fechar ✕
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                className="text-xs px-2 py-1 smb-card"
+                style={{ color: logPrice ? "var(--gold)" : "var(--text3)" }}
+                title="Escala vertical da cotação: linear/log"
+                onClick={() => setLogPrice((v) => !v)}
+              >
+                Log
+              </button>
+              <button
+                className="text-xs px-2 py-1 smb-card"
+                style={{ color: logInsiders ? "var(--gold)" : "var(--text3)" }}
+                title="Escala vertical de Qtd insiders/mês: linear/log"
+                onClick={() => setLogInsiders((v) => !v)}
+              >
+                Log insiders
+              </button>
+              <button onClick={() => setSelectedTicker(null)} style={{ color: "var(--text3)" }}>
+                fechar ✕
+              </button>
+            </div>
           </div>
           {chartLoading && <div className="text-sm" style={{ color: "var(--text3)" }}>Carregando cotação (primeira consulta de um ano novo pode levar alguns segundos)...</div>}
           {!chartLoading && priceHistory.length === 0 && (
@@ -449,7 +489,7 @@ export default function InsidersPage() {
           {!chartLoading && priceHistory.length > 0 && (
             <>
               <ReactECharts
-                option={buildChartOption(priceHistory, tickerTrades)}
+                option={buildChartOption(priceHistory, tickerTrades, logPrice, logInsiders)}
                 style={{ height: 620 }}
                 notMerge
                 onChartReady={onChartReady}
