@@ -19,7 +19,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
-from starlette.status import HTTP_206_PARTIAL_CONTENT, HTTP_416_RANGE_NOT_SATISFIABLE
+from starlette.status import HTTP_206_PARTIAL_CONTENT, HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE
 
 BASE = Path(__file__).parent
 DATA_DIR = BASE / "data"
@@ -400,7 +400,7 @@ async def get_media(filename: str, request: Request):
         if units != "bytes" or start > end or start < 0:
             raise ValueError
     except ValueError:
-        return Response(status_code=HTTP_416_RANGE_NOT_SATISFIABLE, headers={"Content-Range": f"bytes */{file_size}"})
+        return Response(status_code=HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE, headers={"Content-Range": f"bytes */{file_size}"})
 
     length = end - start + 1
 
