@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, aliased
 
 from app.database import get_db
 from app.models import Asset, Fund, FundAssetMovement, FundHolding, FundNav, FundQuota
-from app.schemas.fund import FundOut, FundPositionHistoryPoint, HoldingOut, MovementOut
+from app.schemas.fund import AssetHistoryPoint, FundOut, HoldingOut, MovementOut
 from app.services import nav_lookup
 from app.services.returns import compute_window_return
 
@@ -288,58 +288,6 @@ def get_fund_holdings(fund_id: int, ref_date: date | None = None, db: Session = 
     ]
 
 
-@router.get("/{fund_id}/positions/{asset_id}/history", response_model=list[FundPositionHistoryPoint])
-def get_fund_position_history(fund_id: int, asset_id: int, db: Session = Depends(get_db)):
-    """Historico mensal completo da posicao de UM fundo num ativo especifico
-    (quantidade, valor, %PL) — pra grafico tipo carteirafundos.com
-    (candlestick + paineis empilhados). Reusa a mesma logica de nav_as_of/
-    quota_fallback (com guarda de staleness) de assets.py::get_asset_holders
-    via app.services.nav_lookup, so que consultada aqui "um fundo, todos os
-    meses" em vez de "um mes, todos os fundos"."""
-    holdings = db.execute(
-        select(FundHolding.ref_date, FundHolding.quantity, FundHolding.market_value)
-        .where(FundHolding.fund_id == fund_id, FundHolding.asset_id == asset_id)
-        .order_by(FundHolding.ref_date)
-    ).all()
-    if not holdings:
-        return []
-
-    nav_rows = db.execute(
-        select(FundNav.ref_date, FundNav.net_asset_value).where(FundNav.fund_id == fund_id).order_by(FundNav.ref_date)
-    ).all()
-    nav_by_date = {r.ref_date: float(r.net_asset_value) for r in nav_rows}
-    navs_sorted = [(r.ref_date, float(r.net_asset_value)) for r in nav_rows]
-
-    quota_rows = db.execute(
-        select(FundQuota.ref_date, FundQuota.net_asset_value).where(FundQuota.fund_id == fund_id).order_by(FundQuota.ref_date)
-    ).all()
-    quotas_sorted = [(r.ref_date, float(r.net_asset_value)) for r in quota_rows]
-
-    portfolio_rows = db.execute(
-        select(FundHolding.ref_date, func.sum(FundHolding.market_value))
-        .where(FundHolding.fund_id == fund_id)
-        .group_by(FundHolding.ref_date)
-    ).all()
-    portfolio_totals = {r[0]: float(r[1]) for r in portfolio_rows}
-
-    results = []
-    for ref_date, quantity, market_value in holdings:
-        mv = float(market_value)
-        portfolio_total = portfolio_totals.get(ref_date, 0.0)
-        nav = nav_lookup.nav_as_of(ref_date, portfolio_total, nav_by_date.get(ref_date), navs_sorted)
-        if nav is None:
-            nav = nav_lookup.quota_fallback(ref_date, mv, portfolio_total, quotas_sorted)
-        results.append(
-            FundPositionHistoryPoint(
-                ref_date=ref_date,
-                quantity=float(quantity),
-                market_value=mv,
-                pct_of_fund=(mv / nav * 100) if nav else None,
-            )
-        )
-    return results
-
-
 @router.get("/{fund_id}/movements", response_model=list[MovementOut])
 def get_fund_movements(fund_id: int, ref_date: date | None = None, db: Session = Depends(get_db)):
     target_date = ref_date or _latest_fund_movements_date(db, fund_id)
@@ -372,16 +320,21 @@ def get_fund_movements(fund_id: int, ref_date: date | None = None, db: Session =
     ]
 
 
-@router.get("/{fund_id}/history")
+@router.get("/{fund_id}/history", response_model=list[AssetHistoryPoint])
 def get_fund_asset_history(fund_id: int, asset_id: int, db: Session = Depends(get_db)):
     """Full accumulated-position timeline for one fund+asset pair, each point
     explicitly labeled with its movement classification — the original ask:
-    'evolucao acumulada explicitamente rotulada aumento/reducao'."""
+    'evolucao acumulada explicitamente rotulada aumento/reducao'. Also
+    carries pct_of_fund (mesma logica staleness-guarded de
+    assets.py::get_asset_holders via app.services.nav_lookup) — usado no
+    grafico tipo carteirafundos.com (candlestick + paineis empilhados)."""
     holdings = db.execute(
         select(FundHolding.ref_date, FundHolding.quantity, FundHolding.market_value)
         .where(FundHolding.fund_id == fund_id, FundHolding.asset_id == asset_id)
         .order_by(FundHolding.ref_date)
     ).all()
+    if not holdings:
+        return []
 
     movements = {
         m.ref_date: m
@@ -391,13 +344,39 @@ def get_fund_asset_history(fund_id: int, asset_id: int, db: Session = Depends(ge
         ).scalars()
     }
 
-    return [
-        {
-            "ref_date": h.ref_date,
-            "quantity": float(h.quantity),
-            "market_value": float(h.market_value),
-            "classification": movements[h.ref_date].classification.value if h.ref_date in movements else None,
-            "qty_delta": float(movements[h.ref_date].qty_delta) if h.ref_date in movements else None,
-        }
-        for h in holdings
-    ]
+    nav_rows = db.execute(
+        select(FundNav.ref_date, FundNav.net_asset_value).where(FundNav.fund_id == fund_id).order_by(FundNav.ref_date)
+    ).all()
+    nav_by_date = {r.ref_date: float(r.net_asset_value) for r in nav_rows}
+    navs_sorted = [(r.ref_date, float(r.net_asset_value)) for r in nav_rows]
+
+    quota_rows = db.execute(
+        select(FundQuota.ref_date, FundQuota.net_asset_value).where(FundQuota.fund_id == fund_id).order_by(FundQuota.ref_date)
+    ).all()
+    quotas_sorted = [(r.ref_date, float(r.net_asset_value)) for r in quota_rows]
+
+    portfolio_rows = db.execute(
+        select(FundHolding.ref_date, func.sum(FundHolding.market_value))
+        .where(FundHolding.fund_id == fund_id)
+        .group_by(FundHolding.ref_date)
+    ).all()
+    portfolio_totals = {r[0]: float(r[1]) for r in portfolio_rows}
+
+    results = []
+    for h in holdings:
+        mv = float(h.market_value)
+        portfolio_total = portfolio_totals.get(h.ref_date, 0.0)
+        nav = nav_lookup.nav_as_of(h.ref_date, portfolio_total, nav_by_date.get(h.ref_date), navs_sorted)
+        if nav is None:
+            nav = nav_lookup.quota_fallback(h.ref_date, mv, portfolio_total, quotas_sorted)
+        results.append(
+            AssetHistoryPoint(
+                ref_date=h.ref_date,
+                quantity=float(h.quantity),
+                market_value=mv,
+                classification=movements[h.ref_date].classification.value if h.ref_date in movements else None,
+                qty_delta=float(movements[h.ref_date].qty_delta) if h.ref_date in movements else None,
+                pct_of_fund=(mv / nav * 100) if nav else None,
+            )
+        )
+    return results
