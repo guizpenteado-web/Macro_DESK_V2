@@ -66,6 +66,17 @@ def top_performers(years: int = Query(20, ge=1, le=26), limit: int = 20, db: Ses
         # just launched (or was just rebased) doesn't look like a "20-year return".
         if (last_row.ref_date - first_date).days < 30:
             continue
+        # Exclude "fundos exclusivos" (1-9 cotistas, effectively a single
+        # family/individual's private vehicle, not a fund a normal investor
+        # would compare against). Achado 14/jul/2026: os retornos mais
+        # extremos do ranking (>2000%, ate 26.968% e 26.194%) vinham quase
+        # todos de fundos com 1-12 cotistas — matematicamente corretos (sem
+        # rebase, conferido contra o historico bruto de cotas), mas
+        # estatisticamente enganosos num ranking de "top performers"
+        # generico, porque sao veiculos pessoais com composicao/risco que
+        # nao se compara a um fundo de verdade.
+        if (last_row.n_shareholders or 0) < 10:
+            continue
         results.append(
             {
                 "fund_id": fund_id,
