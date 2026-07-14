@@ -17,8 +17,9 @@ import uuid
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import APIRouter, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
+from starlette.status import HTTP_206_PARTIAL_CONTENT, HTTP_416_RANGE_NOT_SATISFIABLE
 
 BASE = Path(__file__).parent
 DATA_DIR = BASE / "data"
@@ -364,13 +365,66 @@ async def add_chat(section: str = Form(...), author: str = Form(...), text: str 
     return {"id": chat_id, "section": section, "author": author, "text": text, "ts": ts}
 
 
+CHUNK_SIZE = 1024 * 1024  # 1MB
+
+
 @router.get("/media/{filename}")
-async def get_media(filename: str):
+async def get_media(filename: str, request: Request):
+    """Serve com suporte manual a HTTP Range (obrigatorio pra permitir arrastar
+    a barra de progresso de video no navegador). FileResponse do Starlette
+    teria esse suporte embutido, mas qualquer @app.middleware("http") no
+    unified_server.py (_auth_gate, _log_access) faz o Starlette envolver TODA
+    resposta em BaseHTTPMiddleware, que quebra o tratamento nativo de Range
+    do FileResponse — toda requisicao virava um 200 com o arquivo inteiro,
+    ignorando o header Range (achado 14/jul/2026, confirmado via curl direto
+    contra o processo, sem nginx no meio). Implementado manualmente aqui pra
+    nao depender desse comportamento do framework.
+    """
     f = MEDIA_DIR / filename
     if not f.exists() or not f.is_file():
         raise HTTPException(404, "Arquivo não encontrado")
     mime, _ = mimetypes.guess_type(filename)
-    return FileResponse(f, media_type=mime or "application/octet-stream")
+    media_type = mime or "application/octet-stream"
+    file_size = f.stat().st_size
+
+    range_header = request.headers.get("range")
+    if not range_header:
+        return FileResponse(f, media_type=media_type, headers={"Accept-Ranges": "bytes"})
+
+    try:
+        units, _, range_spec = range_header.partition("=")
+        start_s, _, end_s = range_spec.partition("-")
+        start = int(start_s) if start_s else 0
+        end = int(end_s) if end_s else file_size - 1
+        end = min(end, file_size - 1)
+        if units != "bytes" or start > end or start < 0:
+            raise ValueError
+    except ValueError:
+        return Response(status_code=HTTP_416_RANGE_NOT_SATISFIABLE, headers={"Content-Range": f"bytes */{file_size}"})
+
+    length = end - start + 1
+
+    def _stream():
+        with f.open("rb") as fh:
+            fh.seek(start)
+            remaining = length
+            while remaining > 0:
+                chunk = fh.read(min(CHUNK_SIZE, remaining))
+                if not chunk:
+                    break
+                remaining -= len(chunk)
+                yield chunk
+
+    return StreamingResponse(
+        _stream(),
+        status_code=HTTP_206_PARTIAL_CONTENT,
+        media_type=media_type,
+        headers={
+            "Content-Range": f"bytes {start}-{end}/{file_size}",
+            "Accept-Ranges": "bytes",
+            "Content-Length": str(length),
+        },
+    )
 
 
 @router.post("/import")
