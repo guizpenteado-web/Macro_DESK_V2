@@ -78,10 +78,15 @@ function attachVerticalPan(chart: any, yAxisIndex: number) {
 // trouxe como referência (14/jul/2026), sem o painel de "Exposição
 // Relativa" (definição não confirmada, deixado de fora por pedido do
 // usuário).
+//
+// Eixo X tipo "time" (nao "category") em todos os 4 grids — achado
+// 14/jul/2026: com eixo category, cada grid espalha seus proprios pontos
+// igualmente pela largura (candlestick tem ~2500 pregões diários, os
+// paineis mensais tem ~56 pontos), entao uma mesma data cai em pixels
+// DIFERENTES em cada grid — desalinha visualmente ao longo dos 10 anos.
+// Eixo "time" posiciona pelo valor real da data, entao series com
+// densidades bem diferentes ficam alinhadas de verdade.
 function buildOption(priceHistory: PricePoint[], history: AssetHistoryPoint[]) {
-  const dates = priceHistory.map((p) => p.date);
-  const months = history.map((h) => h.ref_date);
-
   let priceMin = Infinity;
   let priceMax = -Infinity;
   for (const p of priceHistory) {
@@ -92,7 +97,7 @@ function buildOption(priceHistory: PricePoint[], history: AssetHistoryPoint[]) {
   const yPriceMin = priceHistory.length ? priceMin - pricePad : undefined;
   const yPriceMax = priceHistory.length ? priceMax + pricePad : undefined;
 
-  const historyByDate = new Map(history.map((h) => [h.ref_date, h]));
+  const axisLineStyle = { lineStyle: { color: "rgba(255,255,255,.08)" } };
 
   return {
     backgroundColor: "transparent",
@@ -103,26 +108,27 @@ function buildOption(priceHistory: PricePoint[], history: AssetHistoryPoint[]) {
       { left: 70, right: 24, top: "65%", height: "14%" },
       { left: 70, right: 24, top: "84%", height: "14%" },
     ],
+    axisPointer: { link: [{ xAxisIndex: "all" }] },
     xAxis: [
-      { type: "category", gridIndex: 0, data: dates, axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } }, axisLabel: { show: false }, axisTick: { show: false } },
-      { type: "category", gridIndex: 1, data: months, axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } }, axisLabel: { show: false }, axisTick: { show: false } },
-      { type: "category", gridIndex: 2, data: months, axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } }, axisLabel: { show: false }, axisTick: { show: false } },
-      { type: "category", gridIndex: 3, data: months, axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } }, axisLabel: { color: "#4a5b73", interval: Math.ceil(months.length / 12) } },
+      { type: "time", gridIndex: 0, axisLine: axisLineStyle, axisLabel: { show: false }, axisTick: { show: false } },
+      { type: "time", gridIndex: 1, axisLine: axisLineStyle, axisLabel: { show: false }, axisTick: { show: false } },
+      { type: "time", gridIndex: 2, axisLine: axisLineStyle, axisLabel: { show: false }, axisTick: { show: false } },
+      { type: "time", gridIndex: 3, axisLine: axisLineStyle, axisLabel: { color: "#4a5b73" } },
     ],
     yAxis: [
-      { type: "value", gridIndex: 0, min: yPriceMin, max: yPriceMax, name: "R$", axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } }, splitLine: { lineStyle: { color: "rgba(255,255,255,.05)" } }, axisLabel: { color: "#4a5b73" } },
-      { type: "value", gridIndex: 1, name: "% PL", nameTextStyle: { color: "#4a5b73" }, axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } }, splitLine: { show: false }, axisLabel: { color: "#4a5b73" } },
-      { type: "value", gridIndex: 2, name: "Qtd Ações", nameTextStyle: { color: "#4a5b73" }, axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } }, splitLine: { show: false }, axisLabel: { color: "#4a5b73" } },
-      { type: "value", gridIndex: 3, name: "Valor", nameTextStyle: { color: "#4a5b73" }, axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } }, splitLine: { show: false }, axisLabel: { color: "#4a5b73", formatter: (v: number) => fmtBRLmi(v) } },
+      { type: "value", gridIndex: 0, min: yPriceMin, max: yPriceMax, name: "R$", axisLine: axisLineStyle, splitLine: { lineStyle: { color: "rgba(255,255,255,.05)" } }, axisLabel: { color: "#4a5b73" } },
+      { type: "value", gridIndex: 1, name: "% PL", nameTextStyle: { color: "#4a5b73" }, axisLine: axisLineStyle, splitLine: { show: false }, axisLabel: { color: "#4a5b73" } },
+      { type: "value", gridIndex: 2, name: "Qtd Ações", nameTextStyle: { color: "#4a5b73" }, axisLine: axisLineStyle, splitLine: { show: false }, axisLabel: { color: "#4a5b73" } },
+      { type: "value", gridIndex: 3, name: "Valor", nameTextStyle: { color: "#4a5b73" }, axisLine: axisLineStyle, splitLine: { show: false }, axisLabel: { color: "#4a5b73", formatter: (v: number) => fmtBRLmi(v) } },
     ],
+    // X compartilhado entre os 4 grids num dataZoom so — arrastar/dar zoom
+    // em qualquer painel move todos juntos (igual ao site de referencia).
+    // Y continua um dataZoom por grid (escalas bem diferentes entre painéis).
     dataZoom: [
-      { type: "inside", xAxisIndex: [0], zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
+      { type: "inside", xAxisIndex: [0, 1, 2, 3], zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
       { type: "inside", yAxisIndex: [0], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
-      { type: "inside", xAxisIndex: [1], zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
       { type: "inside", yAxisIndex: [1], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
-      { type: "inside", xAxisIndex: [2], zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
       { type: "inside", yAxisIndex: [2], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
-      { type: "inside", xAxisIndex: [3], zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
       { type: "inside", yAxisIndex: [3], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
     ],
     tooltip: {
@@ -156,7 +162,8 @@ function buildOption(priceHistory: PricePoint[], history: AssetHistoryPoint[]) {
         type: "candlestick",
         xAxisIndex: 0,
         yAxisIndex: 0,
-        data: priceHistory.map((p) => [p.open, p.close, p.low, p.high]),
+        data: priceHistory.map((p) => [p.date, p.open, p.close, p.low, p.high]),
+        encode: { x: 0, y: [1, 2, 3, 4] },
         itemStyle: { color: "#22c55e", color0: "#ef4444", borderColor: "#22c55e", borderColor0: "#ef4444" },
       },
       {
@@ -164,7 +171,7 @@ function buildOption(priceHistory: PricePoint[], history: AssetHistoryPoint[]) {
         type: "bar",
         xAxisIndex: 1,
         yAxisIndex: 1,
-        data: history.map((h) => h.pct_of_fund),
+        data: history.map((h) => [h.ref_date, h.pct_of_fund]),
         barMaxWidth: 14,
         itemStyle: { color: "#58a6ff" },
       },
@@ -173,7 +180,7 @@ function buildOption(priceHistory: PricePoint[], history: AssetHistoryPoint[]) {
         type: "bar",
         xAxisIndex: 2,
         yAxisIndex: 2,
-        data: history.map((h) => h.quantity),
+        data: history.map((h) => [h.ref_date, h.quantity]),
         barMaxWidth: 14,
         itemStyle: { color: "#94a3b8" },
       },
@@ -182,7 +189,7 @@ function buildOption(priceHistory: PricePoint[], history: AssetHistoryPoint[]) {
         type: "bar",
         xAxisIndex: 3,
         yAxisIndex: 3,
-        data: history.map((h) => h.market_value),
+        data: history.map((h) => [h.ref_date, h.market_value]),
         barMaxWidth: 14,
         itemStyle: { color: "#22c55e" },
       },
