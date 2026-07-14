@@ -170,7 +170,14 @@ function invSymlog(v: number) {
   return Math.sign(v) * (Math.pow(10, Math.abs(v)) - 1);
 }
 
-function buildChartOption(priceHistory: PricePoint[], insiderTrades: InsiderTrade[], logPrice: boolean, logInsiders: boolean) {
+function buildChartOption(
+  priceHistory: PricePoint[],
+  insiderTrades: InsiderTrade[],
+  logPrice: boolean,
+  logInsiders: boolean,
+  showBuyMarkers: boolean,
+  showSellMarkers: boolean
+) {
   const dates = priceHistory.map((p) => p.date);
 
   // min/max fixo (calculado uma vez, com folga de 8%) em vez de yAxis.scale:true
@@ -195,6 +202,24 @@ function buildChartOption(priceHistory: PricePoint[], insiderTrades: InsiderTrad
   for (const t of insiderTrades) {
     if (!t.data_movimentacao) continue;
     tradesByDate.set(t.data_movimentacao, [...(tradesByDate.get(t.data_movimentacao) ?? []), t]);
+  }
+
+  // Marcadores de compra/venda no proprio candlestick — reintroduzidos
+  // 14/jul/2026 como toggle opcional (tinham sido tirados antes por
+  // distorcer o auto-scale do preco quando preco_unitario vinha 0 no dado
+  // bruto da CVM). Agora que yPriceMin/yPriceMax sao fixos calculados so a
+  // partir do proprio candlestick (nao mais scale:true), plotar os
+  // marcadores no fechamento do dia (nao no preco_unitario, que pode ser 0
+  // ou nao bater com a cotacao de fechamento) nao mexe em nada do eixo.
+  const closeByDate = new Map(priceHistory.map((p) => [p.date, p.close]));
+  const buyMarkerData: [string, number][] = [];
+  const sellMarkerData: [string, number][] = [];
+  for (const t of insiderTrades) {
+    if (!t.data_movimentacao) continue;
+    const close = closeByDate.get(t.data_movimentacao);
+    if (close === undefined) continue;
+    if (t.direction === "COMPRA") buyMarkerData.push([t.data_movimentacao, close]);
+    else if (t.direction === "VENDA") sellMarkerData.push([t.data_movimentacao, close]);
   }
 
   const months: string[] = [];
@@ -335,6 +360,31 @@ function buildChartOption(priceHistory: PricePoint[], insiderTrades: InsiderTrad
         itemStyle: { color: "#22c55e", color0: "#ef4444", borderColor: "#22c55e", borderColor0: "#ef4444" },
       },
       {
+        name: "Compras insiders",
+        type: "scatter",
+        xAxisIndex: 0,
+        yAxisIndex: 0,
+        symbol: "triangle",
+        symbolSize: 11,
+        itemStyle: { color: "#22c55e", borderColor: "#0b1220", borderWidth: 1 },
+        data: showBuyMarkers ? buyMarkerData : [],
+        tooltip: { show: false },
+        z: 5,
+      },
+      {
+        name: "Vendas insiders",
+        type: "scatter",
+        xAxisIndex: 0,
+        yAxisIndex: 0,
+        symbol: "triangle",
+        symbolRotate: 180,
+        symbolSize: 11,
+        itemStyle: { color: "#ef4444", borderColor: "#0b1220", borderWidth: 1 },
+        data: showSellMarkers ? sellMarkerData : [],
+        tooltip: { show: false },
+        z: 5,
+      },
+      {
         name: "Insiders (qtd negociada)",
         type: "bar",
         xAxisIndex: 1,
@@ -379,6 +429,8 @@ export default function InsidersPage() {
   const [chartLoading, setChartLoading] = useState(false);
   const [logPrice, setLogPrice] = useState(false);
   const [logInsiders, setLogInsiders] = useState(false);
+  const [showBuyMarkers, setShowBuyMarkers] = useState(false);
+  const [showSellMarkers, setShowSellMarkers] = useState(false);
 
   useEffect(() => {
     api.getInsiderCargos().then(setCargos).catch(() => setCargos([]));
@@ -461,7 +513,23 @@ export default function InsidersPage() {
             <div className="font-semibold">
               Cotação ({PRICE_YEARS} anos) — <span style={{ color: "var(--gold)" }}>{selectedTicker}</span>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap justify-end">
+              <button
+                className="text-xs px-2 py-1 smb-card"
+                style={{ color: showBuyMarkers ? "var(--green)" : "var(--text3)" }}
+                title="Marcar no gráfico os dias com compra de insider"
+                onClick={() => setShowBuyMarkers((v) => !v)}
+              >
+                ▲ Compras
+              </button>
+              <button
+                className="text-xs px-2 py-1 smb-card"
+                style={{ color: showSellMarkers ? "var(--red)" : "var(--text3)" }}
+                title="Marcar no gráfico os dias com venda de insider"
+                onClick={() => setShowSellMarkers((v) => !v)}
+              >
+                ▼ Vendas
+              </button>
               <button
                 className="text-xs px-2 py-1 smb-card"
                 style={{ color: logPrice ? "var(--gold)" : "var(--text3)" }}
@@ -492,7 +560,7 @@ export default function InsidersPage() {
           {!chartLoading && priceHistory.length > 0 && (
             <>
               <ReactECharts
-                option={buildChartOption(priceHistory, tickerTrades, logPrice, logInsiders)}
+                option={buildChartOption(priceHistory, tickerTrades, logPrice, logInsiders, showBuyMarkers, showSellMarkers)}
                 style={{ height: 620 }}
                 notMerge
                 onChartReady={onChartReady}
@@ -500,9 +568,10 @@ export default function InsidersPage() {
               <div className="text-xs mt-1" style={{ color: "var(--text3)" }}>
                 Candlestick = cotação diária real via B3 (COTAHIST), não vem da CVM. Histograma embaixo = negociações
                 de insider dessa empresa agregadas por mês (verde = compra líquida, vermelho = venda líquida) — mesma
-                lista da tabela abaixo. Recompras da empresa foram tiradas daqui por enquanto. Arraste em qualquer
-                direção (tempo e escala vertical juntos) e role o mouse pra dar zoom — funciona nos dois gráficos,
-                cada um de forma independente.
+                lista da tabela abaixo. Recompras da empresa foram tiradas daqui por enquanto. Botões ▲ Compras/▼
+                Vendas marcam no próprio candlestick os dias exatos com negociação de insider (posição = fechamento do
+                dia, não o preço da negociação em si). Arraste em qualquer direção (tempo e escala vertical juntos) e
+                role o mouse pra dar zoom — funciona nos dois gráficos, cada um de forma independente.
               </div>
             </>
           )}
