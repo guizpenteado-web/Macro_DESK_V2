@@ -97,6 +97,18 @@ function buildOption(priceHistory: PricePoint[], history: AssetHistoryPoint[]) {
   const yPriceMin = priceHistory.length ? priceMin - pricePad : undefined;
   const yPriceMax = priceHistory.length ? priceMax + pricePad : undefined;
 
+  // Cada grid com eixo "time" auto-escala pro proprio intervalo de datas da
+  // SUA serie — se a carteira do fundo nesse ativo nao cobre exatamente o
+  // mesmo periodo da cotacao de 10 anos (ex: fundo so passou a ter posicao
+  // a partir de 2019), os 4 eixos ficam com inicio/fim diferentes mesmo
+  // sendo todos "time", e um ponto no meio do grafico ainda cai em datas
+  // diferentes por grid (achado 14/jul/2026, restante do desalinhamento
+  // apos trocar category->time). Forcar o MESMO min/max explicito (uniao
+  // das duas series) nos 4 eixos resolve de vez.
+  const allDates = [...priceHistory.map((p) => p.date), ...history.map((h) => h.ref_date)].sort();
+  const xMin = allDates.length ? allDates[0] : undefined;
+  const xMax = allDates.length ? allDates[allDates.length - 1] : undefined;
+
   const axisLineStyle = { lineStyle: { color: "rgba(255,255,255,.08)" } };
 
   return {
@@ -110,10 +122,10 @@ function buildOption(priceHistory: PricePoint[], history: AssetHistoryPoint[]) {
     ],
     axisPointer: { link: [{ xAxisIndex: "all" }] },
     xAxis: [
-      { type: "time", gridIndex: 0, axisLine: axisLineStyle, axisLabel: { show: false }, axisTick: { show: false } },
-      { type: "time", gridIndex: 1, axisLine: axisLineStyle, axisLabel: { show: false }, axisTick: { show: false } },
-      { type: "time", gridIndex: 2, axisLine: axisLineStyle, axisLabel: { show: false }, axisTick: { show: false } },
-      { type: "time", gridIndex: 3, axisLine: axisLineStyle, axisLabel: { color: "#4a5b73" } },
+      { type: "time", gridIndex: 0, min: xMin, max: xMax, axisLine: axisLineStyle, axisLabel: { show: false }, axisTick: { show: false } },
+      { type: "time", gridIndex: 1, min: xMin, max: xMax, axisLine: axisLineStyle, axisLabel: { show: false }, axisTick: { show: false } },
+      { type: "time", gridIndex: 2, min: xMin, max: xMax, axisLine: axisLineStyle, axisLabel: { show: false }, axisTick: { show: false } },
+      { type: "time", gridIndex: 3, min: xMin, max: xMax, axisLine: axisLineStyle, axisLabel: { color: "#4a5b73" } },
     ],
     yAxis: [
       { type: "value", gridIndex: 0, min: yPriceMin, max: yPriceMax, name: "R$", axisLine: axisLineStyle, splitLine: { lineStyle: { color: "rgba(255,255,255,.05)" } }, axisLabel: { color: "#4a5b73" } },
