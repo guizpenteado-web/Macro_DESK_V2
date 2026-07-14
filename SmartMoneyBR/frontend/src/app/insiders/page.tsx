@@ -105,10 +105,14 @@ function DirectionBadge({ direction }: { direction: "COMPRA" | "VENDA" | null })
   );
 }
 
-const DIRECTION_OPTIONS: { value: "COMPRA" | "VENDA" | ""; label: string }[] = [
+// Sem opcao "Todos" de proposito — pedido do usuario 14/jul/2026: a tabela
+// deve mostrar so negociacao real de mercado (Compra/Venda). "Todos" incluiria
+// tipo_movimentacao como Outras Entradas, Outras Saidas, Desligamento/saida,
+// Grupamento, Subscricao etc — eventos societarios/administrativos com
+// direction=None, nao compra/venda de verdade.
+const DIRECTION_OPTIONS: { value: "COMPRA" | "VENDA"; label: string }[] = [
   { value: "COMPRA", label: "Compras" },
   { value: "VENDA", label: "Vendas" },
-  { value: "", label: "Todos" },
 ];
 
 // Candlestick (grid 0) 100% limpo — nada sobreposto. Triangulos de insider
