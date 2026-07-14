@@ -221,6 +221,7 @@ def generate():
     current_ibov = _fetch_ibov_price()
     nfp_table    = _nfp_history_html()
     nfp_fp_json  = _nfp_firstprint_json()
+    wage_json    = _wage_growth_json()
     ibov_targets = bank.get("ibov_targets_2026", [])
     ibov_rows         = _ibov_table_rows(ibov_targets, current_ibov)
     ibov_compact_cards = _ibov_compact_cards(ibov_targets, current_ibov)
@@ -234,7 +235,7 @@ def generate():
         brazil=brazil, copom_views=copom_views,
         saz=saz, btc_saz=btc_saz, btc_cycle=btc_cycle, btc_stats=btc_stats,
         last_updated=bank.get("last_updated","—"),
-        current_spx=current_spx, nfp_table=nfp_table, nfp_fp_json=nfp_fp_json,
+        current_spx=current_spx, nfp_table=nfp_table, nfp_fp_json=nfp_fp_json, wage_json=wage_json,
         cot_data=cot_data,
         ibov_rows=ibov_rows, ibov_compact_cards=ibov_compact_cards, current_ibov=current_ibov,
         commodity_html=commodity_html,
@@ -380,6 +381,39 @@ def _nfp_firstprint_json() -> str:
         for m in sorted(FIRST_PRINT[y]):
             dates.append(f"{y}-{m:02d}-01")
             values.append(FIRST_PRINT[y][m])
+    return json.dumps({"dates": dates, "values": values})
+
+
+def _wage_growth_json() -> str:
+    """Retorna JSON {dates, values} com Average Hourly Earnings YoY% (BLS,
+    serie CES0500000003, nao-dessazonalizada) pra grafico Plotly.
+
+    Diferente do NFP_FIRST_PRINT acima, isto NAO e' "first print" (valor da
+    divulgacao original antes de revisao) — e' o dado mais recente/revisado
+    disponivel via FRED. Decisao deliberada: revisao de wage growth costuma
+    ser pequena (<=0.2pp), bem diferente da revisao de payrolls (que pode
+    mudar centenas de milhares), entao nao vale o esforco de garimpar 78
+    releases historicos do BLS so pra capturar uma diferenca marginal.
+    Valores calculados a partir do nivel bruto ($/hora) do FRED
+    (CES0500000003), YoY = nivel_mes / nivel_mesmo_mes_ano_anterior - 1;
+    conferido contra os dois pontos extremos publicamente conhecidos (pico
+    8.1% em abr/2020, minima 0.6% em abr/2021 — efeito de composicao da
+    forca de trabalho na pandemia) — bateram exato. Pesquisado 13/jul/2026.
+    """
+    WAGE_YOY = {
+        2020: {1:3.0, 2:3.1, 3:3.5, 4:8.1, 5:6.6, 6:5.0, 7:4.9, 8:4.8, 9:4.8, 10:4.6, 11:4.6, 12:5.4},
+        2021: {1:5.3, 2:5.3, 3:4.5, 4:0.6, 5:2.3, 6:3.9, 7:4.3, 8:4.4, 9:5.0, 10:5.4, 11:5.4, 12:4.9},
+        2022: {1:5.6, 2:5.3, 3:5.9, 4:5.8, 5:5.6, 6:5.4, 7:5.5, 8:5.4, 9:5.1, 10:5.0, 11:5.1, 12:4.9},
+        2023: {1:4.5, 2:4.8, 3:4.6, 4:4.6, 5:4.4, 6:4.7, 7:4.7, 8:4.5, 9:4.4, 10:4.2, 11:4.1, 12:4.1},
+        2024: {1:4.4, 2:4.1, 3:4.1, 4:4.0, 5:4.1, 6:3.9, 7:3.6, 8:3.9, 9:3.9, 10:4.0, 11:4.2, 12:4.1},
+        2025: {1:4.0, 2:4.1, 3:4.2, 4:3.9, 5:4.0, 6:3.9, 7:4.0, 8:4.0, 9:3.8, 10:3.9, 11:3.9, 12:3.7},
+        2026: {1:3.7, 2:3.7, 3:3.4, 4:3.6, 5:3.4, 6:3.5},
+    }
+    dates, values = [], []
+    for y in sorted(WAGE_YOY):
+        for m in sorted(WAGE_YOY[y]):
+            dates.append(f"{y}-{m:02d}-01")
+            values.append(WAGE_YOY[y][m])
     return json.dumps({"dates": dates, "values": values})
 
 
@@ -863,6 +897,15 @@ td.num {{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
       </div>
       <div id="ch-nfp-fp" style="height:300px"></div>
     </div>
+  </div>
+
+  <!-- Wage Growth history -->
+  <div class="chart-box" style="min-height:360px;margin-top:16px">
+    <div class="chart-title">Evolução Wage Growth — Average Hourly Earnings YoY (%)</div>
+    <div style="font-size:11px;color:var(--muted);margin:4px 0 10px;line-height:1.5">
+      Variação anual do salário-hora médio (Average Hourly Earnings YoY, BLS/FRED — série CES0500000003). Dado mais recente disponível (diferente do NFP ao lado, revisões de wage growth são pequenas — tipicamente ≤0,2pp — então não usamos "first print").
+    </div>
+    <div id="ch-wage-growth" style="height:300px"></div>
   </div>
 
   <!-- Bank projections S&P 500 -->
@@ -1521,6 +1564,50 @@ function nfpBarChart(divId, data) {{
   Plotly.newPlot(divId, [trace], layout, CFG);
 }}
 
+// ─── Wage Growth bar chart — AHE YoY%, mesmo estilo do NFP ──────────
+function wageGrowthChart(divId, data) {{
+  if (!data) {{ document.getElementById(divId).innerHTML = '<p style="color:#7d90a8;padding:20px;text-align:center">Aguardando dados.</p>'; return; }}
+  var dates = data.dates;
+  var vals  = data.values;
+
+  var colors = vals.map(function(v) {{
+    if (v >= 5.0) return "#f43f5e";
+    if (v >= 4.0) return "#f59e0b";
+    if (v >= 2.5) return "#34d399";
+    return "#6b7d94";
+  }});
+
+  var trace = {{
+    type: "bar", x: dates, y: vals,
+    marker: {{ color: colors, opacity: 0.9 }},
+    hovertemplate: "<b>%{{x|%b %Y}}</b><br>Wage Growth YoY: <b>%{{y:.1f}}%</b><extra></extra>",
+  }};
+
+  var layout = Object.assign({{}}, LAYOUT_BASE, {{
+    margin: {{ t:8, b:48, l:48, r:12 }},
+    bargap: 0.25,
+    hovermode: "x unified",
+    xaxis: Object.assign({{}}, LAYOUT_BASE.xaxis, {{
+      tickformat: "%b'%y", tickangle: -45,
+      dtick: "M6", tickfont: {{ size: 9 }},
+    }}),
+    yaxis: Object.assign({{}}, LAYOUT_BASE.yaxis, {{
+      ticksuffix: "%",
+      zeroline: true, zerolinecolor: "#30363d", zerolinewidth: 1.5,
+    }}),
+    shapes: [{{
+      type:"line", x0:dates[0], x1:dates[dates.length-1], y0:3.5, y1:3.5,
+      line:{{ color:"rgba(52,211,153,0.35)", width:1, dash:"dot" }}
+    }}],
+    annotations: [{{
+      x: dates[dates.length-1], y: 3.5, xanchor:"right", yanchor:"bottom",
+      text:"3,5% ref.", showarrow:false,
+      font:{{ color:"rgba(52,211,153,0.6)", size:9 }}, bgcolor:"rgba(8,12,20,0.6)"
+    }}],
+  }});
+  Plotly.newPlot(divId, [trace], layout, CFG);
+}}
+
 // ─── IPCA chart — meta 3% + teto 4.5% ───────────────────────────────
 function ipcaLineChart(divId, data) {{
   if (!data) {{ document.getElementById(divId).innerHTML = '<p style="color:#7d90a8;padding:20px;text-align:center">Aguardando dados — execute o pipeline.</p>'; return; }}
@@ -1888,6 +1975,7 @@ var DATA = {{
   btcCycle: {kw['btc_cycle']},
   btcStats: {kw['btc_stats']},
   nfpFP:    {kw['nfp_fp_json']},
+  wageGrowth: {kw['wage_json']},
 }};
 
 // ─── Render function ──────────────────────────────────────────────────
@@ -1897,6 +1985,7 @@ function renderCharts(tab) {{
     cpiLineChart("ch-ccpi", DATA.ccpi, "#f59e0b", "Core CPI YoY");
     ipcaLineChart("ch-ipca", DATA.ipcaBr);
     nfpBarChart("ch-nfp-fp", DATA.nfpFP);
+    wageGrowthChart("ch-wage-growth", DATA.wageGrowth);
   }} else if (tab === "saz-mercados") {{
     barChart("ch-saz-sp500", DATA.saz.sp500);
     barChart("ch-saz-dxy",   DATA.saz.dxy);
