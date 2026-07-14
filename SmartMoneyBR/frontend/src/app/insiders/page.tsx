@@ -51,6 +51,21 @@ const DIRECTION_OPTIONS: { value: "COMPRA" | "VENDA" | ""; label: string }[] = [
 function buildChartOption(priceHistory: PricePoint[], insiderTrades: InsiderTrade[]) {
   const dates = priceHistory.map((p) => p.date);
 
+  // min/max fixo (calculado uma vez, com folga de 8%) em vez de yAxis.scale:true
+  // — scale:true recalcula o range toda vez que o grafico atualiza (inclusive
+  // apos um pan/zoom manual), entao qualquer arraste vertical do usuario era
+  // desfeito no proximo re-render, dando a sensacao de que so dava pra
+  // navegar horizontalmente (achado 14/jul/2026).
+  let priceMin = Infinity;
+  let priceMax = -Infinity;
+  for (const p of priceHistory) {
+    priceMin = Math.min(priceMin, p.low);
+    priceMax = Math.max(priceMax, p.high);
+  }
+  const pricePad = (priceMax - priceMin) * 0.08 || 1;
+  const yPriceMin = priceHistory.length ? priceMin - pricePad : undefined;
+  const yPriceMax = priceHistory.length ? priceMax + pricePad : undefined;
+
   const tradesByDate = new Map<string, InsiderTrade[]>();
   for (const t of insiderTrades) {
     if (!t.data_movimentacao) continue;
@@ -76,6 +91,15 @@ function buildChartOption(priceHistory: PricePoint[], insiderTrades: InsiderTrad
   const insiderMonthlyData: (number | null)[] = new Array(months.length).fill(null);
   for (const t of insiderTrades) {
     if (!t.data_movimentacao || t.quantidade === null) continue;
+    // So conta negociacao real (Compra/Venda classificadas na ingestao) —
+    // tipo_movimentacao como Grupamento, Desdobramento/bonificacao,
+    // Subscricao, Homologacao de subscricao e Acoes de plano de
+    // remuneracao (direction=None) sao eventos societarios, nao compra/
+    // venda de mercado, e vem com quantidade na casa dos bilhoes —
+    // dominava a escala do eixo Y pra qualquer ativo que tivesse um desses
+    // no historico, achatando os meses com negociacao real de verdade
+    // (achado 14/jul/2026).
+    if (t.direction !== "COMPRA" && t.direction !== "VENDA") continue;
     const idx = monthIndex.get(t.data_movimentacao.slice(0, 7));
     if (idx === undefined) continue;
     const signedQty = t.direction === "VENDA" ? -t.quantidade : t.quantidade;
@@ -116,7 +140,8 @@ function buildChartOption(priceHistory: PricePoint[], insiderTrades: InsiderTrad
         id: "yPrice",
         type: "value",
         gridIndex: 0,
-        scale: true,
+        min: yPriceMin,
+        max: yPriceMax,
         name: "R$",
         axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } },
         splitLine: { lineStyle: { color: "rgba(255,255,255,.05)" } },
