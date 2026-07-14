@@ -51,8 +51,11 @@ def buscar_dados_site():
         try:
             # data no formato dd/mm/yyyy
             data_str = tds[0].get_text(strip=True)
-            dia_str  = tds[1].get_text(strip=True).replace(".", "").replace(",", ".")
-            dia_val  = float(dia_str)
+            raw      = tds[1].get_text(strip=True)
+            mult     = 1000.0 if "bi" in raw else 1.0
+            dia_str  = raw.replace("mi", "").replace("bi", "").strip()
+            dia_str  = dia_str.replace(".", "").replace(",", ".")
+            dia_val  = float(dia_str) * mult
             dt       = datetime.strptime(data_str, "%d/%m/%Y").date()
             dados.append((dt, dia_val))
         except Exception:
