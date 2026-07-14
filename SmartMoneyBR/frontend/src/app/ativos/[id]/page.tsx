@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { api, Asset, AssetHolder, AssetTimelinePoint } from "@/lib/api";
+import FundAssetPositionChart from "@/components/FundAssetPositionChart";
 import MovementBadge from "@/components/MovementBadge";
 import SortableTh from "@/components/SortableTh";
 import { sortRows, useSort } from "@/lib/sort";
@@ -46,6 +47,7 @@ export default function AssetDetailPage() {
   const [flow, setFlow] = useState<{ net_qty_delta: number; net_value_delta: number; n_funds_buying: number; n_funds_selling: number } | null>(null);
   const [topMetric, setTopMetric] = useState<"pct" | "valor">("pct");
 
+  const [selectedFund, setSelectedFund] = useState<{ id: number; name: string } | null>(null);
   const [fundSearch, setFundSearch] = useState("");
   const [direction, setDirection] = useState<"comprados" | "vendidos">("comprados");
   const [showZeroed, setShowZeroed] = useState(false);
@@ -223,6 +225,20 @@ export default function AssetDetailPage() {
         </div>
       )}
 
+      {selectedFund && asset && (
+        <div className="smb-card p-4">
+          <div className="flex justify-between items-center mb-2">
+            <div className="font-semibold">
+              Evolução da posição de <span style={{ color: "var(--gold)" }}>{selectedFund.name}</span> em {asset.ticker}
+            </div>
+            <button onClick={() => setSelectedFund(null)} style={{ color: "var(--text3)" }}>
+              fechar ✕
+            </button>
+          </div>
+          <FundAssetPositionChart fundId={selectedFund.id} assetId={assetId} ticker={asset.ticker} />
+        </div>
+      )}
+
       <div>
         <h2 className="font-semibold mb-2">Detalhes das Posições</h2>
 
@@ -305,6 +321,14 @@ export default function AssetDetailPage() {
                     <Link href={`/fundos/${h.fund_id}`} style={{ color: "var(--gold)" }}>
                       {h.fund_name}
                     </Link>
+                    <button
+                      onClick={() => setSelectedFund({ id: h.fund_id, name: h.fund_name })}
+                      title="Ver evolução da posição"
+                      className="ml-2"
+                      style={{ color: "var(--text3)" }}
+                    >
+                      📈
+                    </button>
                   </td>
                   <td>{h.classification && <MovementBadge classification={h.classification} />}</td>
                   <td className="num">{h.quantity.toLocaleString("pt-BR")}</td>

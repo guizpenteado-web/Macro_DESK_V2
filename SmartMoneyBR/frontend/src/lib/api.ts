@@ -88,6 +88,7 @@ export interface AssetHistoryPoint {
   market_value: number;
   classification: string | null;
   qty_delta: number | null;
+  pct_of_fund: number | null;
 }
 
 export interface Asset {

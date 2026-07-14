@@ -3,7 +3,8 @@
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { api, Fund, Holding, Movement, AssetHistoryPoint, FundPerformance, FundQuotaHistory, PerformanceMovement } from "@/lib/api";
+import { api, Fund, Holding, Movement, FundPerformance, FundQuotaHistory, PerformanceMovement } from "@/lib/api";
+import FundAssetPositionChart from "@/components/FundAssetPositionChart";
 import MovementBadge from "@/components/MovementBadge";
 import SortableTh from "@/components/SortableTh";
 import { sortRows, useSort } from "@/lib/sort";
@@ -140,7 +141,6 @@ export default function FundDetailPage() {
   const [perf, setPerf] = useState<FundPerformance | null>(null);
   const [quotaHistory, setQuotaHistory] = useState<FundQuotaHistory | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<{ id: number; ticker: string } | null>(null);
-  const [history, setHistory] = useState<AssetHistoryPoint[]>([]);
 
   const movementsSort = useSort<"ticker" | "classification" | "ref_date" | "qty_current" | "qty_delta" | "value_delta" | "pct_delta">();
   const sortedMovements = movementsSort.sortKey ? sortRows(movements, (m) => m[movementsSort.sortKey!], movementsSort.sortDir) : movements;
@@ -157,32 +157,6 @@ export default function FundDetailPage() {
     api.getFundQuotaHistory(fundId, 20).then(setQuotaHistory);
   }, [fundId]);
 
-  useEffect(() => {
-    if (!selectedAsset) return;
-    api.getFundAssetHistory(fundId, selectedAsset.id).then(setHistory);
-  }, [fundId, selectedAsset]);
-
-  const assetChartOption = {
-    backgroundColor: "transparent",
-    grid: { left: 50, right: 20, top: 20, bottom: 30 },
-    xAxis: { type: "category", data: history.map((h) => h.ref_date), axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } } },
-    yAxis: { type: "value", axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } }, splitLine: { lineStyle: { color: "rgba(255,255,255,.05)" } } },
-    tooltip: {
-      trigger: "axis",
-      formatter: (params: unknown) => {
-        const p = (params as { dataIndex: number }[])[0];
-        const h = history[p.dataIndex];
-        return `${h.ref_date}<br/>Qtd: ${h.quantity.toLocaleString("pt-BR")}<br/>${h.classification ?? ""}`;
-      },
-    },
-    series: [
-      {
-        type: "bar",
-        data: history.map((h) => h.quantity),
-        itemStyle: { color: "#c9a227" },
-      },
-    ],
-  };
 
   const evoOption = perf && {
     backgroundColor: "transparent",
@@ -306,7 +280,7 @@ export default function FundDetailPage() {
               fechar ✕
             </button>
           </div>
-          <ReactECharts option={assetChartOption} style={{ height: 260 }} />
+          <FundAssetPositionChart fundId={fundId} assetId={selectedAsset.id} ticker={selectedAsset.ticker} />
         </div>
       )}
 

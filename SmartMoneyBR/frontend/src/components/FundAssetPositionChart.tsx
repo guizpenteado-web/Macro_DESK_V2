@@ -1,0 +1,251 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import { api, AssetHistoryPoint, PricePoint } from "@/lib/api";
+
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
+
+const PRICE_YEARS = 10;
+
+function fmtPrice(v: number) {
+  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function fmtBRLmi(v: number) {
+  return `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}mi`;
+}
+
+// Mesma tecnica de pan vertical manual do insiders/page.tsx e recompras/page.tsx
+// — dataZoom "inside" do ECharts nao responde a arrasto vertical mesmo com
+// xAxisIndex+yAxisIndex combinados (achado 14/jul/2026), entao cada grid tem
+// seu proprio pan feito via zrender + dispatchAction.
+function attachVerticalPan(chart: any, yAxisIndex: number) {
+  const zr = chart.getZr();
+  let dragging = false;
+  let lastY = 0;
+
+  function onDown(params: any) {
+    dragging = true;
+    lastY = params.offsetY;
+  }
+  function onMove(params: any) {
+    if (!dragging) return;
+    const dy = params.offsetY - lastY;
+    lastY = params.offsetY;
+    if (!dy) return;
+
+    const opt = chart.getOption();
+    const dzList: any[] = opt.dataZoom || [];
+    const dz = dzList.find((d) => Array.isArray(d.yAxisIndex) && d.yAxisIndex.includes(yAxisIndex));
+    if (!dz) return;
+    const start = dz.start ?? 0;
+    const end = dz.end ?? 100;
+    const span = end - start;
+    const height = chart.getHeight();
+    const deltaPct = (dy / height) * span;
+    let newStart = start - deltaPct;
+    let newEnd = end - deltaPct;
+    if (newStart < 0) {
+      newEnd += -newStart;
+      newStart = 0;
+    }
+    if (newEnd > 100) {
+      newStart -= newEnd - 100;
+      newEnd = 100;
+    }
+    chart.dispatchAction({ type: "dataZoom", yAxisIndex, start: newStart, end: newEnd });
+  }
+  function onUp() {
+    dragging = false;
+  }
+
+  zr.on("mousedown", onDown);
+  zr.on("mousemove", onMove);
+  zr.on("mouseup", onUp);
+  zr.on("globalout", onUp);
+
+  return () => {
+    zr.off("mousedown", onDown);
+    zr.off("mousemove", onMove);
+    zr.off("mouseup", onUp);
+    zr.off("globalout", onUp);
+  };
+}
+
+// Layout: candlestick (grid 0) + 3 paineis empilhados (%PL, Qtd Ações,
+// Valor da Posição) — mesmo espirito do "carteirafundos.com" que o usuário
+// trouxe como referência (14/jul/2026), sem o painel de "Exposição
+// Relativa" (definição não confirmada, deixado de fora por pedido do
+// usuário).
+function buildOption(priceHistory: PricePoint[], history: AssetHistoryPoint[]) {
+  const dates = priceHistory.map((p) => p.date);
+  const months = history.map((h) => h.ref_date);
+
+  let priceMin = Infinity;
+  let priceMax = -Infinity;
+  for (const p of priceHistory) {
+    priceMin = Math.min(priceMin, p.low);
+    priceMax = Math.max(priceMax, p.high);
+  }
+  const pricePad = (priceMax - priceMin) * 0.08 || 1;
+  const yPriceMin = priceHistory.length ? priceMin - pricePad : undefined;
+  const yPriceMax = priceHistory.length ? priceMax + pricePad : undefined;
+
+  const historyByDate = new Map(history.map((h) => [h.ref_date, h]));
+
+  return {
+    backgroundColor: "transparent",
+    animation: false,
+    grid: [
+      { left: 70, right: 24, top: 24, height: "38%" },
+      { left: 70, right: 24, top: "46%", height: "14%" },
+      { left: 70, right: 24, top: "65%", height: "14%" },
+      { left: 70, right: 24, top: "84%", height: "14%" },
+    ],
+    xAxis: [
+      { type: "category", gridIndex: 0, data: dates, axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } }, axisLabel: { show: false }, axisTick: { show: false } },
+      { type: "category", gridIndex: 1, data: months, axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } }, axisLabel: { show: false }, axisTick: { show: false } },
+      { type: "category", gridIndex: 2, data: months, axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } }, axisLabel: { show: false }, axisTick: { show: false } },
+      { type: "category", gridIndex: 3, data: months, axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } }, axisLabel: { color: "#4a5b73", interval: Math.ceil(months.length / 12) } },
+    ],
+    yAxis: [
+      { type: "value", gridIndex: 0, min: yPriceMin, max: yPriceMax, name: "R$", axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } }, splitLine: { lineStyle: { color: "rgba(255,255,255,.05)" } }, axisLabel: { color: "#4a5b73" } },
+      { type: "value", gridIndex: 1, name: "% PL", nameTextStyle: { color: "#4a5b73" }, axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } }, splitLine: { show: false }, axisLabel: { color: "#4a5b73" } },
+      { type: "value", gridIndex: 2, name: "Qtd Ações", nameTextStyle: { color: "#4a5b73" }, axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } }, splitLine: { show: false }, axisLabel: { color: "#4a5b73" } },
+      { type: "value", gridIndex: 3, name: "Valor", nameTextStyle: { color: "#4a5b73" }, axisLine: { lineStyle: { color: "rgba(255,255,255,.08)" } }, splitLine: { show: false }, axisLabel: { color: "#4a5b73", formatter: (v: number) => fmtBRLmi(v) } },
+    ],
+    dataZoom: [
+      { type: "inside", xAxisIndex: [0], zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
+      { type: "inside", yAxisIndex: [0], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
+      { type: "inside", xAxisIndex: [1], zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
+      { type: "inside", yAxisIndex: [1], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
+      { type: "inside", xAxisIndex: [2], zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
+      { type: "inside", yAxisIndex: [2], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
+      { type: "inside", xAxisIndex: [3], zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
+      { type: "inside", yAxisIndex: [3], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
+    ],
+    tooltip: {
+      trigger: "axis",
+      axisPointer: { type: "cross" },
+      formatter: (params: unknown) => {
+        const arr = params as { seriesType: string; seriesName: string; dataIndex: number }[];
+        const priceParam = arr.find((p) => p.seriesType === "candlestick");
+        if (priceParam) {
+          const p = priceHistory[priceParam.dataIndex];
+          if (!p) return "";
+          return `${p.date}<br/>Abertura: ${fmtPrice(p.open)}<br/>Máxima: ${fmtPrice(p.high)}<br/>Mínima: ${fmtPrice(p.low)}<br/>Fechamento: ${fmtPrice(p.close)}`;
+        }
+        const barParam = arr.find((p) => p.seriesType === "bar");
+        if (barParam) {
+          const h = history[barParam.dataIndex];
+          if (!h) return "";
+          return (
+            `${h.ref_date}<br/>` +
+            `% do PL: ${h.pct_of_fund !== null ? h.pct_of_fund.toFixed(2) + "%" : "—"}<br/>` +
+            `Qtd ações: ${h.quantity.toLocaleString("pt-BR")}<br/>` +
+            `Valor: ${fmtBRLmi(h.market_value)}`
+          );
+        }
+        return "";
+      },
+    },
+    series: [
+      {
+        name: "Cotação",
+        type: "candlestick",
+        xAxisIndex: 0,
+        yAxisIndex: 0,
+        data: priceHistory.map((p) => [p.open, p.close, p.low, p.high]),
+        itemStyle: { color: "#22c55e", color0: "#ef4444", borderColor: "#22c55e", borderColor0: "#ef4444" },
+      },
+      {
+        name: "% do PL",
+        type: "bar",
+        xAxisIndex: 1,
+        yAxisIndex: 1,
+        data: history.map((h) => h.pct_of_fund),
+        barMaxWidth: 14,
+        itemStyle: { color: "#58a6ff" },
+      },
+      {
+        name: "Qtd Ações",
+        type: "bar",
+        xAxisIndex: 2,
+        yAxisIndex: 2,
+        data: history.map((h) => h.quantity),
+        barMaxWidth: 14,
+        itemStyle: { color: "#94a3b8" },
+      },
+      {
+        name: "Valor da Posição",
+        type: "bar",
+        xAxisIndex: 3,
+        yAxisIndex: 3,
+        data: history.map((h) => h.market_value),
+        barMaxWidth: 14,
+        itemStyle: { color: "#22c55e" },
+      },
+    ],
+  };
+}
+
+export default function FundAssetPositionChart({
+  fundId,
+  assetId,
+  ticker,
+}: {
+  fundId: number;
+  assetId: number;
+  ticker: string;
+}) {
+  const [priceHistory, setPriceHistory] = useState<PricePoint[]>([]);
+  const [history, setHistory] = useState<AssetHistoryPoint[]>([]);
+  const [loading, setLoading] = useState(false);
+  const panCleanupRef = useRef<(() => void)[]>([]);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([api.getPriceHistory(ticker, PRICE_YEARS), api.getFundAssetHistory(fundId, assetId)])
+      .then(([price, hist]) => {
+        setPriceHistory(price);
+        setHistory(hist);
+      })
+      .catch(() => {
+        setPriceHistory([]);
+        setHistory([]);
+      })
+      .finally(() => setLoading(false));
+  }, [fundId, assetId, ticker]);
+
+  function onChartReady(chart: any) {
+    panCleanupRef.current.forEach((fn) => fn());
+    panCleanupRef.current = [0, 1, 2, 3].map((i) => attachVerticalPan(chart, i));
+  }
+
+  if (loading) {
+    return (
+      <div className="text-sm" style={{ color: "var(--text3)" }}>
+        Carregando cotação (primeira consulta de um ano novo pode levar alguns segundos)...
+      </div>
+    );
+  }
+  if (priceHistory.length === 0) {
+    return (
+      <div className="text-sm" style={{ color: "var(--text3)" }}>
+        Sem cotação na B3 pra {ticker} (pode ser ticker sem negociação em bolsa, FII, ou código incorreto).
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <ReactECharts option={buildOption(priceHistory, history)} style={{ height: 720 }} notMerge onChartReady={onChartReady} />
+      <div className="text-xs mt-1" style={{ color: "var(--text3)" }}>
+        Candlestick = cotação diária real via B3 (COTAHIST). Painéis abaixo = % do PL do fundo, quantidade de ações e
+        valor da posição nesse ativo, mês a mês. Arraste em qualquer direção (tempo e escala vertical juntos) e role o
+        mouse pra dar zoom — funciona em cada gráfico de forma independente.
+      </div>
+    </>
+  );
+}
