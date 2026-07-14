@@ -132,7 +132,7 @@ body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFo
     <button class="toggle-btn off" id="tog-cot" onclick="toggleSeries('cot')">
       <span class="toggle-dot" style="background:#E0E0E0"></span>6L COT
     </button>
-    <button class="toggle-btn" id="tog-ntnb" onclick="toggleSeries('ntnb')">
+    <button class="toggle-btn off" id="tog-ntnb" onclick="toggleSeries('ntnb')">
       <span class="toggle-dot" style="background:#B44FFF"></span>NTN-B 2035 PU
     </button>
     <button class="toggle-btn" id="tog-flow" onclick="toggleSeries('flow')">
@@ -218,7 +218,7 @@ const META = {
 // COT é semanal, CPI YoY é mensal — todo o resto é diário. Ver comentário no "step" abaixo.
 const LOW_FREQ_KEYS = new Set(["cot", "us_cpi_yoy"]);
 let rawData = { ibov: [], cot: [], ntnb: [], flow: [], di2033: [], smal11: [], usdbrl: [], dxy: [], us10y: [], bcom: [], us_cpi_yoy: [] };
-let visible  = { ibov: true, cot: false, ntnb: true, flow: true, di2033: false, smal11: false, usdbrl: false, dxy: false, us10y: false, bcom: false, us_cpi_yoy: false };
+let visible  = { ibov: true, cot: false, ntnb: false, flow: true, di2033: false, smal11: false, usdbrl: false, dxy: false, us10y: false, bcom: false, us_cpi_yoy: false };
 let chart    = null;
 let currentMonths = 0;
 

@@ -1653,13 +1653,27 @@ async def admin_page() -> str:
     for u in users:
         status = "ativo" if u["ativo"] else "inativo"
         toggle_label = "Desativar" if u["ativo"] else "Ativar"
+        # Excluir so aparece pra usuario inativo — evita apagar sem querer uma
+        # conta em uso (desativar ja bloqueia login, exclusao e' o passo
+        # seguinte e deliberadamente irreversivel, entao fica atras desse
+        # gate de "ja foi desativado primeiro").
+        delete_btn = (
+            f"""<form class="inline" method="post" action="/api/admin/users/{u['id']}/delete" """
+            f"""onsubmit="return confirm('Excluir {u['username']} definitivamente?')">"""
+            f"""<button class="small" type="submit" style="color:#f85149">Excluir</button></form>"""
+            if not u["ativo"]
+            else ""
+        )
         rows += f"""<tr>
           <td>{u['username']}</td><td>{u['nome'] or ''}</td>
           <td><span class="badge {u['role']}">{u['role']}</span></td>
           <td><span class="badge {status}">{status}</span></td>
           <td>{u['ultimo_login'] or '—'}</td>
-          <td><form class="inline" method="post" action="/api/admin/users/{u['id']}/toggle">
-            <button class="small" type="submit">{toggle_label}</button></form></td>
+          <td>
+            <form class="inline" method="post" action="/api/admin/users/{u['id']}/toggle">
+              <button class="small" type="submit">{toggle_label}</button></form>
+            {delete_btn}
+          </td>
         </tr>"""
     return _ADMIN_PAGE.format(rows=rows or '<tr><td colspan="6">Nenhum usuário ainda.</td></tr>')
 
@@ -1692,6 +1706,17 @@ async def admin_create_user(request: Request) -> Response:
 async def admin_toggle_user(user_id: int) -> Response:
     conn = _sqlite3.connect(HUB_USERS_DB)
     conn.execute("UPDATE users SET ativo = 1 - ativo WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+    return RedirectResponse("/admin", status_code=303)
+
+
+@app.post("/api/admin/users/{user_id}/delete")
+async def admin_delete_user(user_id: int) -> Response:
+    # So deleta quem ja esta inativo (mesma logica do botao — o form nem
+    # aparece pra usuario ativo, isso aqui e' a segunda trava no backend).
+    conn = _sqlite3.connect(HUB_USERS_DB)
+    conn.execute("DELETE FROM users WHERE id = ? AND ativo = 0", (user_id,))
     conn.commit()
     conn.close()
     return RedirectResponse("/admin", status_code=303)
