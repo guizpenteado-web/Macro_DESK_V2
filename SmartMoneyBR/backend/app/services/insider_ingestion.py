@@ -31,13 +31,30 @@ logger = logging.getLogger(__name__)
 # Tipo_Movimentacao -> direcao simplificada, usada pro filtro "compra/venda"
 # no endpoint (o resto — desdobramento, doacao, emprestimo, saldo inicial —
 # fica com direction=None, continua visivel mas fora do filtro padrao).
+#
+# Achado 14/jul/2026: "Compra a termo"/"Venda a termo" (sem crase) nunca
+# batia com o dado real da CVM, que vem com crase ("Compra à termo"/"Venda
+# à termo") — 1.055 + 185 negociacoes a termo genuinas ficavam com
+# direction=None e sumiam do grafico "Qtd insiders/mes" (que so soma linhas
+# com direction=COMPRA/VENDA desde o fix da distorcao por eventos
+# societarios). Tambem faltava mapear exercicio de opcao que resulta em
+# posicao real (credito de acoes/units por exercicio de compra = aquisicao
+# de verdade; debito por exercicio de opcao de venda = reducao de verdade)
+# — sao eventos de mercado genuinos, diferentes de bonificacao/subscricao/
+# plano de remuneracao (que continuam de fora, propositalmente).
 _DIRECTION_MAP = {
     "Compra": "COMPRA",
     "Compra à vista": "COMPRA",
     "Compra a termo": "COMPRA",
+    "Compra à termo": "COMPRA",
+    "Ações decorrentes de exercício de opção de compra": "COMPRA",
+    "Units decorrentes de exercício de opção de compra": "COMPRA",
     "Venda": "VENDA",
     "Venda à vista": "VENDA",
     "Venda a termo": "VENDA",
+    "Venda à termo": "VENDA",
+    "Ações reduzidas (exercício de opção de venda)": "VENDA",
+    "Units reduzidas (exercício de opção de venda)": "VENDA",
 }
 
 
