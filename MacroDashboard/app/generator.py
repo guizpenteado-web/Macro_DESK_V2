@@ -551,13 +551,13 @@ def _commodity_cards_html(commodities: dict) -> str:
                 pct = (tgt - preco_atual) / preco_atual * 100
                 sign = "+" if pct >= 0 else ""
                 up_color = "#10b981" if pct >= 0 else "#f43f5e"
-                upside_html = f'<span style="font-size:8px;color:{up_color};margin-left:3px">{sign}{pct:.0f}%</span>'
+                upside_html = f'<span style="font-size:10px;color:{up_color};margin-left:3px">{sign}{pct:.0f}%</span>'
             rows_html += (
                 f'<div style="display:flex;justify-content:space-between;align-items:center;'
-                f'padding:2px 0;border-bottom:1px solid rgba(255,255,255,.04)">'
-                f'<span style="font-size:9.5px;color:var(--muted)">{bank_short}</span>'
-                f'<span style="font-size:10px;font-weight:700;color:var(--text)">{tgt_str}'
-                f'<span style="font-size:8.5px;color:{view_color};margin-left:3px">{view}</span>'
+                f'padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04)">'
+                f'<span style="font-size:11.5px;color:var(--muted)">{bank_short}</span>'
+                f'<span style="font-size:12.5px;font-weight:700;color:var(--text)">{tgt_str}'
+                f'<span style="font-size:10.5px;color:{view_color};margin-left:3px">{view}</span>'
                 f'{upside_html}</span>'
                 f'</div>'
             )
@@ -565,7 +565,7 @@ def _commodity_cards_html(commodities: dict) -> str:
         if preco_atual:
             preco_str = f'${preco_atual:,.0f}' if preco_atual >= 100 else f'${preco_atual:.2f}'
             preco_atual_html = (
-                f'<div style="font-size:8.5px;color:var(--muted);margin-bottom:5px;'
+                f'<div style="font-size:10.5px;color:var(--muted);margin-bottom:5px;'
                 f'padding-bottom:4px;border-bottom:1px solid rgba(255,255,255,.08)">'
                 f'Spot: <span style="color:var(--text);font-weight:600">{preco_str}</span>'
                 f'</div>'
@@ -574,8 +574,8 @@ def _commodity_cards_html(commodities: dict) -> str:
             f'<div style="background:var(--surface);border:1px solid var(--border);'
             f'border-top:2px solid {color};border-radius:8px;padding:10px 11px;min-width:0">'
             f'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">'
-            f'<span style="font-size:11px;font-weight:700;letter-spacing:.4px;color:{color}">{label_pt}</span>'
-            f'<span style="font-size:9px;color:var(--muted)">{unit_str}</span>'
+            f'<span style="font-size:13px;font-weight:700;letter-spacing:.4px;color:{color}">{label_pt}</span>'
+            f'<span style="font-size:10.5px;color:var(--muted)">{unit_str}</span>'
             f'</div>'
             f'{preco_atual_html}'
             f'{rows_html}'
