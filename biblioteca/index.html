@@ -1280,11 +1280,20 @@ document.getElementById('cinema-close').addEventListener('click', closeCinema);
 document.getElementById('cinema-overlay').addEventListener('click', e=>{
   if (e.target===document.getElementById('cinema-overlay')) closeCinema();
 });
+// Altura reservada pros controles nativos do video (barra de progresso,
+// play/pause, volume) — nunca conta como "fora do conteudo" nessa faixa,
+// senao um clique/arraste na barra de progresso fecha o modal no meio do
+// gesto (achado 14/jul/2026, primeira versao deste fix). Fora dessa faixa,
+// clicar na area de letterbox (barras pretas quando video/imagem nao
+// preenche o quadro) fecha o modal — pedido do usuario (14/jul/2026).
+const VIDEO_CONTROL_BAR_PX = 40;
+
 function isOutsideMediaContent(e, el) {
   const natW = el.tagName==='VIDEO' ? el.videoWidth  : el.naturalWidth;
   const natH = el.tagName==='VIDEO' ? el.videoHeight : el.naturalHeight;
   if (!natW || !natH) return false;
   const r = el.getBoundingClientRect();
+  if (el.tagName==='VIDEO' && e.clientY > r.bottom - VIDEO_CONTROL_BAR_PX) return false;
   const scale = Math.min(r.width / natW, r.height / natH);
   const rw = natW * scale, rh = natH * scale;
   const rx = r.left + (r.width - rw) / 2, ry = r.top + (r.height - rh) / 2;
@@ -1292,18 +1301,15 @@ function isOutsideMediaContent(e, el) {
 }
 document.getElementById('cinema-media').addEventListener('click', e=>{
   if (e.target===document.getElementById('cinema-media')) { closeCinema(); return; }
-  // So IMG fecha por clique fora do conteudo (letterbox) — VIDEO tem controles
-  // nativos (barra de progresso) que podem cair na area de letterbox quando o
-  // video nao preenche o quadro (object-fit:contain), e isOutsideMediaContent
-  // tratava esse clique como "fora do video" e fechava o cinema no meio do
-  // arraste da barra (achado 14/jul/2026). Video ja tem botao/X/Escape/clique
-  // no fundo pra fechar, entao nao precisa desse atalho extra.
-  if (e.target.tagName==='IMG' && isOutsideMediaContent(e, e.target)) closeCinema();
+  if ((e.target.tagName==='IMG' || e.target.tagName==='VIDEO') && isOutsideMediaContent(e, e.target)) closeCinema();
 });
 document.getElementById('dm-media-wrap').addEventListener('click', e=>{
-  if (e.target.tagName==='IMG') { openCinema(); return; }
-  // Mesma razao acima — nao fechar o detail ao clicar na area de letterbox
-  // de um VIDEO, isso quebrava o arraste da barra de progresso nativa.
+  if (e.target.tagName==='IMG') {
+    if (isOutsideMediaContent(e, e.target)) { closeDetail(); return; }
+    openCinema();
+    return;
+  }
+  if (e.target.tagName==='VIDEO' && isOutsideMediaContent(e, e.target)) { closeDetail(); return; }
   if (e.target===document.getElementById('dm-media-wrap')) closeDetail();
 });
 document.getElementById('dm-gallery').addEventListener('click', e=>{
