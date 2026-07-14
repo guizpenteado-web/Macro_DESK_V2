@@ -136,15 +136,17 @@ function DirectionBadge({ direction }: { direction: "COMPRA" | "VENDA" | null })
   );
 }
 
-// Sem opcao "Todos" de proposito — pedido do usuario 14/jul/2026: a tabela
-// deve mostrar so negociacao real de mercado (Compra/Venda). "Todos" incluiria
-// tipo_movimentacao como Outras Entradas, Outras Saidas, Desligamento/saida,
-// Grupamento, Subscricao etc — eventos societarios/administrativos com
-// direction=None, nao compra/venda de verdade.
-const DIRECTION_OPTIONS: { value: "COMPRA" | "VENDA"; label: string }[] = [
-  { value: "COMPRA", label: "Compras" },
-  { value: "VENDA", label: "Vendas" },
-];
+// Toggles independentes (nao mais radio Compras/Vendas) — pedido do usuario
+// 14/jul/2026. Cada um liga/desliga por conta propria; os dois desligados
+// manda direction="NONE" pro backend (nao "sem filtro", que traria de volta
+// tipo_movimentacao societario com direction=None, ja excluido de proposito
+// antes: Outras Entradas, Desligamento/saida, Grupamento, Subscricao etc).
+function directionParam(showCompras: boolean, showVendas: boolean): "COMPRA" | "VENDA" | "COMPRA,VENDA" | "NONE" {
+  if (showCompras && showVendas) return "COMPRA,VENDA";
+  if (showCompras) return "COMPRA";
+  if (showVendas) return "VENDA";
+  return "NONE";
+}
 
 // Candlestick (grid 0) 100% limpo — nada sobreposto. Triangulos de insider
 // foram removidos: negociacoes de insider as vezes vem com preco_unitario=0
@@ -349,7 +351,8 @@ function buildChartOption(priceHistory: PricePoint[], insiderTrades: InsiderTrad
 
 export default function InsidersPage() {
   const [q, setQ] = useState("");
-  const [direction, setDirection] = useState<"COMPRA" | "VENDA" | "">("COMPRA");
+  const [showCompras, setShowCompras] = useState(true);
+  const [showVendas, setShowVendas] = useState(false);
   const [cargo, setCargo] = useState("");
   const [cargos, setCargos] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -387,7 +390,7 @@ export default function InsidersPage() {
       api
         .getInsiderTrades({
           search: q,
-          direction,
+          direction: directionParam(showCompras, showVendas),
           cargo,
           dateFrom: dateFrom || undefined,
           dateTo: dateTo || undefined,
@@ -404,7 +407,7 @@ export default function InsidersPage() {
         .finally(() => setLoading(false));
     }, 300);
     return () => clearTimeout(handle);
-  }, [q, direction, cargo, dateFrom, dateTo, minQuantidade, maxQuantidade, minVolume, maxVolume, sortBy, sortDir]);
+  }, [q, showCompras, showVendas, cargo, dateFrom, dateTo, minQuantidade, maxQuantidade, minVolume, maxVolume, sortBy, sortDir]);
 
   useEffect(() => {
     if (!selectedTicker) return;
@@ -515,16 +518,26 @@ export default function InsidersPage() {
 
       <div className="smb-card p-3 flex flex-wrap gap-3 items-end">
         <div className="flex gap-2">
-          {DIRECTION_OPTIONS.map((o) => (
-            <button
-              key={o.value}
-              onClick={() => setDirection(o.value)}
-              className="smb-card px-3 py-1.5 text-sm"
-              style={{ color: direction === o.value ? "var(--gold)" : "var(--text2)" }}
-            >
-              {o.label}
-            </button>
-          ))}
+          <button
+            onClick={() => setShowCompras((v) => !v)}
+            className="smb-card px-3 py-1.5 text-sm"
+            style={{
+              color: showCompras ? "var(--green)" : "var(--text2)",
+              border: showCompras ? "1px solid var(--green)" : undefined,
+            }}
+          >
+            Compras
+          </button>
+          <button
+            onClick={() => setShowVendas((v) => !v)}
+            className="smb-card px-3 py-1.5 text-sm"
+            style={{
+              color: showVendas ? "var(--red)" : "var(--text2)",
+              border: showVendas ? "1px solid var(--red)" : undefined,
+            }}
+          >
+            Vendas
+          </button>
         </div>
 
         <label className="flex flex-col gap-1 text-xs" style={{ color: "var(--text3)" }}>

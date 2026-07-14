@@ -17,7 +17,10 @@ InsiderSortField = Literal["data_movimentacao", "ticker", "company_name", "quant
 @router.get("", response_model=list[InsiderTradeOut])
 def search_insider_trades(
     search: str = Query("", min_length=0),
-    direction: Literal["COMPRA", "VENDA", ""] = "",
+    # "" = sem filtro; "COMPRA"/"VENDA"/"COMPRA,VENDA" = so esses tipos;
+    # "NONE" = os dois toggles de Compras/Vendas desligados no frontend,
+    # deve retornar vazio em vez de cair no "sem filtro".
+    direction: str = Query(""),
     cargo: str = Query("", min_length=0),
     date_from: date | None = None,
     date_to: date | None = None,
@@ -53,8 +56,12 @@ def search_insider_trades(
             | InsiderTrade.cnpj_companhia.ilike(f"%{search}%")
             | InsiderTrade.cnpj_companhia.in_(cnpjs_by_ticker)
         )
-    if direction:
-        stmt = stmt.where(InsiderTrade.direction == direction)
+    if direction == "NONE":
+        stmt = stmt.where(InsiderTrade.direction.in_([]))
+    elif direction:
+        parts = [d for d in direction.split(",") if d in ("COMPRA", "VENDA")]
+        if parts:
+            stmt = stmt.where(InsiderTrade.direction.in_(parts))
     if cargo:
         stmt = stmt.where(InsiderTrade.tipo_cargo == cargo)
     if date_from is not None:

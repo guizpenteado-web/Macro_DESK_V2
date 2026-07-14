@@ -228,7 +228,10 @@ export type InsiderSortField = "data_movimentacao" | "ticker" | "company_name" |
 
 export interface InsiderFilters {
   search?: string;
-  direction?: "COMPRA" | "VENDA" | "";
+  // "" = sem filtro (usado pelo grafico, que quer o historico inteiro);
+  // "COMPRA" | "VENDA" | "COMPRA,VENDA" = so os tipos marcados;
+  // "NONE" = os dois toggles desligados, nao deve retornar nada.
+  direction?: "COMPRA" | "VENDA" | "COMPRA,VENDA" | "NONE" | "";
   cargo?: string;
   dateFrom?: string;
   dateTo?: string;
