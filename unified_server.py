@@ -1399,9 +1399,8 @@ _LOGIN_PAGE = """<!DOCTYPE html>
     background:#0d1117;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}}
   .box{{width:340px;background:#161b22;border:1px solid #21262d;border-radius:12px;padding:32px}}
   .logo{{font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase;
-    color:#8b949e;margin-bottom:4px}}
+    color:#8b949e;margin-bottom:22px}}
   .logo span{{color:#e6edf3}}
-  h1{{font-size:18px;color:#e6edf3;margin:4px 0 22px;font-weight:600}}
   label{{font-size:12px;color:#8b949e;display:block;margin-bottom:5px}}
   input{{width:100%;padding:9px 11px;margin-bottom:16px;background:#0d1117;
     border:1px solid #30363d;border-radius:6px;color:#e6edf3;font-size:14px}}
@@ -1414,7 +1413,6 @@ _LOGIN_PAGE = """<!DOCTYPE html>
 <body>
   <div class="box">
     <div class="logo">&#9670; <span>Macro Desk</span></div>
-    <h1>Entrar</h1>
     {error_html}
     <form method="post" action="/api/auth/login">
       <label>Usuário</label>
