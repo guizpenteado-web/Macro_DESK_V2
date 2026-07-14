@@ -1292,19 +1292,18 @@ function isOutsideMediaContent(e, el) {
 }
 document.getElementById('cinema-media').addEventListener('click', e=>{
   if (e.target===document.getElementById('cinema-media')) { closeCinema(); return; }
-  if ((e.target.tagName==='IMG' || e.target.tagName==='VIDEO') && isOutsideMediaContent(e, e.target)) closeCinema();
+  // So IMG fecha por clique fora do conteudo (letterbox) — VIDEO tem controles
+  // nativos (barra de progresso) que podem cair na area de letterbox quando o
+  // video nao preenche o quadro (object-fit:contain), e isOutsideMediaContent
+  // tratava esse clique como "fora do video" e fechava o cinema no meio do
+  // arraste da barra (achado 14/jul/2026). Video ja tem botao/X/Escape/clique
+  // no fundo pra fechar, entao nao precisa desse atalho extra.
+  if (e.target.tagName==='IMG' && isOutsideMediaContent(e, e.target)) closeCinema();
 });
-function clickOnVideoLetterbox(e, vid) {
-  if (!vid.videoWidth || !vid.videoHeight) return false;
-  const r = vid.getBoundingClientRect();
-  const scale = Math.min(r.width / vid.videoWidth, r.height / vid.videoHeight);
-  const rw = vid.videoWidth * scale, rh = vid.videoHeight * scale;
-  const rx = r.left + (r.width - rw) / 2, ry = r.top + (r.height - rh) / 2;
-  return e.clientX < rx || e.clientX > rx + rw || e.clientY < ry || e.clientY > ry + rh;
-}
 document.getElementById('dm-media-wrap').addEventListener('click', e=>{
   if (e.target.tagName==='IMG') { openCinema(); return; }
-  if (e.target.tagName==='VIDEO' && clickOnVideoLetterbox(e, e.target)) { closeDetail(); return; }
+  // Mesma razao acima — nao fechar o detail ao clicar na area de letterbox
+  // de um VIDEO, isso quebrava o arraste da barra de progresso nativa.
   if (e.target===document.getElementById('dm-media-wrap')) closeDetail();
 });
 document.getElementById('dm-gallery').addEventListener('click', e=>{
