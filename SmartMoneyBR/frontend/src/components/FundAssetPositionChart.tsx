@@ -111,6 +111,30 @@ function buildOption(priceHistory: PricePoint[], history: AssetHistoryPoint[]) {
   const xMin = allDates.length ? allDates[0] : undefined;
   const xMax = allDates.length ? allDates[allDates.length - 1] : undefined;
 
+  // O eixo cobre os 10 anos inteiros de cotacao, mas a maioria dos fundos so
+  // segurou o ativo numa janela bem menor que isso (ex: 14 meses) — sem isso,
+  // as barras de posicao ficam espremidas numa fatia minuscula no canto
+  // direito, com um vazio enorme a esquerda que parece bug (achado 14/jul/2026,
+  // usuario reportou "gaps enormes e desajustados" em varios ativos). O dado
+  // em si esta certo (fundo so passou a ter posicao naquela data) — o que
+  // precisa mudar e' o ZOOM inicial, nao o eixo: comeca focado no periodo em
+  // que o fundo realmente teve posicao (+ folga), mas o usuario ainda
+  // consegue arrastar/dar zoom out pra ver os 10 anos completos se quiser.
+  const histDates = history.map((h) => h.ref_date).sort();
+  let dataZoomStart = 0;
+  let dataZoomEnd = 100;
+  if (histDates.length && xMin && xMax) {
+    const xMinTs = new Date(xMin).getTime();
+    const xMaxTs = new Date(xMax).getTime();
+    const histMinTs = new Date(histDates[0]).getTime();
+    const histMaxTs = new Date(histDates[histDates.length - 1]).getTime();
+    const totalSpan = xMaxTs - xMinTs || 1;
+    const DAY = 24 * 60 * 60 * 1000;
+    const pad = Math.max((histMaxTs - histMinTs) * 0.15, 60 * DAY);
+    dataZoomStart = Math.max(0, ((histMinTs - pad - xMinTs) / totalSpan) * 100);
+    dataZoomEnd = Math.min(100, ((histMaxTs + pad - xMinTs) / totalSpan) * 100);
+  }
+
   const axisLineStyle = { lineStyle: { color: "rgba(255,255,255,.08)" } };
 
   return {
@@ -139,7 +163,15 @@ function buildOption(priceHistory: PricePoint[], history: AssetHistoryPoint[]) {
     // em qualquer painel move todos juntos (igual ao site de referencia).
     // Y continua um dataZoom por grid (escalas bem diferentes entre painéis).
     dataZoom: [
-      { type: "inside", xAxisIndex: [0, 1, 2, 3], zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
+      {
+        type: "inside",
+        xAxisIndex: [0, 1, 2, 3],
+        start: dataZoomStart,
+        end: dataZoomEnd,
+        zoomOnMouseWheel: true,
+        moveOnMouseMove: true,
+        moveOnMouseWheel: false,
+      },
       { type: "inside", yAxisIndex: [0], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
       { type: "inside", yAxisIndex: [1], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
       { type: "inside", yAxisIndex: [2], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
@@ -264,8 +296,9 @@ export default function FundAssetPositionChart({
       <ReactECharts option={buildOption(priceHistory, history)} style={{ height: 720 }} notMerge onChartReady={onChartReady} />
       <div className="text-xs mt-1" style={{ color: "var(--text3)" }}>
         Candlestick = cotação diária real via B3 (COTAHIST). Painéis abaixo = % do PL do fundo, quantidade de ações e
-        valor da posição nesse ativo, mês a mês. Arraste em qualquer direção (tempo e escala vertical juntos) e role o
-        mouse pra dar zoom — funciona em cada gráfico de forma independente.
+        valor da posição nesse ativo, mês a mês. Visão inicial focada no período em que o fundo teve posição — role o
+        mouse pra dar zoom out e ver os 10 anos completos de cotação. Arraste em qualquer direção (tempo e escala
+        vertical juntos) — funciona em cada gráfico de forma independente.
       </div>
     </>
   );
