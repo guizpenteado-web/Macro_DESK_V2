@@ -141,6 +141,7 @@ export default function FundDetailPage() {
   const [perf, setPerf] = useState<FundPerformance | null>(null);
   const [quotaHistory, setQuotaHistory] = useState<FundQuotaHistory | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<{ id: number; ticker: string } | null>(null);
+  const [isFavorite, setIsFavorite] = useState(false);
 
   const movementsSort = useSort<"ticker" | "classification" | "ref_date" | "qty_current" | "qty_delta" | "value_delta" | "pct_delta">();
   const sortedMovements = movementsSort.sortKey ? sortRows(movements, (m) => m[movementsSort.sortKey!], movementsSort.sortDir) : movements;
@@ -155,7 +156,15 @@ export default function FundDetailPage() {
     api.getFundMovements(fundId).then(setMovements);
     api.getFundPerformance(fundId).then(setPerf);
     api.getFundQuotaHistory(fundId, 20).then(setQuotaHistory);
+    api.getFavorites().then((ids) => setIsFavorite(ids.includes(fundId))).catch(() => setIsFavorite(false));
   }, [fundId]);
+
+  function toggleFavorite() {
+    const next = !isFavorite;
+    setIsFavorite(next); // otimista — reverte se a chamada falhar (ex: usuario sem permissao de admin)
+    const call = next ? api.addFavorite(fundId) : api.removeFavorite(fundId);
+    call.catch(() => setIsFavorite(!next));
+  }
 
 
   const evoOption = perf && {
@@ -225,7 +234,16 @@ export default function FundDetailPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold">{fund.name}</h1>
+        <h1 className="text-xl font-bold flex items-center gap-2">
+          {fund.name}
+          <button
+            onClick={toggleFavorite}
+            title={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+            style={{ color: isFavorite ? "var(--gold)" : "var(--text3)", fontSize: 20, lineHeight: 1 }}
+          >
+            {isFavorite ? "★" : "☆"}
+          </button>
+        </h1>
         <div className="text-sm" style={{ color: "var(--text2)" }}>
           {fund.cnpj} · {fund.fund_class_type}
         </div>

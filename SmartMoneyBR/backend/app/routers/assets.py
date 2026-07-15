@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Asset, Fund, FundAssetMovement, FundHolding, FundNav, FundQuota, MovementClassification
+from app.models import Asset, AssetPriceHistory, Fund, FundAssetMovement, FundHolding, FundNav, FundQuota, MovementClassification
 from app.schemas.asset import AssetHolderOut, AssetOut, AssetTimelinePoint
 from app.services import nav_lookup
 from app.services.query_helpers import latest_movements_ref_date
@@ -338,6 +338,31 @@ def get_asset_holders(
             best = q
         return best.n_shareholders if best else None
 
+    # Preco da acao na epoca de cada posicao — pedido do usuario 15/jul/2026
+    # ("preco da acao qual o fundo adicionou/reduziu/zerou, se tiver essa
+    # informacao"). A CDA nao traz preco de negociacao (so' valor de mercado
+    # da posicao inteira), entao usa o fechamento real da B3 (COTAHIST, ja
+    # ingerido pra Insiders/Recompras/Evolucao) no pregao mais proximo <=
+    # ref_date — nao e' o preco que o fundo pagou de fato (a CDA nunca traz
+    # isso), so' a cotacao de mercado vigente naquele mes.
+    asset_ticker = db.execute(select(Asset.ticker).where(Asset.id == asset_id)).scalar_one_or_none()
+    prices_sorted: list[tuple[date, float]] = []
+    if asset_ticker:
+        price_rows = db.execute(
+            select(AssetPriceHistory.trade_date, AssetPriceHistory.close)
+            .where(AssetPriceHistory.ticker == asset_ticker)
+            .order_by(AssetPriceHistory.trade_date)
+        ).all()
+        prices_sorted = [(r.trade_date, float(r.close)) for r in price_rows]
+
+    def price_as_of(holding_date: date) -> float | None:
+        best = None
+        for d, price in prices_sorted:
+            if d > holding_date:
+                break
+            best = price
+        return best
+
     results = []
     for fund_id, name, cnpj, h_ref_date, quantity, market_value, classification, qty_delta in holder_data:
         nav = nav_as_of(fund_id, h_ref_date)
@@ -355,6 +380,7 @@ def get_asset_holders(
                 ref_date=h_ref_date,
                 fund_net_asset_value=nav,
                 fund_n_shareholders=n_shareholders_as_of(fund_id, h_ref_date),
+                price_at_ref_date=price_as_of(h_ref_date),
             )
         )
     results.sort(key=lambda r: r.market_value, reverse=True)

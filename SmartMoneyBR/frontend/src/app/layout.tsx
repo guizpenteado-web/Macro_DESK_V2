@@ -30,6 +30,7 @@ export default function RootLayout({
               <Link href="/recompras">Recompras</Link>
               <Link href="/insiders">Insiders</Link>
               <AlertsNavLink />
+              <Link href="/favoritos">Favoritos</Link>
               <Link href="/evolucao">Evolução</Link>
               <GlobalSearch />
             </nav>

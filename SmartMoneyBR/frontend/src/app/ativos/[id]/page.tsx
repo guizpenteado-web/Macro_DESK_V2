@@ -27,6 +27,11 @@ function fmtPct(v: number | null) {
   return `${v.toLocaleString("pt-BR", { maximumFractionDigits: 2, minimumFractionDigits: 2 })}%`;
 }
 
+function fmtPrice(v: number | null) {
+  if (v === null) return "—";
+  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function truncateName(name: string, max = 30) {
   return name.length > max ? name.slice(0, max - 1) + "…" : name;
 }
@@ -59,7 +64,7 @@ export default function AssetDetailPage() {
   // Comprados, misturando as zeradas junto).
   const includeClosed = showZeroed || direction === "vendidos";
 
-  const holdersSort = useSort<"fund_name" | "classification" | "quantity" | "market_value" | "pct_of_fund" | "fund_net_asset_value" | "fund_n_shareholders" | "ref_date">();
+  const holdersSort = useSort<"fund_name" | "classification" | "quantity" | "market_value" | "price_at_ref_date" | "pct_of_fund" | "fund_net_asset_value" | "fund_n_shareholders" | "ref_date">();
   const holdersWithPct = holders.map((h) => ({
     ...h,
     pct_of_fund: h.fund_net_asset_value ? (h.market_value / h.fund_net_asset_value) * 100 : null,
@@ -308,6 +313,7 @@ export default function AssetDetailPage() {
                 <SortableTh label="Status" active={holdersSort.sortKey === "classification"} dir={holdersSort.sortDir} onClick={() => holdersSort.toggle("classification")} />
                 <SortableTh label="Qtd" align="right" active={holdersSort.sortKey === "quantity"} dir={holdersSort.sortDir} onClick={() => holdersSort.toggle("quantity")} />
                 <SortableTh label="Valor" align="right" active={holdersSort.sortKey === "market_value"} dir={holdersSort.sortDir} onClick={() => holdersSort.toggle("market_value")} />
+                <SortableTh label="Preço" align="right" active={holdersSort.sortKey === "price_at_ref_date"} dir={holdersSort.sortDir} onClick={() => holdersSort.toggle("price_at_ref_date")} />
                 <SortableTh label="% do PL do fundo" align="right" active={holdersSort.sortKey === "pct_of_fund"} dir={holdersSort.sortDir} onClick={() => holdersSort.toggle("pct_of_fund")} />
                 <SortableTh label="Patrimônio do fundo" align="right" active={holdersSort.sortKey === "fund_net_asset_value"} dir={holdersSort.sortDir} onClick={() => holdersSort.toggle("fund_net_asset_value")} />
                 <SortableTh label="Cotistas" align="right" active={holdersSort.sortKey === "fund_n_shareholders"} dir={holdersSort.sortDir} onClick={() => holdersSort.toggle("fund_n_shareholders")} />
@@ -333,6 +339,9 @@ export default function AssetDetailPage() {
                   <td>{h.classification && <MovementBadge classification={h.classification} />}</td>
                   <td className="num">{h.quantity.toLocaleString("pt-BR")}</td>
                   <td className="num">{fmtBRL(h.market_value)}</td>
+                  <td className="num" style={{ color: "var(--text2)" }} title="Fechamento da B3 no pregão mais próximo dessa declaração — não é o preço exato pago pelo fundo (a CVM não divulga isso)">
+                    {fmtPrice(h.price_at_ref_date)}
+                  </td>
                   <td
                     className="num"
                     style={{ fontWeight: 600, color: (h.pct_of_fund ?? 0) > 100 ? "var(--amber)" : undefined }}
@@ -363,7 +372,7 @@ export default function AssetDetailPage() {
               ))}
               {sortedHolders.length === 0 && (
                 <tr>
-                  <td colSpan={8} style={{ color: "var(--text3)" }}>
+                  <td colSpan={9} style={{ color: "var(--text3)" }}>
                     Nenhum detentor encontrado com esses filtros.
                   </td>
                 </tr>

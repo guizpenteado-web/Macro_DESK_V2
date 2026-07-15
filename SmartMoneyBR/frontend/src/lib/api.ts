@@ -20,6 +20,14 @@ async function apiPost<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function apiDelete<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, { method: "DELETE" });
+  if (!res.ok) {
+    throw new Error(`API ${path} -> ${res.status}`);
+  }
+  return res.json() as Promise<T>;
+}
+
 export interface Fund {
   id: number;
   cnpj: string;
@@ -125,6 +133,7 @@ export interface AssetHolder {
   ref_date: string;
   fund_net_asset_value: number | null;
   fund_n_shareholders: number | null;
+  price_at_ref_date: number | null;
 }
 
 export interface AssetTimelinePoint {
@@ -414,4 +423,8 @@ export const api = {
 
   getPriceHistory: (ticker: string, years = 10) =>
     apiGet<PricePoint[]>(`/api/market/price-history?${buildQuery({ ticker, years })}`),
+
+  getFavorites: () => apiGet<number[]>(`/api/favorites`),
+  addFavorite: (fundId: number) => apiPost<{ ok: boolean }>(`/api/favorites/${fundId}`),
+  removeFavorite: (fundId: number) => apiDelete<{ ok: boolean }>(`/api/favorites/${fundId}`),
 };

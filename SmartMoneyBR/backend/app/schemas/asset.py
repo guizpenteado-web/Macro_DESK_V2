@@ -27,6 +27,7 @@ class AssetHolderOut(BaseModel):
     ref_date: date  # data de divulgacao desta posicao especifica
     fund_net_asset_value: float | None = None  # patrimonio liquido total do fundo (nao so a posicao neste ativo)
     fund_n_shareholders: int | None = None
+    price_at_ref_date: float | None = None  # fechamento B3 (COTAHIST) no pregao mais proximo <= ref_date — nao e' o preco pago pelo fundo (CDA nao traz isso), so' a cotacao de mercado da epoca da declaracao
 
 
 class AssetTimelinePoint(BaseModel):
