@@ -19,13 +19,21 @@ function fmtBRLmi(v: number) {
 // Mesma tecnica de pan vertical manual do insiders/page.tsx e recompras/page.tsx
 // — dataZoom "inside" do ECharts nao responde a arrasto vertical mesmo com
 // xAxisIndex+yAxisIndex combinados (achado 14/jul/2026), entao cada grid tem
-// seu proprio pan feito via zrender + dispatchAction.
-function attachVerticalPan(chart: any, yAxisIndex: number) {
+// seu proprio pan feito via zrender + dispatchAction. Esse componente tinha
+// ficado pra tras na correcao original (usuario reportou 14/jul/2026 que
+// arrastar aqui — tanto horizontal quanto vertical — ficou "bugado"): sem
+// containPixel, os 4 handlers (um por grid) ficavam escutando o zrender
+// inteiro e disparavam TODOS ao mesmo tempo em qualquer mousedown, inclusive
+// atrapalhando o pan horizontal nativo do dataZoom "inside" em X. Precisa do
+// mesmo par containPixel+dataZoomId que ja resolveu isso nos outros dois
+// graficos.
+function attachVerticalPan(chart: any, gridIndex: number, dataZoomId: string) {
   const zr = chart.getZr();
   let dragging = false;
   let lastY = 0;
 
   function onDown(params: any) {
+    if (!chart.containPixel({ gridIndex }, [params.offsetX, params.offsetY])) return;
     dragging = true;
     lastY = params.offsetY;
   }
@@ -36,8 +44,7 @@ function attachVerticalPan(chart: any, yAxisIndex: number) {
     if (!dy) return;
 
     const opt = chart.getOption();
-    const dzList: any[] = opt.dataZoom || [];
-    const dz = dzList.find((d) => Array.isArray(d.yAxisIndex) && d.yAxisIndex.includes(yAxisIndex));
+    const dz = (opt.dataZoom || []).find((d: any) => d.id === dataZoomId);
     if (!dz) return;
     const start = dz.start ?? 0;
     const end = dz.end ?? 100;
@@ -56,7 +63,7 @@ function attachVerticalPan(chart: any, yAxisIndex: number) {
       newStart -= newEnd - 100;
       newEnd = 100;
     }
-    chart.dispatchAction({ type: "dataZoom", yAxisIndex, start: newStart, end: newEnd });
+    chart.dispatchAction({ type: "dataZoom", dataZoomId, start: newStart, end: newEnd });
   }
   function onUp() {
     dragging = false;
@@ -164,6 +171,7 @@ function buildOption(priceHistory: PricePoint[], history: AssetHistoryPoint[]) {
     // Y continua um dataZoom por grid (escalas bem diferentes entre painéis).
     dataZoom: [
       {
+        id: "xz",
         type: "inside",
         xAxisIndex: [0, 1, 2, 3],
         start: dataZoomStart,
@@ -172,10 +180,10 @@ function buildOption(priceHistory: PricePoint[], history: AssetHistoryPoint[]) {
         moveOnMouseMove: true,
         moveOnMouseWheel: false,
       },
-      { type: "inside", yAxisIndex: [0], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
-      { type: "inside", yAxisIndex: [1], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
-      { type: "inside", yAxisIndex: [2], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
-      { type: "inside", yAxisIndex: [3], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
+      { id: "yz0", type: "inside", yAxisIndex: [0], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
+      { id: "yz1", type: "inside", yAxisIndex: [1], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
+      { id: "yz2", type: "inside", yAxisIndex: [2], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
+      { id: "yz3", type: "inside", yAxisIndex: [3], zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false },
     ],
     tooltip: {
       trigger: "axis",
@@ -273,7 +281,7 @@ export default function FundAssetPositionChart({
 
   function onChartReady(chart: any) {
     panCleanupRef.current.forEach((fn) => fn());
-    panCleanupRef.current = [0, 1, 2, 3].map((i) => attachVerticalPan(chart, i));
+    panCleanupRef.current = [0, 1, 2, 3].map((i) => attachVerticalPan(chart, i, `yz${i}`));
   }
 
   if (loading) {
