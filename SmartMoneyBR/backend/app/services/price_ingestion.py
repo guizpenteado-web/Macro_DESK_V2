@@ -120,7 +120,17 @@ _SPLIT_RATIOS = [2, 3, 4, 5, 6, 8, 10, 15, 20, 25, 50, 100]
 _SPLIT_TOLERANCE = 0.06
 
 
+_MIN_PRICE_FOR_SPLIT_DETECTION = 0.10
+
+
 def _detect_split_ratio(prev_close: float, close: float) -> float | None:
+    # penny stock abaixo de 10 centavos: um unico tick minimo de preco (R$0.01)
+    # ja e' 10%+ do valor, entao QUALQUER movimento normal bate por acaso numa
+    # razao "redonda" (2x, 0.5x) sem ser split nenhum — visto em PDGR3
+    # (R$0.01<->R$0.02 alternando, falso positivo de split toda vez que o tick
+    # mudava, achado 14/jul/2026).
+    if prev_close < _MIN_PRICE_FOR_SPLIT_DETECTION or close < _MIN_PRICE_FOR_SPLIT_DETECTION:
+        return None
     if prev_close <= 0 or close <= 0:
         return None
     ratio = close / prev_close
