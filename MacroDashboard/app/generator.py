@@ -258,26 +258,58 @@ def _badge_view(view: str) -> str:
     return ""
 
 
-def _fetch_spx_price() -> float:
+PRICE_CACHE_PATH = BANK_DATA_PATH.parent / "price_cache.json"
+
+
+def _load_price_cache() -> dict:
+    try:
+        return json.loads(PRICE_CACHE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _save_price_cache(cache: dict) -> None:
+    try:
+        PRICE_CACHE_PATH.write_text(json.dumps(cache, indent=2), encoding="utf-8")
+    except Exception as e:
+        log.warning("price_cache.json nao pode ser salvo: %s", e)
+
+
+def _fetch_price_cached(ticker: str, round_digits: int, hardcoded_fallback: float) -> float:
+    """yfinance na VPS bate em YFRateLimitError com frequencia (achado
+    15/jul/2026 — IP compartilhado do Hub, varios modulos chamando yfinance)
+    e o fallback antigo (constante hardcoded, ex: Ibov=130000) ficava
+    silenciosamente parado no HTML por dias sem ninguem notar — usuario
+    reportou "upside nao corresponde com a realidade" no Ibovespa, current
+    price real na hora ~176k vs os 130k travados. Fix: cache em disco por
+    ticker com a ULTIMA cotacao que funcionou de verdade — se o fetch ao
+    vivo falhar, cai pro cache (pode ter 1-2 dias, ainda MUITO mais preciso
+    que uma constante escrita uma vez no codigo-fonte), so' caindo pra
+    constante hardcoded se nao existir cache nenhum ainda."""
+    cache = _load_price_cache()
     try:
         import yfinance as yf
-        h = yf.Ticker("^GSPC").history(period="3d")
-        if not h.empty:
-            return round(float(h["Close"].iloc[-1]), 2)
-    except Exception:
-        pass
-    return 7354.0
+        h = yf.Ticker(ticker).history(period="5d")
+        closes = h["Close"].dropna()
+        if not closes.empty:
+            price = round(float(closes.iloc[-1]), round_digits)
+            cache[ticker] = {"price": price, "date": str(closes.index[-1].date())}
+            _save_price_cache(cache)
+            return price
+    except Exception as e:
+        log.warning("fetch ao vivo de %s falhou (%s) — usando cache", ticker, e)
+    cached = cache.get(ticker)
+    if cached:
+        return cached["price"]
+    return hardcoded_fallback
+
+
+def _fetch_spx_price() -> float:
+    return _fetch_price_cached("^GSPC", 2, 7543.59)
 
 
 def _fetch_ibov_price() -> float:
-    try:
-        import yfinance as yf
-        h = yf.Ticker("^BVSP").history(period="3d")
-        if not h.empty:
-            return round(float(h["Close"].iloc[-1]), 0)
-    except Exception:
-        pass
-    return 130000.0
+    return _fetch_price_cached("^BVSP", 0, 176641.0)
 
 
 def _nfp_history_html() -> str:
