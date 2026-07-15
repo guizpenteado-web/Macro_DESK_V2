@@ -102,3 +102,77 @@ def get_price_history(db: Session, ticker: str, years: int = 10) -> list[AssetPr
         .where(AssetPriceHistory.ticker == ticker, AssetPriceHistory.trade_date >= cutoff)
         .order_by(AssetPriceHistory.trade_date)
     ).scalars().all()
+
+
+# COTAHIST e' o arquivo historico OFICIAL da B3 — de proposito nao ajustado
+# por desdobramento/grupamento/bonificacao, reflete o preco literal do
+# pregao naquele dia. Qualquer split no meio dos anos pedidos aparece como
+# um "penhasco" no preco (achado 14/jul/2026: B3SA3 caiu 67.2% num unico dia
+# em 17/05/2021 — desdobramento 3-por-1, nao um crash real — e o candlestick
+# de 10 anos ficava com metade "estourada" la em cima e a outra metade
+# espremida la embaixo). Sem um dataset de proventos/eventos societarios da
+# B3 no pipeline, a correcao e' heuristica: um salto de fechamento pra
+# fechamento que bate (com folga) numa razao "redonda" (2x, 3x, 1/2, 1/3...)
+# e' tratado como split, nao como movimento de preco real — plausivel pra
+# acao liquida negociada por fundo (o universo desse app), quase impossivel
+# ser noise de mercado genuino.
+_SPLIT_RATIOS = [2, 3, 4, 5, 6, 8, 10, 15, 20, 25, 50, 100]
+_SPLIT_TOLERANCE = 0.06
+
+
+def _detect_split_ratio(prev_close: float, close: float) -> float | None:
+    if prev_close <= 0 or close <= 0:
+        return None
+    ratio = close / prev_close
+    for r in _SPLIT_RATIOS:
+        if abs(ratio - 1 / r) <= (1 / r) * _SPLIT_TOLERANCE:
+            return 1 / r
+        if abs(ratio - r) <= r * _SPLIT_TOLERANCE:
+            return float(r)
+    return None
+
+
+def adjust_for_splits(rows: list[AssetPriceHistory]) -> list[dict]:
+    """rows precisam vir ordenados por trade_date ascendente. Devolve dicts
+    (nao ORM objects) com OHLC ajustado pra ficar continuo em termos de
+    quantidade de acao de HOJE — o dia mais recente nunca muda, dias mais
+    antigos que um split detectado sao multiplicados pelo fator acumulado."""
+    if len(rows) < 2:
+        return [
+            {
+                "date": r.trade_date,
+                "open": float(r.open),
+                "high": float(r.high),
+                "low": float(r.low),
+                "close": float(r.close),
+                "volume": float(r.volume) if r.volume is not None else None,
+            }
+            for r in rows
+        ]
+
+    closes = [float(r.close) for r in rows]
+    split_at: dict[int, float] = {}
+    for i in range(1, len(closes)):
+        ratio = _detect_split_ratio(closes[i - 1], closes[i])
+        if ratio is not None:
+            split_at[i] = ratio
+
+    n = len(rows)
+    factors = [1.0] * n
+    factor = 1.0
+    for i in range(n - 1, 0, -1):
+        if i in split_at:
+            factor *= split_at[i]
+        factors[i - 1] = factor
+
+    return [
+        {
+            "date": r.trade_date,
+            "open": float(r.open) * factors[i],
+            "high": float(r.high) * factors[i],
+            "low": float(r.low) * factors[i],
+            "close": float(r.close) * factors[i],
+            "volume": float(r.volume) if r.volume is not None else None,
+        }
+        for i, r in enumerate(rows)
+    ]
