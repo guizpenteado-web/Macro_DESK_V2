@@ -39,6 +39,15 @@ class Settings:
     RS_MOMENTUM_SMA_WEEKS: int = 3     # suavização do momentum (RS_Ratio / SMA(RS_Ratio))
     MAX_WEEKS: int = 52                # máximo de semanas retidas por ativo
 
+    # Versão DIÁRIA (15/jul/2026) — mesma metodologia, janela escalada pra
+    # barras diárias. Não é a proporção literal 5x da semanal (50/15 dias),
+    # que deixaria o diário quase tão lento quanto o semanal e anularia o
+    # motivo de ter uma versão diária (mais responsiva). Mesmos valores
+    # usados no indicador Pine (Documents/RRG_Pine/ugpa3_rrg_paint_daily.pine).
+    RS_RATIO_SMA_DAYS: int = 20
+    RS_MOMENTUM_SMA_DAYS: int = 5
+    MAX_DAYS: int = 260                # ~1 ano de pregões retidos por ativo
+
     # Score de Rotação (0-100): 50 (neutro) + ajustes clamped + persistência
     SCORE_BASE: float = 50.0
     SCORE_RS_WEIGHT: float = 1.2
@@ -47,6 +56,12 @@ class Settings:
     SCORE_MOM_CLAMP: float = 20.0
     SCORE_PERSISTENCE_PER_WEEK: float = 1.5
     SCORE_PERSISTENCE_CAP_WEEKS: int = 12
+
+    # Persistencia diaria escalada pra levar o MESMO tempo de calendario
+    # (~12 semanas = ~60 pregoes) pra atingir o bonus maximo, so que contado
+    # em dias em vez de semanas.
+    SCORE_PERSISTENCE_PER_DAY: float = 0.3
+    SCORE_PERSISTENCE_CAP_DAYS: int = 60
 
     def __post_init__(self) -> None:
         self.log_path.mkdir(parents=True, exist_ok=True)

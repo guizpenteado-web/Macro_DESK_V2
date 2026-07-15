@@ -23,7 +23,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from app.config.settings import settings
 from app.database.connection import get_session, init_database
 from app.database.repository import (
-    AssetRepository, PriceRepository, SectorComponentRepository, WeeklyMetricRepository,
+    AssetRepository, DailyMetricRepository, PriceRepository, SectorComponentRepository, WeeklyMetricRepository,
 )
 from app.calc.sector_index import sector_ticker
 from app.downloader.price_downloader import IBOV_TICKER
@@ -45,7 +45,8 @@ def _run_pipeline() -> None:
         ("Sincronizando universo completo (IBOV + setores)...", _step_universe),
         ("Sincronizando setor 'TODOS' (união do universo)...", _step_todos),
         ("Baixando preços (incremental)...", _step_prices),
-        ("Calculando RS-Ratio / Momentum / Score...", _step_calc),
+        ("Calculando RS-Ratio / Momentum / Score (semanal)...", _step_calc),
+        ("Calculando RS-Ratio / Momentum / Score (diário)...", _step_calc_daily),
         ("Construindo índices sintéticos de setor...", _step_sector_composites),
         ("Calculando RS-Ratio / Momentum dos setores...", _step_sector_calc),
     ]
@@ -90,6 +91,11 @@ def _step_calc():
     compute_all()
 
 
+def _step_calc_daily():
+    from app.calc.rrg_engine import compute_all_daily
+    compute_all_daily()
+
+
 def _step_sector_composites():
     from app.calc.sector_index import build_all_sector_composites
     build_all_sector_composites()
@@ -121,6 +127,7 @@ def get_matrix():
         assets = AssetRepository(s).get_all()
         sectors_by_ticker = SectorComponentRepository(s).get_sectors_by_ticker()
         metrics = WeeklyMetricRepository(s).get_all()
+        daily_metrics = DailyMetricRepository(s).get_all()
 
     by_ticker: dict[str, list[dict]] = {}
     all_weeks: set[str] = set()
@@ -138,11 +145,27 @@ def get_matrix():
             "rotation_score": m.rotation_score,
         })
 
+    # Versao diaria (15/jul/2026) — mesmo payload, chave "daily" ao lado de
+    # "weekly" em cada ativo. Nao substitui nada, so' soma.
+    daily_by_ticker: dict[str, list[dict]] = {}
+    for m in daily_metrics:
+        daily_by_ticker.setdefault(m.ticker, []).append({
+            "ref_date": m.ref_date.isoformat(),
+            "close": m.close,
+            "daily_return": m.daily_return,
+            "ibov_daily_return": m.ibov_daily_return,
+            "rs_ratio": m.rs_ratio,
+            "rs_momentum": m.rs_momentum,
+            "quadrant": m.quadrant,
+            "rotation_score": m.rotation_score,
+        })
+
     out_assets = []
     for a in assets:
         weekly = by_ticker.get(a.ticker, [])
         if not weekly:
             continue  # sem histórico suficiente ainda (ex: IPO recente)
+        daily = daily_by_ticker.get(a.ticker, [])
         out_assets.append({
             "ticker": a.ticker,
             "name": a.name or "",
@@ -151,6 +174,7 @@ def get_matrix():
             "sectors": sectors_by_ticker.get(a.ticker, []),
             "avg_daily_value": _avg_daily_value(a.ticker),
             "weekly": sorted(weekly, key=lambda r: r["week_ending"]),
+            "daily": sorted(daily, key=lambda r: r["ref_date"]),
         })
 
     # Índices sintéticos de setor — variante experimental (ver app/calc/sector_index.py):

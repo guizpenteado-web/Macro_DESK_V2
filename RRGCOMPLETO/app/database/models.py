@@ -90,3 +90,26 @@ class WeeklyMetric(Base):
 
     def __repr__(self) -> str:
         return f"<WeeklyMetric {self.ticker} {self.week_ending} {self.quadrant}>"
+
+
+class DailyMetric(Base):
+    """Versao diaria do WeeklyMetric (15/jul/2026) — mesma metodologia RRG,
+    calculada direto sobre o close diario (sem resample), janela
+    RS_RATIO_SMA_DAYS/RS_MOMENTUM_SMA_DAYS em vez de semanas."""
+
+    __tablename__ = "daily_metrics"
+    __table_args__ = (UniqueConstraint("ticker", "ref_date", name="uq_daily_ticker_date"),)
+
+    id: int = Column(Integer, primary_key=True, autoincrement=True)
+    ticker: str = Column(String(10), nullable=False, index=True)
+    ref_date: date = Column(Date, nullable=False, index=True)
+    close: float = Column(Float, nullable=True)
+    daily_return: float = Column(Float, nullable=True)       # retorno da ação no dia (%)
+    ibov_daily_return: float = Column(Float, nullable=True)  # retorno do IBOV no dia (%)
+    rs_ratio: float = Column(Float, nullable=True)
+    rs_momentum: float = Column(Float, nullable=True)
+    quadrant: str = Column(String(12), nullable=True)   # Leading / Improving / Weakening / Lagging
+    rotation_score: float = Column(Float, nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<DailyMetric {self.ticker} {self.ref_date} {self.quadrant}>"

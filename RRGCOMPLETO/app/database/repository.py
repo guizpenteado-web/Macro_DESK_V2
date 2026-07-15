@@ -8,7 +8,7 @@ from sqlalchemy import select, delete
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
-from app.database.models import Asset, Price, SectorComponent, WeeklyMetric
+from app.database.models import Asset, DailyMetric, Price, SectorComponent, WeeklyMetric
 
 
 class AssetRepository:
@@ -123,4 +123,32 @@ class WeeklyMetricRepository:
     def get_all(self) -> list[WeeklyMetric]:
         return list(self._s.execute(
             select(WeeklyMetric).order_by(WeeklyMetric.ticker, WeeklyMetric.week_ending)
+        ).scalars().all())
+
+
+class DailyMetricRepository:
+    _CHUNK_SIZE = 400
+
+    def __init__(self, session: Session) -> None:
+        self._s = session
+
+    def bulk_upsert(self, rows: list[dict]) -> int:
+        if not rows:
+            return 0
+        for i in range(0, len(rows), self._CHUNK_SIZE):
+            chunk = rows[i:i + self._CHUNK_SIZE]
+            stmt = sqlite_insert(DailyMetric).values(chunk)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["ticker", "ref_date"],
+                set_={k: getattr(stmt.excluded, k) for k in (
+                    "close", "daily_return", "ibov_daily_return",
+                    "rs_ratio", "rs_momentum", "quadrant", "rotation_score",
+                )},
+            )
+            self._s.execute(stmt)
+        return len(rows)
+
+    def get_all(self) -> list[DailyMetric]:
+        return list(self._s.execute(
+            select(DailyMetric).order_by(DailyMetric.ticker, DailyMetric.ref_date)
         ).scalars().all())

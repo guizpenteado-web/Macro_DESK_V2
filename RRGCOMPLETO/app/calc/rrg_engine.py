@@ -17,7 +17,7 @@ import pandas as pd
 
 from app.config.settings import settings
 from app.database.connection import get_session
-from app.database.repository import AssetRepository, PriceRepository, WeeklyMetricRepository
+from app.database.repository import AssetRepository, DailyMetricRepository, PriceRepository, WeeklyMetricRepository
 from app.downloader.price_downloader import IBOV_TICKER
 from app.utils.logger import logger
 
@@ -48,10 +48,17 @@ def _quadrant(rs_ratio: float, rs_momentum: float) -> str:
     return "Lagging"
 
 
-def _rotation_score(rs_ratio: float, rs_momentum: float, quadrant: str, streak_weeks: int) -> float:
+def _rotation_score(
+    rs_ratio: float,
+    rs_momentum: float,
+    quadrant: str,
+    streak: int,
+    persistence_per_unit: float = settings.SCORE_PERSISTENCE_PER_WEEK,
+    persistence_cap: int = settings.SCORE_PERSISTENCE_CAP_WEEKS,
+) -> float:
     dev_rs = max(-settings.SCORE_RS_CLAMP, min(settings.SCORE_RS_CLAMP, rs_ratio - 100))
     dev_mom = max(-settings.SCORE_MOM_CLAMP, min(settings.SCORE_MOM_CLAMP, rs_momentum - 100))
-    persistence = min(streak_weeks, settings.SCORE_PERSISTENCE_CAP_WEEKS) * settings.SCORE_PERSISTENCE_PER_WEEK
+    persistence = min(streak, persistence_cap) * persistence_per_unit
     if quadrant == "Leading":
         persistence_adj = persistence
     elif quadrant == "Lagging":
@@ -148,4 +155,108 @@ def compute_all() -> int:
         WeeklyMetricRepository(s).bulk_upsert(all_rows)
 
     logger.success(f"Métricas RRG calculadas: {n_ok}/{len(tickers)} ativos, {len(all_rows)} linhas semanais")
+    return len(all_rows)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Versao DIARIA (15/jul/2026) — mesma metodologia, sem o resample semanal:
+# usa o close diario direto, janela RS_RATIO_SMA_DAYS/RS_MOMENTUM_SMA_DAYS
+# (20/5 por padrao, nao a proporcao literal 5x da semanal — ver comentario
+# em settings.py). Pedido do usuario: ter uma visao mais responsiva/curto
+# prazo alem da semanal ja existente, tanto aqui quanto no indicador Pine
+# (Documents/RRG_Pine/ugpa3_rrg_paint_daily.pine).
+# ─────────────────────────────────────────────────────────────────────────
+
+def _daily_close(ticker: str) -> pd.Series:
+    with get_session() as s:
+        prices = PriceRepository(s).get_history(ticker)
+    if not prices:
+        return pd.Series(dtype=float)
+    df = pd.DataFrame([{"date": p.date, "close": p.close} for p in prices])
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.set_index("date").sort_index()
+    return df["close"].dropna()
+
+
+def compute_ticker_metrics_daily(ticker: str, ibov_daily: pd.Series) -> list[dict]:
+    daily = _daily_close(ticker)
+    if daily.empty:
+        return []
+
+    aligned = pd.concat([daily.rename("close"), ibov_daily.rename("ibov_close")], axis=1).dropna()
+    warmup = settings.RS_RATIO_SMA_DAYS + settings.RS_MOMENTUM_SMA_DAYS
+    if len(aligned) < warmup + 5:
+        return []  # histórico insuficiente (IPO recente ou pouco dado ainda)
+
+    rel_price = aligned["close"] / aligned["ibov_close"]
+    rs_ratio = 100 * rel_price / rel_price.rolling(settings.RS_RATIO_SMA_DAYS).mean()
+    rs_momentum = 100 * rs_ratio / rs_ratio.rolling(settings.RS_MOMENTUM_SMA_DAYS).mean()
+    daily_return = aligned["close"].pct_change() * 100
+    ibov_daily_return = aligned["ibov_close"].pct_change() * 100
+
+    df = pd.DataFrame({
+        "close": aligned["close"],
+        "daily_return": daily_return,
+        "ibov_daily_return": ibov_daily_return,
+        "rs_ratio": rs_ratio,
+        "rs_momentum": rs_momentum,
+    }).dropna()
+    if df.empty:
+        return []
+
+    df["quadrant"] = [_quadrant(r, m) for r, m in zip(df["rs_ratio"], df["rs_momentum"])]
+
+    # streak = pregões consecutivos no mesmo quadrante (persistência, pro score)
+    streaks: list[int] = []
+    prev_q, streak = None, 0
+    for q in df["quadrant"]:
+        streak = streak + 1 if q == prev_q else 1
+        streaks.append(streak)
+        prev_q = q
+    df["_streak"] = streaks
+
+    df["rotation_score"] = [
+        _rotation_score(r, m, q, st, settings.SCORE_PERSISTENCE_PER_DAY, settings.SCORE_PERSISTENCE_CAP_DAYS)
+        for r, m, q, st in zip(df["rs_ratio"], df["rs_momentum"], df["quadrant"], df["_streak"])
+    ]
+
+    df = df.tail(settings.MAX_DAYS)
+
+    return [
+        {
+            "ticker": ticker,
+            "ref_date": ref_date.date(),
+            "close": float(row["close"]),
+            "daily_return": float(row["daily_return"]),
+            "ibov_daily_return": float(row["ibov_daily_return"]),
+            "rs_ratio": float(row["rs_ratio"]),
+            "rs_momentum": float(row["rs_momentum"]),
+            "quadrant": row["quadrant"],
+            "rotation_score": float(row["rotation_score"]),
+        }
+        for ref_date, row in df.iterrows()
+    ]
+
+
+def compute_all_daily() -> int:
+    with get_session() as s:
+        tickers = AssetRepository(s).get_active_tickers()
+
+    ibov_daily = _daily_close(IBOV_TICKER)
+    if ibov_daily.empty:
+        logger.error("Sem histórico do IBOV — rode o download de preços primeiro.")
+        return 0
+
+    all_rows: list[dict] = []
+    n_ok = 0
+    for ticker in tickers:
+        rows = compute_ticker_metrics_daily(ticker, ibov_daily)
+        if rows:
+            n_ok += 1
+        all_rows.extend(rows)
+
+    with get_session() as s:
+        DailyMetricRepository(s).bulk_upsert(all_rows)
+
+    logger.success(f"Métricas RRG diárias calculadas: {n_ok}/{len(tickers)} ativos, {len(all_rows)} linhas diárias")
     return len(all_rows)

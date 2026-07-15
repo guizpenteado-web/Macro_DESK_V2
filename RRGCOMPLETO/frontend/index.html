@@ -35,6 +35,11 @@ h1 span{color:#8b949e;font-weight:400;font-size:12px;display:block;margin-top:1p
 .btn.primary:hover{background:#2ea043}
 .btn:disabled{opacity:.4;cursor:default}
 
+/* Botão grande de alternar Semanal/Diário */
+.btn-timeframe{background:#21262d;border:2px solid #30363d;color:#c9d1d9;cursor:pointer;padding:10px 20px;border-radius:8px;font-size:15px;font-weight:700;letter-spacing:.3px;transition:all .15s;white-space:nowrap}
+.btn-timeframe:hover{background:#2d333b;border-color:#58a6ff}
+.btn-timeframe.active{background:#1f6feb;border-color:#58a6ff;color:#fff}
+
 /* ── Index bar / Highlight toolbar ── */
 .index-bar,.highlights{background:#0d1117;border-bottom:1px solid #21262d;padding:8px 20px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .index-bar .label,.highlights .label{font-size:11px;color:#484f58;margin-right:2px}
@@ -111,8 +116,10 @@ tr.sector-row .company{color:#79b8ff}
     <div class="cm-row"><span class="cm-dot q-Lagging"></span>Lagging <span class="cm-arrow">←</span> <span class="cm-dot q-Weakening"></span>Weakening</div>
   </div>
 
+  <button class="btn-timeframe" id="btn-timeframe">📅 Ver DIÁRIO</button>
+
   <div class="controls">
-    <label>Semanas</label>
+    <label id="lbl-period">Semanas</label>
     <select id="f-weeks">
       <option value="4">4</option>
       <option value="8">8</option>
@@ -174,6 +181,38 @@ const QUAD_LABEL_PT = { Leading: "Liderando", Improving: "Melhorando", Weakening
 
 let payload = null;
 let activeHighlight = "all";
+let activeTimeframe = "weekly"; // "weekly" | "daily" — ver btn-timeframe
+
+const WEEK_PERIOD_OPTIONS = [4, 8, 12, 16, 26, 36, 52];
+const DAY_PERIOD_OPTIONS = [10, 20, 40, 60, 90, 120, 180, 252];
+
+// Normaliza um registro diario pro MESMO formato que o resto do codigo ja
+// espera de "weekly" (week_ending/weekly_return/ibov_weekly_return) — assim
+// getFilteredAssets/applyHighlight/sortDefault/rowHTML/tooltip funcionam sem
+// nenhuma outra mudanca, tanto pra semanal quanto pra diario.
+function normalizeAsset(a) {
+  if (activeTimeframe !== "daily") return a;
+  const daily = (a.daily || []).map(d => ({
+    week_ending: d.ref_date,
+    close: d.close,
+    weekly_return: d.daily_return,
+    ibov_weekly_return: d.ibov_daily_return,
+    rs_ratio: d.rs_ratio,
+    rs_momentum: d.rs_momentum,
+    quadrant: d.quadrant,
+    rotation_score: d.rotation_score,
+  }));
+  return { ...a, weekly: daily };
+}
+
+function updatePeriodSelect() {
+  const label = document.getElementById("lbl-period");
+  const select = document.getElementById("f-weeks");
+  const opts = activeTimeframe === "daily" ? DAY_PERIOD_OPTIONS : WEEK_PERIOD_OPTIONS;
+  const defaultVal = activeTimeframe === "daily" ? 60 : 36;
+  label.textContent = activeTimeframe === "daily" ? "Dias" : "Semanas";
+  select.innerHTML = opts.map(n => `<option value="${n}"${n === defaultVal ? " selected" : ""}>${n}</option>`).join("");
+}
 
 function fmt(n, dec = 2) {
   if (n === null || n === undefined || isNaN(n)) return "—";
@@ -206,14 +245,15 @@ async function loadMatrix() {
 let activeSector = "IBOV";
 
 function getFilteredAssets() {
-  const nWeeks = parseInt(document.getElementById("f-weeks").value, 10);
+  const nPeriods = parseInt(document.getElementById("f-weeks").value, 10);
   const minWeight = parseFloat(document.getElementById("f-weight").value) || 0;
 
   let assets = payload.assets.filter(a => a.weight >= minWeight);
   if (activeSector === "IBOV") assets = assets.filter(a => a.is_ibov);
   else if (activeSector) assets = assets.filter(a => a.sectors.includes(activeSector));
 
-  assets = assets.map(a => ({ ...a, weekly: a.weekly.slice(-nWeeks) }));
+  assets = assets.map(normalizeAsset);
+  assets = assets.map(a => ({ ...a, weekly: a.weekly.slice(-nPeriods) }));
   assets = assets.filter(a => a.weekly.length > 0);
   return assets;
 }
@@ -262,6 +302,7 @@ function sortDefault(assets) {
 }
 
 function getSectorRow() {
+  if (activeTimeframe === "daily") return null; // indice sintetico de setor ainda so' tem versao semanal
   if (!activeSector || !payload.sector_indices) return null;
   const nWeeks = parseInt(document.getElementById("f-weeks").value, 10);
   const row = payload.sector_indices.find(si => si.code === activeSector);
@@ -347,7 +388,7 @@ function attachTooltipHandlers() {
       const [y, m, day] = d.week.split("-");
       tt.innerHTML = `
         <div class="tt-title">${d.ticker}</div>
-        <div class="tt-sub">${d.name} — semana de ${day}/${m}/${y}</div>
+        <div class="tt-sub">${d.name} — ${activeTimeframe === "daily" ? "dia" : "semana"} de ${day}/${m}/${y}</div>
         <div class="tt-row"><span>Quadrante</span><span class="tt-quad q-${d.quad}">${QUAD_LABEL_PT[d.quad] || d.quad}</span></div>
         <div class="tt-row"><span>RS-Ratio</span><span>${fmt(parseFloat(d.rs))}</span></div>
         <div class="tt-row"><span>RS-Momentum</span><span>${fmt(parseFloat(d.mom))}</span></div>
@@ -368,6 +409,14 @@ function attachTooltipHandlers() {
 // ── Filtros e destaques ──
 ["f-weeks", "f-weight"].forEach(id => {
   document.getElementById(id).addEventListener("change", render);
+});
+document.getElementById("btn-timeframe").addEventListener("click", () => {
+  activeTimeframe = activeTimeframe === "daily" ? "weekly" : "daily";
+  const btn = document.getElementById("btn-timeframe");
+  btn.textContent = activeTimeframe === "daily" ? "📅 Ver SEMANAL" : "📅 Ver DIÁRIO";
+  btn.classList.toggle("active", activeTimeframe === "daily");
+  updatePeriodSelect();
+  render();
 });
 document.querySelectorAll(".index-bar .btn").forEach(btn => {
   btn.addEventListener("click", () => {
