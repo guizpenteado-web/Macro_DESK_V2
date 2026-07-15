@@ -42,9 +42,17 @@ def _download_one(ticker: str) -> tuple[str, pd.DataFrame]:
     if start > today:
         return ticker, pd.DataFrame()
     try:
+        # auto_adjust=False (achado 15/jul/2026) — com True (default do
+        # yfinance moderno) o Close vem ajustado por dividendo/split, mas o
+        # grafico do TradingView (usado no indicador Pine) mostra preco BRUTO
+        # por padrao. Fundo que paga dividendo regular (ex: UGPA3) cria um
+        # degrau artificial toda vez que ajusta retroativamente, divergindo
+        # cada vez mais do RS-Ratio calculado sobre o preco cru do Pine —
+        # usuario reportou "diverge bastante" no D1. Preco bruto tambem bate
+        # com o proprio COTAHIST da B3 usado no resto do Hub (SmartMoneyBR).
         df = yf.download(
             _to_yf(ticker), start=start, end=today,
-            progress=False, auto_adjust=True, actions=False,
+            progress=False, auto_adjust=False, actions=False,
         )
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
