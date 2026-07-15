@@ -260,6 +260,14 @@ function buildChartOption(
   return {
     backgroundColor: "transparent",
     animation: false,
+    // liga a regua vertical (data) dos dois grids — mover o mouse em
+    // qualquer um dos dois desenha a mesma linha vertical no outro, pra dar
+    // pra ver a cotação exata no dia de uma compra/venda de insider sem
+    // precisar contar pixel (pedido do usuario 15/jul/2026). So a linha
+    // vertical (xAxisIndex) — cada grid tem uma escala Y diferente
+    // (preco vs. quantidade), entao a linha horizontal nao faz sentido
+    // ligada entre os dois.
+    axisPointer: { link: [{ xAxisIndex: "all" }] },
     grid: [
       { left: 64, right: 24, top: 30, height: "62%" },
       { left: 64, right: 24, top: "80%", height: "14%" },
