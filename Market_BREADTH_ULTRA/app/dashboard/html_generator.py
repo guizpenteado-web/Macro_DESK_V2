@@ -1273,19 +1273,13 @@ function _buildIdxCards(metric) {{
 // nesta porta (8011) quando acessado standalone, so via :8000/breadth/.
 var freqTickers = null;
 var freqTickersLoading = false;
-var freqTickerSet = {{}};  // ticker -> true, pra checagem O(1) de pertencer ao "Todos"
-var freqNameSearchTimer = null;
 
 function fetchFreqTickers() {{
   if (freqTickers !== null || freqTickersLoading) return;
   freqTickersLoading = true;
   fetch("/rrg/api/tickers")
     .then(function(r) {{ return r.json(); }})
-    .then(function(data) {{
-      freqTickers = data || [];
-      freqTickerSet = {{}};
-      freqTickers.forEach(function(t) {{ freqTickerSet[t.ticker] = true; }});
-    }})
+    .then(function(data) {{ freqTickers = data || []; }})
     .catch(function() {{ freqTickers = []; }})
     .finally(function() {{ freqTickersLoading = false; }});
 }}
@@ -1296,8 +1290,13 @@ function freqOnSearchFocus() {{
   if (input.value.trim().length > 0) freqOnSearchInput(input.value);
 }}
 
-function freqRenderResults(matches) {{
+function freqOnSearchInput(q) {{
   var box = document.getElementById("freq-search-results");
+  q = (q || "").trim().toUpperCase();
+  if (q.length < 1 || !freqTickers) {{ box.style.display = "none"; return; }}
+  var matches = freqTickers.filter(function(t) {{
+    return t.ticker.indexOf(q) !== -1 || (t.name || "").toUpperCase().indexOf(q) !== -1;
+  }}).slice(0, 15);
   if (matches.length === 0) {{
     box.innerHTML = '<div class="freq-search-item" style="cursor:default">Nada encontrado</div>';
     box.style.display = "block";
@@ -1310,39 +1309,6 @@ function freqRenderResults(matches) {{
          + '</div>';
   }}).join("");
   box.style.display = "block";
-}}
-
-// Busca por ticker e' instantanea (lista local). Busca por NOME de empresa
-// depende do SmartMoneyBR (o RRG so tem nome cadastrado pros ~78 do IBOV,
-// os outros ~77 do universo "Todos" ficam sem nome) — cruza os resultados
-// com freqTickerSet pra nunca escapar do universo "Todos".
-function freqOnSearchInput(q) {{
-  var qTrim = (q || "").trim();
-  if (qTrim.length < 1 || !freqTickers) {{
-    document.getElementById("freq-search-results").style.display = "none";
-    return;
-  }}
-  var qUpper = qTrim.toUpperCase();
-  var tickerMatches = freqTickers.filter(function(t) {{
-    return t.ticker.indexOf(qUpper) !== -1 || (t.name || "").toUpperCase().indexOf(qUpper) !== -1;
-  }});
-  freqRenderResults(tickerMatches.slice(0, 15));
-
-  clearTimeout(freqNameSearchTimer);
-  if (qTrim.length < 2) return;
-  freqNameSearchTimer = setTimeout(function() {{
-    fetch("/smartmoney/api/assets?search=" + encodeURIComponent(qTrim) + "&limit=25")
-      .then(function(r) {{ return r.json(); }})
-      .then(function(rows) {{
-        var known = {{}};
-        tickerMatches.forEach(function(t) {{ known[t.ticker] = true; }});
-        var extra = (rows || [])
-          .filter(function(r) {{ return freqTickerSet[r.ticker] && !known[r.ticker]; }})
-          .map(function(r) {{ return {{ticker: r.ticker, name: r.company_name || ""}}; }});
-        if (extra.length) freqRenderResults(tickerMatches.concat(extra).slice(0, 15));
-      }})
-      .catch(function() {{}});
-  }}, 250);
 }}
 
 document.addEventListener("mousedown", function(e) {{
