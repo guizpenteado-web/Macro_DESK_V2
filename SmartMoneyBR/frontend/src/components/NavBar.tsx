@@ -14,10 +14,7 @@ const LINKS = [
   { href: "/insiders", label: "Insiders" },
 ];
 
-const LINKS_AFTER_ALERTS = [
-  { href: "/favoritos", label: "Favoritos" },
-  { href: "/carteira", label: "Carteira" },
-];
+const LINKS_AFTER_ALERTS = [{ href: "/favoritos", label: "Favoritos" }];
 
 export default function NavBar() {
   const pathname = usePathname();
@@ -45,7 +42,13 @@ export default function NavBar() {
       {LINKS.map((l) => renderLink(l.href, l.label, l.accent))}
       <AlertsNavLink active={isActive("/alertas")} />
       {LINKS_AFTER_ALERTS.map((l) => renderLink(l.href, l.label))}
-      <GlobalSearch />
+      {/* Agrupados pra quebrar de linha JUNTOS (flex-wrap quebra por item —
+          sem isso a busca podia cair sozinha na linha de baixo, longe do
+          botao Carteira, mesmo estando logo depois dele no DOM). */}
+      <div className="flex items-center gap-2">
+        {renderLink("/carteira", "Carteira")}
+        <GlobalSearch />
+      </div>
     </nav>
   );
 }
