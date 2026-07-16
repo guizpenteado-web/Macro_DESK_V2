@@ -1,6 +1,6 @@
 {
   "_instrucoes": "Atualizar manualmente quando os bancos revisarem targets. Verificar fontes listadas abaixo.",
-  "last_updated": "2026-07-14",
+  "last_updated": "2026-07-16",
 
   "macro_snapshot": {
     "fed_rate": {
@@ -16,19 +16,20 @@
       "chair": "Kevin Warsh"
     },
     "cpi": {
-      "yoy": 4.2,
-      "mom": 0.5,
-      "period": "Mai/2026",
-      "release_date": "2026-06-10",
-      "next_release": "2026-07-14",
-      "source": "BLS - Bureau of Labor Statistics"
+      "yoy": 3.5,
+      "mom": -0.4,
+      "period": "Jun/2026",
+      "release_date": "2026-07-14",
+      "next_release": "2026-08-12",
+      "source": "BLS - Bureau of Labor Statistics",
+      "note": "Maior queda mensal desde abril/2020 (-0,8%). Mediana de mercado esperava -0,2%/3,8% a/a — surpresa de baixa expressiva. Energia caiu 5,7% no mês (após +3,9% em mai) e foi o principal driver, mais que compensando altas em moradia e alimentos."
     },
     "core_cpi": {
-      "yoy": 2.9,
-      "mom": 0.2,
-      "period": "Mai/2026",
-      "release_date": "2026-06-10",
-      "next_release": "2026-07-14",
+      "yoy": 2.6,
+      "mom": 0.0,
+      "period": "Jun/2026",
+      "release_date": "2026-07-14",
+      "next_release": "2026-08-12",
       "source": "BLS - Bureau of Labor Statistics"
     },
     "nfp": {
@@ -359,10 +360,10 @@
 
   "commodity_targets": {
     "_nota": "Atualizado Jul/2026 via hierarquia TIER-1→TIER-2→TIER-3. TIER-1: jpmorgan.com/insights (pag. individuais por commodity), kitco.com (BofA/GS), investing.com (Citi). TIER-3: zawya.com (MS oil), Reuters, CNBC.",
-    "_precos_referencia": "Gold $4,174/oz | Silver $62.27/oz | Cobre COMEX ~$6.20/lb | WTI $68.78/bbl (Jul/03-04/2026)",
+    "_precos_referencia": "Gold ~$4,040/oz (16/jul, caindo de $4,174) | Silver $62.27/oz | Cobre COMEX ~$6.20/lb | WTI $68.78/bbl (Jul/03-04/2026) — ouro pressionado por EUA seguir atacando alvos militares iranianos (5º dia consecutivo em 16/jul), elevando preço de energia e reduzindo expectativa de corte do Fed",
     "ouro": {
       "unit": "USD/oz",
-      "preco_atual": 4174,
+      "preco_atual": 4040,
       "bank_targets": [
         {"bank": "Goldman Sachs", "target": 4900, "view": "BULL",    "rationale": "Cortou de $5.400→$4.900 (20/jun/26). Fade de ETF flows asiáticos + remoção de cortes do Fed em 2026. Suporte: BCs emergentes comprando +1.000 ton/ano. Kitco 30/jun/26.", "date": "2026-06"},
         {"bank": "JP Morgan",     "target": 4500, "view": "BULL",    "rationale": "Cortou de $6.000→$4.500 (03/jul/26) — corte de 25%. Q3/26: $4.300 | Q4/26: $4.500. Demanda mais fraca que o esperado em setores-chave. Mantém viés bullish de longo prazo (compras de BCs + demanda física seguem sustentando alta para 2027). jpmorgan.com (pág. oficial gold-prices).", "date": "2026-07"},
@@ -405,7 +406,7 @@
 
   "pesquisas_eleitorais_2026": {
     "_nota": "Eleição presidencial brasileira — outubro 2026. Fontes: Datafolha (TIER-1) e Quaest (TIER-1). Atualizado jul/2026.",
-    "_nivel_atual": "Ibovespa: 174.070 pts (03/jul/2026) | S&P 500: ~7.483 pts (01/jul/2026) | USD/BRL: R$ 5,168 (03/jul/2026)",
+    "_nivel_atual": "Ibovespa: ~174.056 pts (16/jul/2026, -1,11% no dia após novo tarifaço dos EUA de 25% sobre produtos brasileiros a partir de 22/jul) | USD/BRL: R$ 5,0975 (16/jul/2026) | Ibovespa fechou 15/jul em 176.010 pts (-0,36%)",
     "institutos": [
       {
         "instituto": "Datafolha",
@@ -461,6 +462,22 @@
         ],
         "resumo": "Pesquisa nacional de 10/jun/2026: Lula 39% vs Flávio 29% no 1º turno; 44%-38% no 2º turno. Regionalmente (corte estadual de abr/2026): Lula domina Nordeste e Norte, oposição (Flávio) lidera Sul e Rio; SP e RJ são campos de batalha decisivos.",
         "source_url": "https://quaest.com.br"
+      },
+      {
+        "instituto": "Quaest",
+        "data_coleta": "2026-07-10/13",
+        "data_divulgacao": "2026-07-15",
+        "amostra": 2004,
+        "margem_erro": 2,
+        "metodo": "Presencial (nacional)",
+        "nivel_confianca": 95,
+        "primeiro_turno": [
+          {"candidato": "Lula", "partido": "PT", "pct": 40},
+          {"candidato": "Flávio Bolsonaro", "partido": "PL", "pct": 28}
+        ],
+        "segundo_turno": [],
+        "resumo": "Diferença de 12p.p. (40% vs 28%) é a maior vantagem de Lula sobre Flávio em todas as 6 rodadas Quaest de 2026. Rejeição a Flávio Bolsonaro subiu para 57%. Pesquisa contratada pelo Banco Genial.",
+        "source_url": "https://www.gazetadopovo.com.br/eleicoes/2026/pesquisa-eleitoral-2026/genial-quaest-presidente-julho-2026/"
       },
       {
         "instituto": "AtlasIntel",
