@@ -112,24 +112,32 @@ export default function CarteiraPage() {
             {results.map((a) => {
               const already = inPortfolio.has(a.id);
               return (
-                <button
-                  key={a.id}
-                  onClick={() => !already && addAsset(a.id)}
-                  disabled={already}
-                  className="w-full text-left px-3 py-2 text-sm flex items-center justify-between"
-                  style={{ color: already ? "var(--text3)" : "var(--text)", cursor: already ? "default" : "pointer" }}
-                  onMouseDown={(e) => e.preventDefault()}
-                >
-                  <span>
+                <div key={a.id} className="w-full px-3 py-2 text-sm flex items-center justify-between gap-2">
+                  <Link
+                    href={`/ativos/${a.id}`}
+                    className="flex-1 min-w-0"
+                    onClick={() => {
+                      setOpen(false);
+                      setQ("");
+                    }}
+                  >
                     <span style={{ color: "var(--gold)", fontWeight: 600 }}>{a.ticker}</span>
                     {a.company_name && (
                       <span className="ml-2 text-xs" style={{ color: "var(--text3)" }}>
                         {a.company_name}
                       </span>
                     )}
-                  </span>
-                  <span className="text-xs">{already ? "já na carteira" : "+ adicionar"}</span>
-                </button>
+                  </Link>
+                  <button
+                    onClick={() => !already && addAsset(a.id)}
+                    disabled={already}
+                    className="text-xs shrink-0"
+                    style={{ color: already ? "var(--text3)" : "var(--gold)", cursor: already ? "default" : "pointer" }}
+                    onMouseDown={(e) => e.preventDefault()}
+                  >
+                    {already ? "já na carteira" : "+ adicionar"}
+                  </button>
+                </div>
               );
             })}
           </div>

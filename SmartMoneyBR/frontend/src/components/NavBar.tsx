@@ -17,7 +17,6 @@ const LINKS = [
 const LINKS_AFTER_ALERTS = [
   { href: "/favoritos", label: "Favoritos" },
   { href: "/carteira", label: "Carteira" },
-  { href: "/evolucao", label: "Evolução" },
 ];
 
 export default function NavBar() {
