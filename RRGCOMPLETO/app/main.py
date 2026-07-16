@@ -121,17 +121,6 @@ def index():
     return FileResponse(settings.frontend_path, media_type="text/html")
 
 
-@app.get("/api/tickers")
-def get_tickers():
-    """Lista leve (ticker+nome) do universo 'Todos' — usada por outros
-    modulos do Hub (ex: aba Frequency do Market Breadth) que so precisam
-    do universo de ativos, sem o payload pesado de /api/matrix (que carrega
-    semanas/dias inteiros de metrica pra cada um dos 155 ativos)."""
-    with get_session() as s:
-        assets = AssetRepository(s).get_all()
-    return [{"ticker": a.ticker, "name": a.name, "is_ibov": a.is_ibov} for a in assets]
-
-
 @app.get("/api/matrix")
 def get_matrix():
     with get_session() as s:
