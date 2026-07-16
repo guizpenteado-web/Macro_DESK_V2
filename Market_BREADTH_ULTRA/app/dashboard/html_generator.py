@@ -493,8 +493,34 @@ body{{
 .tab-btn.tab-idx{{color:#5a3a8a}}
 .tab-btn.tab-idx:hover{{color:#a87ef8}}
 .tab-btn.tab-idx.active{{color:#a87ef8;border-bottom-color:#7c3aed}}
+.tab-btn.tab-freq{{color:#c77d2e}}
+.tab-btn.tab-freq:hover{{color:#f0a050}}
+.tab-btn.tab-freq.active{{color:#f0a050;border-bottom-color:#c77d2e}}
 .tab-content{{display:none}}
 .tab-content.active{{display:block}}
+/* ─── FREQUENCY (busca de ativo) ─── */
+.freq-search-wrap{{position:relative;max-width:380px}}
+.freq-search-input{{
+  width:100%;padding:9px 14px;border-radius:8px;box-sizing:border-box;
+  background:var(--bg3);border:1px solid var(--border2);
+  color:var(--txt);font-size:12.5px;outline:none;
+}}
+.freq-search-input:focus{{border-color:var(--accent)}}
+.freq-search-results{{
+  position:absolute;top:100%;left:0;right:0;margin-top:4px;
+  background:var(--bg2);border:1px solid var(--border2);border-radius:8px;
+  max-height:280px;overflow-y:auto;z-index:20;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);
+}}
+.freq-search-item{{
+  padding:8px 14px;font-size:12px;cursor:pointer;color:var(--txt2);
+  display:flex;justify-content:space-between;gap:8px;
+}}
+.freq-search-item:hover{{background:var(--bg3);color:var(--txt)}}
+.freq-search-item .fsi-name{{color:var(--txt3);font-size:11px}}
+.freq-empty{{padding:60px 20px;text-align:center;color:var(--txt3);font-size:12.5px}}
+.freq-title{{font-size:13px;font-weight:700;color:var(--txt);margin-left:16px}}
+.freq-title .sub{{color:var(--txt3);font-weight:500;font-size:11px;margin-left:6px}}
 /* ─── CARDS ─── */
 .cards{{display:flex;gap:12px;padding:16px 28px;flex-wrap:wrap}}
 #idx-cards{{display:grid;grid-template-columns:repeat(12,1fr);gap:6px}}
@@ -679,6 +705,7 @@ tr:hover td{{
   <button class="tab-btn active" onclick="showTab('sma',this)">Medias Moveis</button>
   <button class="tab-btn tab-rsi" onclick="showTab('rsi',this)">RSI Breadth</button>
   <button class="tab-btn tab-idx" onclick="showTab('idx',this)">Amplitude por Indices</button>
+  <button class="tab-btn tab-freq" onclick="showTab('freq',this)">Frequency</button>
 </div>
 
 <!-- ═══════════════════════════════════════════════════ TAB SMA -->
@@ -822,6 +849,28 @@ tr:hover td{{
   </div>
 
   <div class="cards" style="padding-top:4px" id="idx-cards"></div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════ TAB FREQUENCY -->
+<div id="tab-freq" class="tab-content">
+
+  <div class="filter-bar" style="border-top:1px solid #21262d">
+    <div class="freq-search-wrap">
+      <input class="freq-search-input" id="freq-search-input" type="text"
+             placeholder="Buscar ativo (ticker ou nome)..." autocomplete="off"
+             oninput="freqOnSearchInput(this.value)" onfocus="freqOnSearchFocus()">
+      <div id="freq-search-results" class="freq-search-results" style="display:none"></div>
+    </div>
+    <span id="freq-title" class="freq-title"></span>
+  </div>
+
+  <div class="section" style="margin-top:8px"><h2>Cotacao e distancia da MA200</h2></div>
+  <div class="chart-area">
+    <div class="y-scale-handle y-left" onmousedown="startYScale(event,'chart-freq','y')" title="Arraste: escala distancia MA200">&#9650;<br>&#9632;<br>&#9660;</div>
+    <div id="chart-freq" class="chart-box"></div>
+    <div class="y-scale-handle y-right" onmousedown="startYScale(event,'chart-freq','y2')" title="Arraste: escala cotacao">&#9650;<br>&#9632;<br>&#9660;</div>
+  </div>
 
 </div>
 
@@ -1059,6 +1108,8 @@ function showTab(id, btn){{
       buildRsiChart();
     }} else if(id==="idx"){{
       buildIdxChart();
+    }} else if(id==="freq"){{
+      fetchFreqTickers();
     }}
   }}
 }}
@@ -1212,6 +1263,157 @@ function _buildIdxCards(metric) {{
           + '</div>';
   }});
   container.innerHTML = html;
+}}
+
+// ── Frequency: busca de ativo (universo "Todos" do RRG) + MA200 ──
+// Ticker list vem do RRGCOMPLETO (/rrg/api/tickers), preco historico vem
+// do SmartMoneyBR (/smartmoney/api/market/price-history, fonte COTAHIST
+// B3, cobre qualquer ticker). Caminhos absolutos porque so funcionam
+// atraves do proxy do Hub (unified_server.py) — nao ha esses endpoints
+// nesta porta (8011) quando acessado standalone, so via :8000/breadth/.
+var freqTickers = null;
+var freqTickersLoading = false;
+
+function fetchFreqTickers() {{
+  if (freqTickers !== null || freqTickersLoading) return;
+  freqTickersLoading = true;
+  fetch("/rrg/api/tickers")
+    .then(function(r) {{ return r.json(); }})
+    .then(function(data) {{ freqTickers = data || []; }})
+    .catch(function() {{ freqTickers = []; }})
+    .finally(function() {{ freqTickersLoading = false; }});
+}}
+
+function freqOnSearchFocus() {{
+  fetchFreqTickers();
+  var input = document.getElementById("freq-search-input");
+  if (input.value.trim().length > 0) freqOnSearchInput(input.value);
+}}
+
+function freqOnSearchInput(q) {{
+  var box = document.getElementById("freq-search-results");
+  q = (q || "").trim().toUpperCase();
+  if (q.length < 1 || !freqTickers) {{ box.style.display = "none"; return; }}
+  var matches = freqTickers.filter(function(t) {{
+    return t.ticker.indexOf(q) !== -1 || (t.name || "").toUpperCase().indexOf(q) !== -1;
+  }}).slice(0, 15);
+  if (matches.length === 0) {{
+    box.innerHTML = '<div class="freq-search-item" style="cursor:default">Nada encontrado</div>';
+    box.style.display = "block";
+    return;
+  }}
+  box.innerHTML = matches.map(function(t) {{
+    return '<div class="freq-search-item" onmousedown="freqSelectTicker(\\'' + t.ticker + '\\')">'
+         + '<span>' + t.ticker + '</span>'
+         + '<span class="fsi-name">' + (t.name || "") + '</span>'
+         + '</div>';
+  }}).join("");
+  box.style.display = "block";
+}}
+
+document.addEventListener("mousedown", function(e) {{
+  var wrap = document.querySelector(".freq-search-wrap");
+  if (wrap && !wrap.contains(e.target)) {{
+    var box = document.getElementById("freq-search-results");
+    if (box) box.style.display = "none";
+  }}
+}});
+
+function freqSelectTicker(ticker) {{
+  var input = document.getElementById("freq-search-input");
+  input.value = ticker;
+  document.getElementById("freq-search-results").style.display = "none";
+  document.getElementById("chart-freq").innerHTML =
+    '<div class="freq-empty">Carregando ' + ticker + '...</div>';
+  fetch("/smartmoney/api/market/price-history?ticker=" + encodeURIComponent(ticker) + "&years=10")
+    .then(function(r) {{ return r.json(); }})
+    .then(function(rows) {{ buildFreqChart(ticker, rows || []); }})
+    .catch(function() {{
+      document.getElementById("chart-freq").innerHTML =
+        '<div class="freq-empty">Erro ao buscar cotacao de ' + ticker + '.</div>';
+    }});
+}}
+
+var freqShapes = [
+  {{type:"line",xref:"paper",yref:"y",x0:0,x1:1,y0:0,y1:0,
+    line:{{color:"rgba(255,255,255,0.18)",width:1,dash:"dot"}}}}
+];
+
+function buildFreqChart(ticker, rows) {{
+  var chartEl = document.getElementById("chart-freq");
+  if (!rows.length) {{
+    chartEl.innerHTML = '<div class="freq-empty">Sem cotacao disponivel para ' + ticker + '.</div>';
+    document.getElementById("freq-title").textContent = "";
+    return;
+  }}
+  var dates_  = rows.map(function(r) {{ return r.date; }});
+  var closes  = rows.map(function(r) {{ return r.close; }});
+  var opens   = rows.map(function(r) {{ return r.open; }});
+  var highs   = rows.map(function(r) {{ return r.high; }});
+  var lows    = rows.map(function(r) {{ return r.low; }});
+
+  // SMA200 + distancia % — mesma logica de app/indicators/moving_averages.py,
+  // portada pra JS porque o preco vem de outro servico (SmartMoneyBR), nao
+  // do banco local deste modulo.
+  var sma200 = closes.map(function(_, i) {{
+    if (i < 199) return null;
+    var sum = 0;
+    for (var k = i - 199; k <= i; k++) sum += closes[k];
+    return sum / 200;
+  }});
+  var distPct = closes.map(function(c, i) {{
+    return sma200[i] === null ? null : (c - sma200[i]) / sma200[i] * 100;
+  }});
+
+  var priceTrace = {{
+    x: dates_, open: opens, high: highs, low: lows, close: closes,
+    type: "candlestick", name: ticker,
+    increasing: {{line:{{color:"#22c55e"}}}}, decreasing: {{line:{{color:"#f05a5a"}}}},
+    yaxis: "y2", xaxis: "x"
+  }};
+  var distTrace = {{
+    x: dates_, y: distPct,
+    name: "Distancia MA200", type: "scatter", mode: "lines",
+    line: {{color:"#f0a050", width:2}},
+    yaxis: "y", xaxis: "x",
+    hovertemplate: "%{{x}}<br>Dist. MA200: %{{y:.1f}}%<extra></extra>"
+  }};
+
+  var layout = {{
+    paper_bgcolor:"#0b1520", plot_bgcolor:"#070d14",
+    font:{{color:"#6a8099",size:11,family:"Inter,sans-serif"}},
+    margin:{{t:10,r:60,b:40,l:55}},
+    xaxis:{{
+      gridcolor:"rgba(255,255,255,0.04)",linecolor:"rgba(255,255,255,0.07)",
+      rangeslider:{{visible:false}}, domain:[0,1], anchor:"y"
+    }},
+    // Painel inferior — distancia da MA200 (30% da altura)
+    yaxis:{{
+      domain:[0,0.30],
+      gridcolor:"rgba(255,255,255,0.04)",linecolor:"rgba(255,255,255,0.07)",
+      ticksuffix:"%", fixedrange:false,
+      title:{{text:"Dist. MA200",font:{{size:10,color:"#3a5060"}}}}
+    }},
+    // Painel superior — cotacao (67% da altura)
+    yaxis2:{{
+      domain:[0.35,1.0],
+      gridcolor:"rgba(255,255,255,0.04)",linecolor:"rgba(255,255,255,0.07)",
+      anchor:"x", fixedrange:false, tickformat:",.2f",
+      title:{{text:"Cotacao (R$)",font:{{size:10,color:"#3a5060"}}}}
+    }},
+    legend:{{bgcolor:"rgba(0,0,0,0)",bordercolor:"rgba(255,255,255,0.07)",borderwidth:1}},
+    hovermode:"x unified",
+    dragmode:"pan",
+    shapes: freqShapes
+  }};
+
+  Plotly.newPlot("chart-freq", [priceTrace, distTrace], layout, plotConfig)
+    .then(function() {{ _addCtrlZoom("chart-freq"); }});
+
+  var lastDist = distPct.filter(function(v) {{ return v !== null; }}).pop();
+  document.getElementById("freq-title").textContent = lastDist !== undefined
+    ? ticker + " — " + (lastDist >= 0 ? "+" : "") + lastDist.toFixed(1) + "% da MA200"
+    : ticker;
 }}
 
 // ── Y-axis scale handles (esquerdo=breadth %, direito=IBOV) ──
