@@ -53,7 +53,11 @@ def get_ranking(kind: RankingKind, ref_date: date | None = None, limit: int = 20
                 func.sum(FundAssetMovement.value_delta).label("net_value_delta"),
             )
             .join(FundAssetMovement, FundAssetMovement.asset_id == Asset.id)
-            .where(FundAssetMovement.ref_date == target_date, FundAssetMovement.classification.in_(classes))
+            .where(
+                FundAssetMovement.ref_date == target_date,
+                FundAssetMovement.classification.in_(classes),
+                Asset.is_active.is_(True),
+            )
             .group_by(Asset.id, Asset.ticker, Asset.company_name)
         )
         order_col = "net_value_delta"
@@ -70,7 +74,11 @@ def get_ranking(kind: RankingKind, ref_date: date | None = None, limit: int = 20
                 func.sum(FundAssetMovement.value_delta).label("net_value_delta"),
             )
             .join(FundAssetMovement, FundAssetMovement.asset_id == Asset.id)
-            .where(FundAssetMovement.ref_date == target_date, FundAssetMovement.classification == classification)
+            .where(
+                FundAssetMovement.ref_date == target_date,
+                FundAssetMovement.classification == classification,
+                Asset.is_active.is_(True),
+            )
             .group_by(Asset.id, Asset.ticker, Asset.company_name)
         )
         order_col = "n_funds"
@@ -118,7 +126,7 @@ def get_consensus_ranking(ref_date: date | None = None, limit: int = 20, db: Ses
             func.sum(FundHolding.market_value).label("total_value"),
         )
         .join(FundHolding, FundHolding.asset_id == Asset.id)
-        .where(FundHolding.ref_date == target_date)
+        .where(FundHolding.ref_date == target_date, Asset.is_active.is_(True))
         .group_by(Asset.id, Asset.ticker, Asset.company_name)
         .order_by(func.count(func.distinct(FundHolding.fund_id)).desc())
         .limit(limit)

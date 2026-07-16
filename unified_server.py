@@ -759,7 +759,7 @@ _SHELL = """<!DOCTYPE html>
 
   <button class="nav-btn" id="btn7" onclick="show(7)">
     <span class="dot"></span>
-    SmartMoney
+    SmartMoneyBR
   </button>
 
   <button class="nav-btn" id="btn5" onclick="show(5)">
@@ -858,7 +858,7 @@ _SHELL = """<!DOCTYPE html>
   </div>
   <div class="loader hidden" id="loader7">
     <div class="spinner" style="border-top-color:var(--c1)"></div>
-    Carregando SmartMoney...
+    Carregando SmartMoneyBR...
   </div>
 
   <iframe id="f1" src="" class="visible"
@@ -2188,6 +2188,15 @@ async def api_calendar(days: int = 7) -> JSONResponse:
         _CAL_CACHE["days"] = days
         return JSONResponse(data)
     except Exception as e:
+        # Fallback pra cache velho (mesmo passado do TTL de 10min) em vez de
+        # 500 puro — achado 16/jul/2026: no VPS, investing.com devolve 403
+        # "Just a moment..." (desafio Cloudflare Turnstile), que o
+        # cloudscraper nao consegue resolver sem servico de CAPTCHA pago
+        # (funciona no IP residencial local, bloqueado no IP de datacenter
+        # do VPS — nao e' bug de codigo, e' bloqueio de IP). Servir o ultimo
+        # dado bom conhecido, mesmo desatualizado, e' melhor que nada.
+        if _CAL_CACHE["data"] and _CAL_CACHE["days"] == days:
+            return JSONResponse(_CAL_CACHE["data"])
         return JSONResponse({"error": str(e)}, status_code=500)
 
 

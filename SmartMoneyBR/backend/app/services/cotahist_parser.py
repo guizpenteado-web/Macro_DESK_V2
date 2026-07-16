@@ -9,9 +9,18 @@ from a spec.
 CODBDI='02' (Lote Padrao — the regular round-lot market for common/
 preferred shares) + TPMERC='010' (mercado a vista/spot) together select
 exactly one row per ticker per trading day: the ordinary equity price,
-excluding FIIs (CODBDI 12), BDRs (14), options, forwards, and the
-fractional-lot market. Confirmed zero (ticker, date) collisions across a
-full day's file (324 tickers, 324 rows) with this filter.
+excluding FIIs (CODBDI 12), options, forwards, and the fractional-lot
+market. Confirmed zero (ticker, date) collisions across a full day's
+file (324 tickers, 324 rows) with this filter.
+
+BDR_CODBDI='34' — achado real 16/jul/2026: a B3 reclassificou o codigo de
+lote das BDRs de '02' pra '34' em outubro/2022 (confirmado no dado bruto:
+AAPL34 tem codbdi='02' ate 2022-10-07, depois '34' dai em diante). Antes
+desse fix o parser so aceitava '02', entao TODA BDR parou de ser
+ingerida silenciosamente a partir dessa data — nao e' opcao/FII, e' o
+mesmo tipo de registro (TIPREG=01) com layout identico, so' o codigo de
+lote mudou. Sem colisao esperada com ticker de acao (BDR sempre termina
+em "34"/"35"/etc, nao overlap com codigo de acao ON/PN).
 """
 from __future__ import annotations
 
@@ -20,13 +29,15 @@ from datetime import date
 from pathlib import Path
 
 EQUITY_CODBDI = "02"
+BDR_CODBDI = "34"
+_ACCEPTED_CODBDI = {EQUITY_CODBDI, BDR_CODBDI}
 SPOT_TPMERC = "010"
 
 
 def _parse_line(line: str) -> dict | None:
     if len(line) < 200 or line[0:2] != "01":
         return None
-    if line[10:12] != EQUITY_CODBDI or line[24:27] != SPOT_TPMERC:
+    if line[10:12] not in _ACCEPTED_CODBDI or line[24:27] != SPOT_TPMERC:
         return None
 
     ticker = line[12:24].strip()

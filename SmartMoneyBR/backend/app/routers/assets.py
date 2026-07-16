@@ -112,7 +112,7 @@ def search_assets(
     sort_dir: Literal["asc", "desc"] = "asc",
     db: Session = Depends(get_db),
 ):
-    stmt = select(Asset)
+    stmt = select(Asset).where(Asset.is_active.is_(True))
     if search:
         stmt = stmt.where(Asset.ticker.ilike(f"%{search}%") | Asset.company_name.ilike(f"%{search}%"))
     if asset_type:
