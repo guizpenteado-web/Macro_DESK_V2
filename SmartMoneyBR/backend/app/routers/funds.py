@@ -183,8 +183,14 @@ def search_funds(
     # Latest fund_quota row per fund (patrimonio/cotistas/data de divulgacao) —
     # joined in SQL so nav/cotistas/data filters can run as indexed WHERE
     # clauses instead of loading everything into Python first.
+    # Achado 16/jul/2026: sem o WHERE fund_id IN (has_equity) aqui, o DISTINCT
+    # ON roda sobre os ~55 mil fundos de fund_quota inteiro (a maioria sem
+    # nenhuma posicao de equity, fora do escopo do app) em vez dos ~9,3 mil
+    # que realmente importam — EXPLAIN ANALYZE mediu ~4s a mais nesse passo
+    # sozinho. Filtrar antes do DISTINCT ON reduz a base de sort/dedup em ~6x.
     latest_quota_sq = (
         select(FundQuota)
+        .where(FundQuota.fund_id.in_(select(has_equity.c.fund_id)))
         .distinct(FundQuota.fund_id)
         .order_by(FundQuota.fund_id, FundQuota.ref_date.desc())
         .subquery()
@@ -211,6 +217,34 @@ def search_funds(
     if ref_date_to is not None:
         stmt = stmt.where(LatestQuota.ref_date <= ref_date_to)
 
+    # Achado 16/jul/2026 — pagina /fundos "nao carregava" em producao:
+    # sort+limit rodava so no final, em Python, DEPOIS de calcular
+    # 12m/MTD/YTD (3 queries + rebase em Python) pra TODO fundo com
+    # equity (milhares) que batesse nos filtros de NAV/cotistas/data —
+    # sem filtro nenhum isso levava >15s (medido no VPS). Os campos de
+    # retorno sao calculados, nao existem como coluna pra ordenar em SQL,
+    # entao só da pra empurrar sort+limit pro banco quando o sort_by e um
+    # campo nativo (nome/NAV/cotistas/data) E nao ha filtro de retorno
+    # (que exige ter o valor calculado de todo mundo pra filtrar certo).
+    # Caso comum (sort padrao "name", sem filtro de retorno) cai nesse
+    # atalho e so calcula retorno pros ~25-50 fundos da pagina, nao pra
+    # milhares.
+    needs_full_scan = (
+        sort_by in ("return_pct_12m", "return_pct_mtd", "return_pct_ytd")
+        or min_return_pct is not None
+        or max_return_pct is not None
+    )
+
+    if not needs_full_scan:
+        sql_order_col = {
+            "name": Fund.name,
+            "net_asset_value": LatestQuota.net_asset_value,
+            "n_shareholders": LatestQuota.n_shareholders,
+            "financials_ref_date": LatestQuota.ref_date,
+        }[sort_by]
+        order_expr = sql_order_col.desc().nulls_last() if sort_dir == "desc" else sql_order_col.asc().nulls_last()
+        stmt = stmt.order_by(order_expr).limit(limit)
+
     rows = db.execute(stmt).all()
     funds = [row[0] for row in rows]
     quotas = {row[0].id: row[1] for row in rows}
@@ -224,6 +258,10 @@ def search_funds(
         _to_fund_out(f, quotas.get(f.id), return_by_fund.get(f.id), mtd_by_fund.get(f.id), ytd_by_fund.get(f.id))
         for f in funds
     ]
+
+    if not needs_full_scan:
+        # Ja veio ordenado e limitado do SQL — so' preserva a ordem.
+        return out
 
     if min_return_pct is not None:
         out = [o for o in out if o.return_pct_12m is not None and o.return_pct_12m >= min_return_pct]
