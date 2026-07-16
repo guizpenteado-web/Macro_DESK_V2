@@ -17,7 +17,10 @@ export default function RootLayout({
     <html lang="pt-BR" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
         <header className="border-b" style={{ borderColor: "var(--border)", background: "var(--bg2)" }}>
-          <div className="max-w-6xl mx-auto px-6 py-3 flex items-center gap-6">
+          {/* Sem max-width aqui de proposito (diferente do <main> abaixo):
+              com 9 botoes de nav + busca, um container limitado a 1152px
+              (max-w-6xl) forcava quebra de linha mesmo em telas largas. */}
+          <div className="w-full px-6 py-3 flex items-center gap-6">
             <Link href="/" className="font-bold tracking-tight text-xl" style={{ color: "var(--gold)" }}>
               SmartMoney<span style={{ color: "var(--text)" }}>BR</span>
             </Link>
