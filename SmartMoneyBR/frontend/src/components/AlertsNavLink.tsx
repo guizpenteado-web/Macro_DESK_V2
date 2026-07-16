@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 
-export default function AlertsNavLink() {
+export default function AlertsNavLink({ active = false }: { active?: boolean }) {
   const [unread, setUnread] = useState(0);
 
   useEffect(() => {
@@ -20,7 +20,7 @@ export default function AlertsNavLink() {
   }, []);
 
   return (
-    <Link href="/alertas" className="flex items-center gap-1.5">
+    <Link href="/alertas" className={`smb-nav-btn text-sm${active ? " active" : ""}`}>
       Alertas
       {unread > 0 && (
         <span

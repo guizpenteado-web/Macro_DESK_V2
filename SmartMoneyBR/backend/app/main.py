@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import alerts, assets, buybacks, favorites, funds, insiders, market, performance, rankings
+from app.routers import alerts, assets, buybacks, favorites, funds, insiders, market, performance, portfolio, rankings
 from app.services.scheduler_jobs import start_scheduler
 
 logging.basicConfig(level=settings.log_level, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -53,6 +53,7 @@ app.include_router(insiders.router)
 app.include_router(alerts.router)
 app.include_router(market.router)
 app.include_router(favorites.router)
+app.include_router(portfolio.router)
 
 
 @app.get("/api/health")

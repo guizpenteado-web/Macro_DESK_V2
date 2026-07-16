@@ -427,4 +427,8 @@ export const api = {
   getFavorites: () => apiGet<number[]>(`/api/favorites`),
   addFavorite: (fundId: number) => apiPost<{ ok: boolean }>(`/api/favorites/${fundId}`),
   removeFavorite: (fundId: number) => apiDelete<{ ok: boolean }>(`/api/favorites/${fundId}`),
+
+  getPortfolio: () => apiGet<number[]>(`/api/portfolio`),
+  addToPortfolio: (assetId: number) => apiPost<{ ok: boolean }>(`/api/portfolio/${assetId}`),
+  removeFromPortfolio: (assetId: number) => apiDelete<{ ok: boolean }>(`/api/portfolio/${assetId}`),
 };

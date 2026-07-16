@@ -1736,6 +1736,13 @@ async def _proxy(request: Request, target_base: str, strip_prefix: str, rewrite_
         url += f"?{request.url.query}"
 
     req_headers = {k: v for k, v in request.headers.items() if k.lower() not in _SKIP_HEADERS}
+    # Repassa a identidade de quem esta logado no Hub pros sub-apps — usado
+    # hoje pelo SmartMoneyBR pra isolar a Carteira por usuario (pedido
+    # 16/jul/2026). Os outros sub-apps simplesmente ignoram esses headers.
+    hub_user = request.session.get("user") or {}
+    if hub_user:
+        req_headers["X-Hub-Username"] = hub_user.get("username", "")
+        req_headers["X-Hub-Role"] = hub_user.get("role", "")
 
     async with httpx.AsyncClient(timeout=120.0) as client:
         resp = await client.request(

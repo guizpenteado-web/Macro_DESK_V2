@@ -130,7 +130,7 @@ export default function AlertasPage() {
                     {TYPE_LABELS[a.type] ?? a.type}
                   </span>
                   <span className="text-xs" style={{ color: "var(--text3)" }}>
-                    {a.ref_date}
+                    Público em {a.ref_date}
                   </span>
                   {!a.is_read && <span className="w-2 h-2 rounded-full" style={{ background: "var(--gold)" }} />}
                 </div>

@@ -33,6 +33,26 @@ body {
   border-radius: 12px;
 }
 
+.smb-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  color: var(--text2);
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.smb-nav-btn:hover {
+  border-color: var(--text3);
+  color: var(--text);
+}
+.smb-nav-btn.active {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: var(--gold2);
+}
+
 .smb-badge {
   display: inline-block;
   padding: 2px 8px;
