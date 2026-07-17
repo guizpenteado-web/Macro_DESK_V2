@@ -178,7 +178,16 @@ def search_funds(
     # stock, so listing them here just leads to a fund page with permanently
     # empty tables. Restrict search to funds that have at least one recorded
     # equity holding (ever), which is the only subset this app has data for.
-    has_equity = select(FundHolding.fund_id).distinct().subquery()
+    # Achado 16/jul/2026 (usado pelo GlobalSearch a cada tecla digitada,
+    # debounce de 250ms): quando "search" vem preenchido, filtra o texto
+    # AQUI (contra Fund.name/cnpj) antes do DISTINCT em fund_holdings (8
+    # milhoes de linhas) — sem isso o DISTINCT sempre escaneava a tabela
+    # inteira, mesmo pra uma busca especifica que so bate em poucos fundos.
+    has_equity_q = select(FundHolding.fund_id).distinct()
+    if search:
+        matching_fund_ids = select(Fund.id).where(Fund.name.ilike(f"%{search}%") | Fund.cnpj.ilike(f"%{search}%"))
+        has_equity_q = has_equity_q.where(FundHolding.fund_id.in_(matching_fund_ids))
+    has_equity = has_equity_q.subquery()
 
     # Latest fund_quota row per fund (patrimonio/cotistas/data de divulgacao) —
     # joined in SQL so nav/cotistas/data filters can run as indexed WHERE

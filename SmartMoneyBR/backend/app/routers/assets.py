@@ -117,6 +117,24 @@ def search_assets(
         stmt = stmt.where(Asset.ticker.ilike(f"%{search}%") | Asset.company_name.ilike(f"%{search}%"))
     if asset_type:
         stmt = stmt.where(Asset.asset_type == asset_type)
+
+    # Mesmo fix de perf de funds.py::search_funds (16/jul/2026): "ticker" e' a
+    # unica coluna nativa aqui (total_market_value/return_pct_12m sao
+    # calculados via agregacao de fund_holdings, nao dao pra ordenar em SQL)
+    # — quando o sort e' por ticker e nao ha filtro de valor/retorno, corta
+    # pro limit ANTES de calcular holdings/retorno, em vez de calcular pra
+    # todo o resultado da busca (que sem filtro de texto e' todo o universo
+    # ativo, ~470 ativos).
+    needs_full_scan = (
+        sort_by in ("total_market_value", "return_pct_12m")
+        or min_total_market_value is not None
+        or min_return_pct is not None
+        or max_return_pct is not None
+    )
+    if not needs_full_scan:
+        order_expr = Asset.ticker.desc() if sort_dir == "desc" else Asset.ticker.asc()
+        stmt = stmt.order_by(order_expr).limit(limit)
+
     assets = db.execute(stmt).scalars().all()
 
     asset_ids = [a.id for a in assets]
@@ -124,6 +142,9 @@ def search_assets(
     return_by_asset = _return_pct_12m_by_asset(db, asset_ids, latest)
 
     out = [_to_asset_out(a, latest, return_by_asset) for a in assets]
+
+    if not needs_full_scan:
+        return out
 
     if min_total_market_value is not None:
         out = [o for o in out if o.total_market_value is not None and o.total_market_value >= min_total_market_value]
