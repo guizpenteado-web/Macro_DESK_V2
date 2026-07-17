@@ -5,6 +5,7 @@ diminuiu — all with % relative to the prior position.
 """
 from __future__ import annotations
 
+import time
 from datetime import date
 
 from fastapi import APIRouter, Depends, Query
@@ -17,12 +18,35 @@ from app.services.returns import REBASE_RATIO_HIGH, REBASE_RATIO_LOW, compute_wi
 
 router = APIRouter(prefix="/api", tags=["performance"])
 
+# Achado 16/jul/2026: top_performers (~4,7s) e flow_evolution (~5s) nao tem
+# como empurrar sort+limit pro SQL feito nos outros endpoints (top_performers
+# precisa da serie de cota inteira de cada fundo pra detectar rebase antes de
+# saber o retorno real; flow_evolution agrega FundAssetMovement inteiro, sem
+# filtro nenhum pra restringir). Os dois so mudam quando os jobs diarios
+# (CDA/cota) rodam, entao cache simples em memoria (mesmo padrao ja usado em
+# unified_server.py pro calendario) elimina o recalculo repetido sem mudar
+# a logica de calculo em si. TTL de 1h e' folga suficiente (jobs sao 1-2x/dia).
+_CACHE_TTL = 3600.0
+_top_performers_cache: dict[tuple[int, int], tuple[float, dict]] = {}
+_flow_evolution_cache: dict[str, float | dict | None] = {"ts": 0.0, "data": None}
+
 
 @router.get("/rankings/top-performers")
 def top_performers(years: int = Query(20, ge=1, le=26), limit: int = 20, db: Session = Depends(get_db)):
     """Top N funds by REAL return (quota value growth), restricted to funds
     that hold at least one equity position (so clicking through always leads
     to a fund page with actual holdings/movements to show)."""
+    cache_key = (years, limit)
+    cached = _top_performers_cache.get(cache_key)
+    if cached and time.time() - cached[0] < _CACHE_TTL:
+        return cached[1]
+
+    result = _compute_top_performers(years, limit, db)
+    _top_performers_cache[cache_key] = (time.time(), result)
+    return result
+
+
+def _compute_top_performers(years: int, limit: int, db: Session) -> dict:
     max_date = db.execute(select(func.max(FundQuota.ref_date))).scalar_one_or_none()
     if max_date is None:
         return {"window_years": years, "as_of": None, "rows": []}
@@ -122,6 +146,15 @@ def flow_evolution(db: Session = Depends(get_db)):
     comprando junto'. coordination_score combina as duas dimensoes (valor
     ACIMA da media × fundos ACIMA da media) pra achar os meses onde ambas
     coincidiram, que e o sinal real de fluxo institucional coordenado."""
+    if _flow_evolution_cache["data"] is not None and time.time() - _flow_evolution_cache["ts"] < _CACHE_TTL:
+        return _flow_evolution_cache["data"]
+    result = _compute_flow_evolution(db)
+    _flow_evolution_cache["data"] = result
+    _flow_evolution_cache["ts"] = time.time()
+    return result
+
+
+def _compute_flow_evolution(db: Session) -> dict:
     # O primeiro mes com dado (CDA comeca em 2024-07) e um artefato: TODO
     # fundo aparece como NEW nesse mes so porque nao existe mes anterior pra
     # comparar (nao tem prior_ref_date) — nao e sinal real de compra
