@@ -413,8 +413,10 @@ export const api = {
     ),
   getInsiderCargos: () => apiGet<string[]>(`/api/insiders/cargos`),
 
-  getAlerts: (onlyUnread = false, type = "", search = "") =>
-    apiGet<Alert[]>(`/api/alerts?${buildQuery({ only_unread: onlyUnread ? "true" : undefined, type, search, limit: 200 })}`),
+  getAlerts: (onlyUnread = false, type = "", search = "", dateFrom = "", dateTo = "") =>
+    apiGet<Alert[]>(
+      `/api/alerts?${buildQuery({ only_unread: onlyUnread ? "true" : undefined, type, search, date_from: dateFrom, date_to: dateTo, limit: 200 })}`
+    ),
   getUnreadAlertCount: () => apiGet<{ unread: number }>(`/api/alerts/unread-count`),
   markAlertRead: (id: number) => apiPost<Alert>(`/api/alerts/${id}/read`),
   markAllAlertsRead: () => apiPost<{ ok: boolean }>(`/api/alerts/read-all`),

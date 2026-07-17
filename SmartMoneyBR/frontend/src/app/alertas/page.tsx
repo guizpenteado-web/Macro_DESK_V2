@@ -41,27 +41,30 @@ function entityHref(a: Alert): string | null {
 
 export default function AlertasPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [onlyUnread, setOnlyUnread] = useState(true);
+  const [onlyUnread, setOnlyUnread] = useState(false);
   const [type, setType] = useState("");
   const [q, setQ] = useState("");
+  const [showDateFilter, setShowDateFilter] = useState(false);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
     const handle = setTimeout(() => {
       api
-        .getAlerts(onlyUnread, type, q)
+        .getAlerts(onlyUnread, type, q, dateFrom, dateTo)
         .then(setAlerts)
         .catch(() => setAlerts([]))
         .finally(() => setLoading(false));
     }, 300);
     return () => clearTimeout(handle);
-  }, [onlyUnread, type, q]);
+  }, [onlyUnread, type, q, dateFrom, dateTo]);
 
   function load() {
     setLoading(true);
     api
-      .getAlerts(onlyUnread, type, q)
+      .getAlerts(onlyUnread, type, q, dateFrom, dateTo)
       .then(setAlerts)
       .catch(() => setAlerts([]))
       .finally(() => setLoading(false));
@@ -117,6 +120,42 @@ export default function AlertasPage() {
             </button>
           ))}
         </div>
+        <button
+          className="smb-card px-3 py-1.5 text-sm"
+          style={{ color: showDateFilter || dateFrom || dateTo ? "var(--gold)" : "var(--text2)" }}
+          onClick={() => setShowDateFilter(!showDateFilter)}
+        >
+          Filtrar por data
+        </button>
+        {showDateFilter && (
+          <div className="flex gap-2 items-center">
+            <input
+              type="date"
+              className="smb-card px-2 py-1.5 text-sm outline-none"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
+            <span className="text-xs" style={{ color: "var(--text3)" }}>até</span>
+            <input
+              type="date"
+              className="smb-card px-2 py-1.5 text-sm outline-none"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+            />
+            {(dateFrom || dateTo) && (
+              <button
+                className="text-xs px-2 py-1"
+                style={{ color: "var(--text3)" }}
+                onClick={() => {
+                  setDateFrom("");
+                  setDateTo("");
+                }}
+              >
+                limpar
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="space-y-2">
