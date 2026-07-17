@@ -1,3 +1,4 @@
+import bisect
 from datetime import date, timedelta
 from typing import Literal
 
@@ -295,11 +296,30 @@ def get_asset_holders(
     # ~9% pre-2023 (backfill historico do CDA_HIST ainda nao tem o PL_
     # completo pra esses anos) — fallback abaixo cobre esse gap.
     fund_ids = list({fund_id for fund_id, *_ in holder_data})
+
+    # Nav/quota so precisam cobrir NAV_STALENESS_MAX_DAYS pra tras de cada
+    # holding_date — e' o proprio corte que nav_as_of/quota_fallback aplicam
+    # (nunca usam uma linha mais velha que isso), entao restringir a busca a
+    # essa janela e' identico ao resultado anterior, so' que sem buscar linha
+    # que seria descartada de qualquer forma. portfolio_totals so' e' lido
+    # pelas datas EXATAS dos holders (chave e' (fund_id, h_ref_date), nao a
+    # data do nav/cota) — IN exato em vez de range.
+    # Achado 17/jul/2026: sem nenhum filtro de data, PETR4 (1560 fundos)
+    # buscava 211 mil linhas de NAV/cota/holding so' pra montar essa resposta
+    # — ~5s so' de ida-e-volta no banco.
     nav_by_fund_date: dict[tuple[int, date], float] = {}
     navs_by_fund: dict[int, list[FundNav]] = {}
+    quotas_by_fund: dict[int, list[FundQuota]] = {}
+    portfolio_totals: dict[tuple[int, date], float] = {}
     if fund_ids:
+        holding_dates_all = {h_ref_date for _fid, _n, _c, h_ref_date, *_rest in holder_data}
+        lookback_start = min(holding_dates_all) - timedelta(days=nav_lookup.NAV_STALENESS_MAX_DAYS)
+        lookback_end = max(holding_dates_all)
+
         nav_rows = db.execute(
-            select(FundNav).where(FundNav.fund_id.in_(fund_ids)).order_by(FundNav.fund_id, FundNav.ref_date)
+            select(FundNav)
+            .where(FundNav.fund_id.in_(fund_ids), FundNav.ref_date >= lookback_start, FundNav.ref_date <= lookback_end)
+            .order_by(FundNav.fund_id, FundNav.ref_date)
         ).scalars()
         for n in nav_rows:
             if (n.fund_id, n.ref_date) in KNOWN_BAD_NAV_POINTS:
@@ -307,21 +327,24 @@ def get_asset_holders(
             nav_by_fund_date[(n.fund_id, n.ref_date)] = float(n.net_asset_value)
             navs_by_fund.setdefault(n.fund_id, []).append(n)
 
-    # Fallback pra quando FundNav nao cobre o periodo (essencialmente so
-    # pre-2023) — mesma logica de plausibilidade validada antes (piso de
-    # posicao/carteira com folga de alavancagem e ruido de marcacao), agora
-    # so usada como segunda linha, nao mais a fonte principal.
-    quotas_by_fund: dict[int, list[FundQuota]] = {}
-    portfolio_totals: dict[tuple[int, date], float] = {}
-    if fund_ids:
+        # Fallback pra quando FundNav nao cobre o periodo (essencialmente so
+        # pre-2023) — mesma logica de plausibilidade validada antes (piso de
+        # posicao/carteira com folga de alavancagem e ruido de marcacao), agora
+        # so usada como segunda linha, nao mais a fonte principal. Tambem
+        # alimenta n_shareholders_as_of, que so' informativo e nao tem corte
+        # de atraso proprio — a mesma janela de NAV_STALENESS_MAX_DAYS pode
+        # ocasionalmente deixar de mostrar cotistas de um fundo com entrega
+        # bem atrasada, troca aceitavel pela velocidade (era o maior custo).
         quota_rows = db.execute(
-            select(FundQuota).where(FundQuota.fund_id.in_(fund_ids)).order_by(FundQuota.fund_id, FundQuota.ref_date)
+            select(FundQuota)
+            .where(FundQuota.fund_id.in_(fund_ids), FundQuota.ref_date >= lookback_start, FundQuota.ref_date <= lookback_end)
+            .order_by(FundQuota.fund_id, FundQuota.ref_date)
         ).scalars()
         for q in quota_rows:
             quotas_by_fund.setdefault(q.fund_id, []).append(q)
         portfolio_rows = db.execute(
             select(FundHolding.fund_id, FundHolding.ref_date, func.sum(FundHolding.market_value))
-            .where(FundHolding.fund_id.in_(fund_ids))
+            .where(FundHolding.fund_id.in_(fund_ids), FundHolding.ref_date.in_(holding_dates_all))
             .group_by(FundHolding.fund_id, FundHolding.ref_date)
         ).all()
         for fid, rd, total in portfolio_rows:
@@ -376,13 +399,14 @@ def get_asset_holders(
         ).all()
         prices_sorted = [(r.trade_date, float(r.close)) for r in price_rows]
 
+    # bisect em vez de scan linear: com >1.5 mil holders chamando price_as_of
+    # (uma por linha), varrer prices_sorted inteiro a cada chamada custava
+    # centenas de milhares de comparacoes so' nisso.
+    price_dates_only = [d for d, _ in prices_sorted]
+
     def price_as_of(holding_date: date) -> float | None:
-        best = None
-        for d, price in prices_sorted:
-            if d > holding_date:
-                break
-            best = price
-        return best
+        idx = bisect.bisect_right(price_dates_only, holding_date) - 1
+        return prices_sorted[idx][1] if idx >= 0 else None
 
     results = []
     for fund_id, name, cnpj, h_ref_date, quantity, market_value, classification, qty_delta in holder_data:

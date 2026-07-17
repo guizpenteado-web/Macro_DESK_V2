@@ -112,32 +112,25 @@ export default function CarteiraPage() {
             {results.map((a) => {
               const already = inPortfolio.has(a.id);
               return (
-                <div key={a.id} className="w-full px-3 py-2 text-sm flex items-center justify-between gap-2">
-                  <Link
-                    href={`/ativos/${a.id}`}
-                    className="flex-1 min-w-0"
-                    onClick={() => {
-                      setOpen(false);
-                      setQ("");
-                    }}
-                  >
+                <button
+                  key={a.id}
+                  onClick={() => !already && addAsset(a.id)}
+                  disabled={already}
+                  className="w-full px-3 py-2 text-sm flex items-center justify-between gap-2 text-left"
+                  style={{ cursor: already ? "default" : "pointer" }}
+                >
+                  <span className="flex-1 min-w-0">
                     <span style={{ color: "var(--gold)", fontWeight: 600 }}>{a.ticker}</span>
                     {a.company_name && (
                       <span className="ml-2 text-xs" style={{ color: "var(--text3)" }}>
                         {a.company_name}
                       </span>
                     )}
-                  </Link>
-                  <button
-                    onClick={() => !already && addAsset(a.id)}
-                    disabled={already}
-                    className="text-xs shrink-0"
-                    style={{ color: already ? "var(--text3)" : "var(--gold)", cursor: already ? "default" : "pointer" }}
-                    onMouseDown={(e) => e.preventDefault()}
-                  >
+                  </span>
+                  <span className="text-xs shrink-0" style={{ color: already ? "var(--text3)" : "var(--gold)" }}>
                     {already ? "já na carteira" : "+ adicionar"}
-                  </button>
-                </div>
+                  </span>
+                </button>
               );
             })}
           </div>
@@ -179,8 +172,21 @@ export default function CarteiraPage() {
                   {fmtPct(a.return_pct_12m)}
                 </td>
                 <td className="num">
-                  <button onClick={() => removeAsset(a.id)} title="Remover da carteira" style={{ color: "var(--text3)" }}>
-                    remover
+                  <button
+                    onClick={() => removeAsset(a.id)}
+                    title="Remover da carteira"
+                    className="smb-card"
+                    style={{
+                      color: "var(--red)",
+                      width: 26,
+                      height: 26,
+                      lineHeight: "24px",
+                      textAlign: "center",
+                      padding: 0,
+                      borderRadius: 6,
+                    }}
+                  >
+                    ✕
                   </button>
                 </td>
               </tr>
