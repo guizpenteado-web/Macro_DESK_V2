@@ -15,6 +15,8 @@ const KINDS = [
   { key: "most-closed", label: "Zeragens" },
 ];
 
+const NEW_POSITIONS_SINCE_MARCH = "2026-03-01";
+
 function fmtBRL(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 }
@@ -24,7 +26,9 @@ export default function RankingsPage() {
   const [rows, setRows] = useState<RankingRow[]>([]);
   const [consensusRows, setConsensusRows] = useState<ConsensusRow[]>([]);
   const [refDate, setRefDate] = useState<string | null>(null);
+  const [refDateFrom, setRefDateFrom] = useState<string | null>(null);
   const [consensus, setConsensus] = useState(false);
+  const [sinceMarch, setSinceMarch] = useState(false);
 
   const rankSort = useSort<"ticker" | "n_funds" | "net_qty_delta" | "net_value_delta">();
   const sortedRows = rankSort.sortKey ? sortRows(rows, (r) => r[rankSort.sortKey!], rankSort.sortDir) : rows;
@@ -41,21 +45,27 @@ export default function RankingsPage() {
         setRefDate(r.ref_date);
       });
     } else {
-      api.getRanking(kind).then((r) => {
+      const since = kind === "most-new" && sinceMarch ? NEW_POSITIONS_SINCE_MARCH : undefined;
+      api.getRanking(kind, since).then((r) => {
         setRows(r.rows);
         setRefDate(r.ref_date);
+        setRefDateFrom(r.ref_date_from);
       });
     }
-  }, [kind, consensus]);
+  }, [kind, consensus, sinceMarch]);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">Rankings</h1>
-        {refDate && <span className="text-sm" style={{ color: "var(--text3)" }}>Referência: {refDate}</span>}
+        {refDate && (
+          <span className="text-sm" style={{ color: "var(--text3)" }}>
+            Referência: {!consensus && refDateFrom ? `${refDateFrom} a ${refDate}` : refDate}
+          </span>
+        )}
       </div>
 
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-wrap items-center">
         {KINDS.map((k) => (
           <button
             key={k.key}
@@ -76,6 +86,15 @@ export default function RankingsPage() {
         >
           Consenso institucional
         </button>
+        {!consensus && kind === "most-new" && (
+          <button
+            onClick={() => setSinceMarch((v) => !v)}
+            className="smb-card px-3 py-1.5 text-sm"
+            style={{ color: sinceMarch ? "var(--gold)" : "var(--text2)" }}
+          >
+            Desde março
+          </button>
+        )}
       </div>
 
       <div className="smb-card smb-table-wrap">

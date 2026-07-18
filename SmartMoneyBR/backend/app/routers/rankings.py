@@ -30,10 +30,26 @@ _KIND_TO_CLASS = {
 
 
 @router.get("/{kind}")
-def get_ranking(kind: RankingKind, ref_date: date | None = None, limit: int = 20, db: Session = Depends(get_db)):
+def get_ranking(
+    kind: RankingKind,
+    ref_date: date | None = None,
+    ref_date_from: date | None = None,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+):
     target_date = ref_date or latest_movements_ref_date(db)
     if target_date is None:
         return {"ref_date": None, "rows": []}
+
+    # ref_date_from turns the single-month snapshot into a range: every
+    # fund+asset movement row from that month onward is folded into one
+    # aggregate (e.g. all NEW positions opened since March, not just the
+    # latest month's).
+    date_filter = (
+        FundAssetMovement.ref_date.between(ref_date_from, target_date)
+        if ref_date_from
+        else FundAssetMovement.ref_date == target_date
+    )
 
     if kind in (RankingKind.most_bought, RankingKind.most_sold):
         # Gross buying/selling pressure: sum of value_delta restricted to the
@@ -54,7 +70,7 @@ def get_ranking(kind: RankingKind, ref_date: date | None = None, limit: int = 20
             )
             .join(FundAssetMovement, FundAssetMovement.asset_id == Asset.id)
             .where(
-                FundAssetMovement.ref_date == target_date,
+                date_filter,
                 FundAssetMovement.classification.in_(classes),
                 Asset.is_active.is_(True),
             )
@@ -75,7 +91,7 @@ def get_ranking(kind: RankingKind, ref_date: date | None = None, limit: int = 20
             )
             .join(FundAssetMovement, FundAssetMovement.asset_id == Asset.id)
             .where(
-                FundAssetMovement.ref_date == target_date,
+                date_filter,
                 FundAssetMovement.classification == classification,
                 Asset.is_active.is_(True),
             )
@@ -90,6 +106,7 @@ def get_ranking(kind: RankingKind, ref_date: date | None = None, limit: int = 20
     rows = db.execute(stmt).all()
     return {
         "ref_date": target_date,
+        "ref_date_from": ref_date_from,
         "kind": kind.value,
         "rows": [
             {

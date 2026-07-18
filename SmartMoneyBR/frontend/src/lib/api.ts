@@ -380,7 +380,10 @@ export const api = {
     }>(`/api/assets/${id}/movements`),
   getAssetTimeline: (id: number) => apiGet<AssetTimelinePoint[]>(`/api/assets/${id}/timeline`),
 
-  getRanking: (kind: string) => apiGet<{ ref_date: string; rows: RankingRow[] }>(`/api/rankings/${kind}`),
+  getRanking: (kind: string, refDateFrom?: string) =>
+    apiGet<{ ref_date: string; ref_date_from: string | null; rows: RankingRow[] }>(
+      `/api/rankings/${kind}?${buildQuery({ ref_date_from: refDateFrom })}`
+    ),
   getConsensus: () => apiGet<{ ref_date: string; rows: ConsensusRow[] }>(`/api/rankings/consensus/top`),
 
   getBuybacks: (filters: BuybackFilters = {}) =>
