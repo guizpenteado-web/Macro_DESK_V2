@@ -15,7 +15,7 @@ const KINDS = [
   { key: "most-closed", label: "Zeragens" },
 ];
 
-const NEW_POSITIONS_SINCE_MARCH = "2026-03-01";
+const SINCE_MARCH = "2026-03-01";
 
 function fmtBRL(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -45,7 +45,7 @@ export default function RankingsPage() {
         setRefDate(r.ref_date);
       });
     } else {
-      const since = kind === "most-new" && sinceMarch ? NEW_POSITIONS_SINCE_MARCH : undefined;
+      const since = sinceMarch ? SINCE_MARCH : undefined;
       api.getRanking(kind, since).then((r) => {
         setRows(r.rows);
         setRefDate(r.ref_date);
@@ -86,7 +86,7 @@ export default function RankingsPage() {
         >
           Consenso institucional
         </button>
-        {!consensus && kind === "most-new" && (
+        {!consensus && (
           <button
             onClick={() => setSinceMarch((v) => !v)}
             className="smb-card px-3 py-1.5 text-sm"
