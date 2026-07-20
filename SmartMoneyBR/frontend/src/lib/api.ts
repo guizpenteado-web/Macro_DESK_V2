@@ -379,6 +379,16 @@ export const api = {
       movements: unknown[];
     }>(`/api/assets/${id}/movements`),
   getAssetTimeline: (id: number) => apiGet<AssetTimelinePoint[]>(`/api/assets/${id}/timeline`),
+  getAssetFlowAccumulated: (id: number, months: number) =>
+    apiGet<{
+      ref_date_from: string | null;
+      ref_date_to: string | null;
+      n_months: number;
+      net_qty_delta: number;
+      net_value_delta: number;
+      n_funds_buying: number;
+      n_funds_selling: number;
+    }>(`/api/assets/${id}/flow-accumulated?months=${months}`),
 
   getRanking: (kind: string, refDateFrom?: string) =>
     apiGet<{ ref_date: string; ref_date_from: string | null; rows: RankingRow[] }>(

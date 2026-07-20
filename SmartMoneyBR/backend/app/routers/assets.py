@@ -470,6 +470,53 @@ def get_asset_movements(asset_id: int, ref_date: date | None = None, db: Session
     }
 
 
+@router.get("/{asset_id}/flow-accumulated")
+def get_asset_flow_accumulated(asset_id: int, months: int = Query(3, ge=1, le=24), db: Session = Depends(get_db)):
+    """Fluxo liquido acumulado nos ultimos N meses de divulgacao (pode ser
+    negativo) — soma o value_delta/qty_delta de FundAssetMovement (mudanca
+    real de posicao, nao contaminada por variacao de preco) por fundo ao
+    longo da janela, igual ao card de fluxo do mes só que em N competencias
+    seguidas. n_funds_buying/selling e' pelo SALDO do fundo na janela inteira
+    (um fundo que aumentou em um mes e reduziu em outro conta pelo liquido,
+    nao pelos dois eventos separados)."""
+    ref_dates = db.execute(
+        select(func.distinct(FundAssetMovement.ref_date))
+        .where(FundAssetMovement.asset_id == asset_id)
+        .order_by(FundAssetMovement.ref_date.desc())
+        .limit(months)
+    ).scalars().all()
+
+    if not ref_dates:
+        return {
+            "ref_date_from": None,
+            "ref_date_to": None,
+            "n_months": 0,
+            "net_qty_delta": 0,
+            "net_value_delta": 0,
+            "n_funds_buying": 0,
+            "n_funds_selling": 0,
+        }
+
+    rows = db.execute(
+        select(FundAssetMovement.fund_id, FundAssetMovement.qty_delta, FundAssetMovement.value_delta)
+        .where(FundAssetMovement.asset_id == asset_id, FundAssetMovement.ref_date.in_(ref_dates))
+    ).all()
+
+    net_value_by_fund: dict[int, float] = {}
+    for fund_id, qty_delta, value_delta in rows:
+        net_value_by_fund[fund_id] = net_value_by_fund.get(fund_id, 0.0) + float(value_delta)
+
+    return {
+        "ref_date_from": min(ref_dates),
+        "ref_date_to": max(ref_dates),
+        "n_months": len(ref_dates),
+        "net_qty_delta": sum(float(r.qty_delta) for r in rows),
+        "net_value_delta": sum(float(r.value_delta) for r in rows),
+        "n_funds_buying": sum(1 for v in net_value_by_fund.values() if v > 0),
+        "n_funds_selling": sum(1 for v in net_value_by_fund.values() if v < 0),
+    }
+
+
 @router.get("/{asset_id}/timeline", response_model=list[AssetTimelinePoint])
 def get_asset_timeline(asset_id: int, db: Session = Depends(get_db)):
     rows = db.execute(
