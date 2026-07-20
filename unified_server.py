@@ -1882,6 +1882,14 @@ async def api_calendar(days: int = 7) -> JSONResponse:
 _QUOTES_CACHE: dict = {"ts": 0, "data": None}
 _QUOTES_TTL = 25  # seconds — under the 30s JS poll interval
 
+# Pool persistente (criado uma única vez) para as chamadas yfinance de /api/quotes.
+# Antes um ThreadPoolExecutor novo era criado e destruído a cada request (a cada
+# ~25s): cada thread nova aciona o cache de timezone do yfinance (peewee/SQLite),
+# que guarda uma conexão por thread e nunca fecha ao a thread morrer — isso vazava
+# ~16 file descriptors por ciclo e derrubava o processo por "Too many open files"
+# em poucas horas. Reusar as mesmas 16 threads elimina o vazamento pela raiz.
+_QUOTES_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=16, thread_name_prefix="quotes")
+
 # ── MT5 DI1F33 — cache com lock para acesso thread-safe ──
 _MT5_DI_CACHE: dict = {"price": None, "change_pct": None, "ts": 0}
 import threading as _threading
@@ -2091,11 +2099,10 @@ async def api_quotes() -> JSONResponse:
 
     def _run_all():
         result: dict = {}
-        with concurrent.futures.ThreadPoolExecutor(max_workers=16) as ex:
-            futs = [ex.submit(_fetch_one, n, t) for n, t in _tickers.items()]
-            for f in concurrent.futures.as_completed(futs):
-                name, data = f.result()
-                result[name] = data
+        futs = [_QUOTES_EXECUTOR.submit(_fetch_one, n, t) for n, t in _tickers.items()]
+        for f in concurrent.futures.as_completed(futs):
+            name, data = f.result()
+            result[name] = data
         return result
 
     data = await asyncio.to_thread(_run_all)
