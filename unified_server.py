@@ -728,7 +728,7 @@ _SHELL = """<!DOCTYPE html>
 <body>
 
 <nav>
-  <div class="hub-logo">&#9670; <span>Macro Desk</span></div>
+  <div class="hub-logo"><span>Macro Desk</span></div>
   <div class="divider"></div>
 
   <button class="nav-btn active-1" id="btn1" onclick="show(1)">
@@ -1846,358 +1846,37 @@ async def api_news(tab: str = "brasil") -> JSONResponse:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-#  Economic Calendar — Investing.com via cloudscraper
+#  Economic Calendar — ForexFactory (US) + TradingEconomics (BR)
+#
+#  Classe EconomicCalendar mora em economic_calendar.py. Migração de
+#  20/jul/2026: substitui o scraping do investing.com via cloudscraper, que
+#  passou a ser bloqueado por Cloudflare tanto no IP do VPS quanto no IP
+#  residencial local. As fontes novas não bloqueiam nenhum dos dois, então
+#  o Hub busca direto — sem precisar do mecanismo de push do PC local.
 # ──────────────────────────────────────────────────────────────────────────
 
-_CAL_CACHE: dict = {"ts": 0, "data": None, "days": 0}
+from economic_calendar import EconomicCalendar
+
+# Cache por janela de dias (3/7/14 no front) — cada uma guarda seu próprio
+# {ts, data}. A própria EconomicCalendar já cacheia as fontes internamente
+# (TTL por fonte), essa camada só evita refazer o filtro/sort a cada request.
+_CAL_CACHE: dict[int, dict] = {}
 _CAL_TTL = 600  # 10 min
-
-class EconomicCalendar:
-    _scraper = None
-    _token: str | None = None
-    _token_ts: float = 0
-
-    # country IDs on investing.com
-    _COUNTRY_IDS = {"US": "5", "BR": "32"}
-
-    @classmethod
-    def _get_scraper(cls):
-        if cls._scraper is None:
-            import cloudscraper
-            cls._scraper = cloudscraper.create_scraper(
-                browser={"browser": "chrome", "platform": "windows", "mobile": False}
-            )
-        return cls._scraper
-
-    @classmethod
-    def _get_token(cls) -> str | None:
-        now = time.time()
-        if cls._token and now - cls._token_ts < 3600:
-            return cls._token
-        try:
-            s = cls._get_scraper()
-            r = s.get("https://www.investing.com/economic-calendar/", timeout=20,
-                       headers={"Accept-Language": "en-US,en;q=0.9"})
-            m = re.search(
-                r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>',
-                r.text, re.DOTALL
-            )
-            if not m:
-                return None
-            nd = json.loads(m.group(1))
-            token = cls._find_key(nd, "accessToken")
-            cls._token = token
-            cls._token_ts = now
-            return token
-        except Exception:
-            return None
-
-    @staticmethod
-    def _find_key(d, key, depth=0):
-        if depth > 10:
-            return None
-        if isinstance(d, dict):
-            if key in d:
-                return d[key]
-            for v in d.values():
-                res = EconomicCalendar._find_key(v, key, depth + 1)
-                if res:
-                    return res
-        elif isinstance(d, list):
-            for v in d:
-                res = EconomicCalendar._find_key(v, key, depth + 1)
-                if res:
-                    return res
-        return None
-
-    # ── Dicionário de tradução EN→PT ──────────────────────────────────────────
-    _TRANSLATIONS: list[tuple[str, str]] = [
-        # Períodos
-        (r"\(MoM\)",  "(M/M)"),
-        (r"\(YoY\)",  "(A/A)"),
-        (r"\(QoQ\)",  "(T/T)"),
-        (r"\(WoW\)",  "(S/S)"),
-        # Payrolls / Emprego
-        ("Nonfarm Payrolls",           "Payrolls Não-Agrícolas"),
-        ("Private Nonfarm Payrolls",   "Empregos Privados"),
-        ("Government Payrolls",        "Empregos Governo"),
-        ("Manufacturing Payrolls",     "Empregos Indústria"),
-        ("ADP Nonfarm Employment",     "Emprego Privado ADP"),
-        ("ADP Employment Change",      "Variação Emprego ADP"),
-        ("Initial Jobless Claims",     "Pedidos Seguro-Desemprego"),
-        ("Continuing Jobless Claims",  "Pedidos Contínuos Desemprego"),
-        ("Jobless Claims 4-Week Avg",  "Média 4S - Seguro-Desemprego"),
-        ("JOLTS Job Openings",         "Vagas JOLTS"),
-        ("Challenger Job Cuts",        "Demissões Challenger"),
-        ("Unemployment Rate",          "Taxa de Desemprego"),
-        ("Average Hourly Earnings",    "Remuneração Média/Hora"),
-        ("Average Weekly Hours",       "Média Horas Semanais"),
-        # Inflação EUA
-        ("Consumer Price Index",       "CPI"),
-        ("Core CPI",                   "CPI Núcleo"),
-        ("Producer Price Index",       "PPI"),
-        ("Core PPI",                   "PPI Núcleo"),
-        ("Core PCE Price Index",       "PCE Núcleo"),
-        ("PCE Price Index",            "PCE"),
-        ("Import Price Index",         "Preços de Importação"),
-        ("Export Price Index",         "Preços de Exportação"),
-        # PIB / Atividade
-        ("Gross Domestic Product",     "PIB"),
-        ("GDP",                        "PIB"),
-        ("Industrial Production",      "Produção Industrial"),
-        ("Capacity Utilization Rate",  "Utilização da Capacidade"),
-        ("Factory Orders",             "Pedidos de Fábricas"),
-        ("Durable Goods Orders",       "Pedidos Bens Duráveis"),
-        ("Business Inventories",       "Estoques Empresariais"),
-        ("Wholesale Inventories",      "Estoques Atacado"),
-        ("Retail Sales",               "Vendas no Varejo"),
-        # Habitação EUA
-        ("Housing Starts",             "Início de Construções"),
-        ("Building Permits",           "Licenças de Construção"),
-        ("Existing Home Sales",        "Vendas Casas Usadas"),
-        ("New Home Sales",             "Vendas Casas Novas"),
-        ("Case-Shiller Home Price",    "Preços Case-Shiller"),
-        ("Pending Home Sales",         "Vendas Pendentes Imóveis"),
-        # PMI
-        ("ISM Manufacturing PMI",      "PMI Industrial ISM"),
-        ("ISM Non-Manufacturing PMI",  "PMI Serviços ISM"),
-        ("ISM Services PMI",           "PMI Serviços ISM"),
-        ("S&P Global Composite PMI",   "PMI Composto S&P Global"),
-        ("S&P Global Manufacturing PMI", "PMI Industrial S&P Global"),
-        ("S&P Global Services PMI",    "PMI Serviços S&P Global"),
-        ("Chicago PMI",                "PMI Chicago"),
-        # Confiança EUA
-        ("Michigan Consumer Sentiment",    "Sentimento U. Michigan"),
-        ("Michigan Consumer Expectations", "Expectativas U. Michigan"),
-        ("Consumer Confidence",            "Confiança do Consumidor"),
-        ("NFIB Business Optimism",         "Otimismo Empresarial NFIB"),
-        # Índices Fed
-        ("Empire State Manufacturing Index", "Índice Empire State"),
-        ("Philadelphia Fed Manufacturing Index", "Índice Philly Fed"),
-        ("Dallas Fed Manufacturing Index",   "Índice Dallas Fed"),
-        ("Richmond Fed Manufacturing Index", "Índice Richmond Fed"),
-        # Fed / FOMC
-        ("Fed Interest Rate Decision",  "Decisão de Juros do Fed"),
-        ("Federal Funds Rate",          "Taxa dos Fed Funds"),
-        ("FOMC Meeting Minutes",        "Ata do FOMC"),
-        ("FOMC Statement",              "Comunicado do FOMC"),
-        ("FOMC Press Conference",       "Coletiva do Fed"),
-        ("FOMC Member",                 "Membro do FOMC"),
-        ("Fed Chair",                   "Presidente do Fed"),
-        # Comércio / Conta
-        ("Trade Balance",               "Balança Comercial"),
-        ("Current Account",             "Conta Corrente"),
-        # Veículos
-        ("Total Vehicle Sales",         "Vendas de Veículos"),
-        ("Auto Production",             "Produção de Veículos"),
-        ("Auto Sales",                  "Vendas de Veículos"),
-        # Energia
-        ("Crude Oil Inventories",       "Estoques de Petróleo"),
-        ("Crude Oil Imports",           "Importação de Petróleo"),
-        ("Cushing Crude Oil Inventories", "Estoques Petróleo Cushing"),
-        ("Natural Gas Storage",         "Armazenamento Gás Natural"),
-        ("EIA Natural Gas Storage",     "Estoques Gás Natural EIA"),
-        # Brasil
-        ("IPC-Fipe Inflation Index",    "Inflação IPC-Fipe"),
-        ("Brazilian IPCA Inflation Index SA", "IPCA Dessazonalizado"),
-        ("IPCA",                        "IPCA"),
-        ("IGP-DI Inflation Index",      "Inflação IGP-DI"),
-        ("IGP-M Inflation Index",       "Inflação IGP-M"),
-        ("BCB Focus Market Readout",    "BCB Focus"),
-        ("CFTC BRL speculative net positions", "Posições BRL (CFTC)"),
-        ("Brazilian Service Sector Growth", "Setor de Serviços"),
-        ("Brazil Thomson Reuters IPSOS PCSI", "Confiança Consumidor (Thomson Reuters)"),
-        # Genérico
-        ("Consumer Prices",             "Preços ao Consumidor"),
-        ("Producer Prices",             "Preços ao Produtor"),
-        ("Interest Rate Decision",      "Decisão de Juros"),
-        ("Foreign Exchange Reserves",   "Reservas Cambiais"),
-        ("Foreign Reserves",            "Reservas Externas"),
-        ("Net FX Reserves",             "Reservas Líquidas (FX)"),
-        ("speculative net positions",   "posições especulativas"),
-        ("Inflation Index",             "Índice de Inflação"),
-        ("Inflation Rate",              "Taxa de Inflação"),
-        # Leilões Tesouraria EUA
-        ("2-Year Note Auction",         "Leilão T-Note 2 Anos"),
-        ("3-Year Note Auction",         "Leilão T-Note 3 Anos"),
-        ("5-Year Note Auction",         "Leilão T-Note 5 Anos"),
-        ("7-Year Note Auction",         "Leilão T-Note 7 Anos"),
-        ("10-Year Note Auction",        "Leilão T-Note 10 Anos"),
-        ("20-Year Bond Auction",        "Leilão T-Bond 20 Anos"),
-        ("30-Year Bond Auction",        "Leilão T-Bond 30 Anos"),
-        ("Note Auction",                "Leilão de T-Note"),
-        ("Bond Auction",                "Leilão de T-Bond"),
-        ("Bill Auction",                "Leilão de T-Bill"),
-        # ISM preços
-        ("ISM Non-Manufacturing Prices","Preços Serviços ISM"),
-        ("ISM Manufacturing Prices",    "Preços Indústria ISM"),
-        ("ISM Non-Manufacturing Employment", "Emprego Serviços ISM"),
-        ("ISM Manufacturing Employment","Emprego Indústria ISM"),
-        ("ISM Non-Manufacturing New Orders", "Novos Pedidos Serviços ISM"),
-        # Genérico
-        ("Speaks",                      "Discursa"),
-        ("Statement",                   "Comunicado"),
-        ("Minutes",                     "Ata"),
-        ("Decision",                    "Decisão"),
-        ("Prices",                      "Preços"),
-        ("Employment",                  "Emprego"),
-        ("New Orders",                  "Novos Pedidos"),
-        ("Production",                  "Produção"),
-        ("Inventories",                 "Estoques"),
-        ("Exports",                     "Exportações"),
-        ("Imports",                     "Importações"),
-        ("Services",                    "Serviços"),
-        ("Manufacturing",               "Indústria"),
-        ("Composite",                   "Composto"),
-    ]
-
-    @classmethod
-    def _translate(cls, name: str) -> str:
-        for pattern, replacement in cls._TRANSLATIONS:
-            if pattern.startswith("(") and pattern.endswith(")") and "\\" in pattern:
-                name = re.sub(pattern, replacement, name)
-            else:
-                name = name.replace(pattern, replacement)
-        return name
-
-    @classmethod
-    def _parse_html(cls, html: str) -> list[dict]:
-        soup = BeautifulSoup(html, "html.parser")
-        events = []
-        for row in soup.find_all("tr"):
-            if "js-event-item" not in row.get("class", []):
-                continue
-            dt_str = row.get("data-event-datetime", "")
-            try:
-                dt = datetime.strptime(dt_str, "%Y/%m/%d %H:%M:%S")
-                date_fmt = dt.strftime("%a, %d %b %Y")
-                time_fmt = dt.strftime("%H:%M")
-                dt_iso = dt.isoformat()
-            except ValueError:
-                date_fmt, time_fmt, dt_iso = "", "", ""
-
-            # Currency / country
-            flag_td = row.find("td", class_="flagCur")
-            currency = ""
-            country = ""
-            if flag_td:
-                span = flag_td.find("span", class_=re.compile(r"ceFlags"))
-                if span:
-                    cls_list = [c for c in span.get("class", []) if c != "ceFlags"]
-                    country = cls_list[0].replace("_", " ") if cls_list else ""
-                # text node after span
-                text_nodes = [t for t in flag_td.strings if t.strip()]
-                currency = text_nodes[-1].strip() if text_nodes else ""
-
-            # Impact: count grayFullBullishIcon
-            sent_td = row.find("td", class_="sentiment")
-            bulls = sent_td.find_all("i", class_="grayFullBullishIcon") if sent_td else []
-            impact_map = {1: "Low", 2: "Medium", 3: "High"}
-            impact = impact_map.get(len(bulls), "Low")
-
-            # Event name (translated to PT)
-            event_td = row.find("td", class_="event")
-            event_name = cls._translate(event_td.get_text(strip=True)) if event_td else ""
-
-            # Actual / forecast / previous
-            def _cell(cls_name):
-                el = row.find("td", class_=cls_name)
-                return el.get_text(strip=True) if el else ""
-
-            actual   = _cell("act")
-            forecast = _cell("fore")
-            previous = row.find("td", class_="prev")
-            previous = previous.get_text(strip=True) if previous else ""
-
-            events.append({
-                "datetime": dt_iso,
-                "date": date_fmt,
-                "time": time_fmt,
-                "country": country,
-                "currency": currency,
-                "impact": impact,
-                "event": event_name,
-                "actual": actual,
-                "forecast": forecast,
-                "previous": previous,
-            })
-        return events
-
-    @classmethod
-    def fetch(cls, countries: list[str], importances: list[str], days: int = 7) -> list[dict]:
-        s = cls._get_scraper()
-        token = cls._get_token()
-        today = datetime.now()
-        payload: dict = {
-            "country[]":    [cls._COUNTRY_IDS.get(c, c) for c in countries],
-            "importance[]": importances,
-            "dateFrom":     today.strftime("%Y-%m-%d"),
-            "dateTo":       (today + timedelta(days=days)).strftime("%Y-%m-%d"),
-            "timeZone":     "8",
-            "timeFilter":   "timeRemain",
-            "currentTab":   "custom",
-            "submitFilters":"1",
-            "limit_from":   "0",
-        }
-        hdrs = {
-            "X-Requested-With": "XMLHttpRequest",
-            "Accept": "*/*",
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Referer": "https://www.investing.com/economic-calendar/",
-        }
-        if token:
-            hdrs["Authorization"] = f"Bearer {token}"
-        r = s.post(
-            "https://www.investing.com/economic-calendar/Service/getCalendarFilteredData",
-            data=payload, headers=hdrs, timeout=25
-        )
-        html = r.json().get("data", "")
-        return cls._parse_html(html)
-
-    @classmethod
-    def fetch_us_high_medium(cls, days: int = 7) -> list[dict]:
-        # importance: 1=Low, 2=Medium, 3=High on investing.com
-        return cls.fetch(["US"], ["3", "2"], days)
-
-    @classmethod
-    def fetch_brazil_high_medium(cls, days: int = 7) -> list[dict]:
-        # Brasil quase não tem eventos marcados "High" nessa fonte (mesmo CPI e
-        # Vendas no Varejo ficam em "Medium") — High-only deixaria a seção
-        # praticamente sempre vazia, por isso mantém High+Medium.
-        return cls.fetch(["BR"], ["3", "2"], days)
-
-    @classmethod
-    def fetch_filtered(cls, days: int = 7) -> list[dict]:
-        """Brazil High+Medium + US High+Medium, sorted by datetime."""
-        br   = cls.fetch(["BR"], ["3", "2"], days)
-        us   = cls.fetch(["US"], ["3", "2"], days)
-        combined = br + us
-        combined.sort(key=lambda e: e.get("datetime", ""))
-        return combined
-
 
 @app.get("/api/calendar")
 async def api_calendar(days: int = 7) -> JSONResponse:
-    now = time.time()
-    if _CAL_CACHE["data"] and _CAL_CACHE["days"] == days and now - _CAL_CACHE["ts"] < _CAL_TTL:
-        return JSONResponse(_CAL_CACHE["data"])
+    cached = _CAL_CACHE.get(days)
+    if cached and cached.get("data") and time.time() - cached["ts"] < _CAL_TTL:
+        return JSONResponse(cached["data"])
     try:
         data = await asyncio.to_thread(EconomicCalendar.fetch_filtered, days)
-        _CAL_CACHE["data"] = data
-        _CAL_CACHE["ts"]   = now
-        _CAL_CACHE["days"] = days
+        _CAL_CACHE[days] = {"ts": time.time(), "data": data}
         return JSONResponse(data)
-    except Exception as e:
-        # Fallback pra cache velho (mesmo passado do TTL de 10min) em vez de
-        # 500 puro — achado 16/jul/2026: no VPS, investing.com devolve 403
-        # "Just a moment..." (desafio Cloudflare Turnstile), que o
-        # cloudscraper nao consegue resolver sem servico de CAPTCHA pago
-        # (funciona no IP residencial local, bloqueado no IP de datacenter
-        # do VPS — nao e' bug de codigo, e' bloqueio de IP). Servir o ultimo
-        # dado bom conhecido, mesmo desatualizado, e' melhor que nada.
-        if _CAL_CACHE["data"] and _CAL_CACHE["days"] == days:
-            return JSONResponse(_CAL_CACHE["data"])
-        return JSONResponse({"error": str(e)}, status_code=500)
+    except Exception:
+        # cai pro cache velho (mesmo expirado) em vez de vazio, se existir
+        if cached and cached.get("data"):
+            return JSONResponse(cached["data"])
+        return JSONResponse([])
 
 
 _QUOTES_CACHE: dict = {"ts": 0, "data": None}
