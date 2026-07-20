@@ -1,20 +1,22 @@
 """Calendário econômico BR+US.
 
-US: ForexFactory (nfs.faireconomy.media) — feed JSON público e gratuito,
-impacto (Low/Medium/High) já vem pronto. Tem rate-limit agressivo (429 fácil
-em requests repetidos), por isso cacheado com TTL generoso (_FF_TTL).
+Ambas as fontes vêm da página pública do TradingEconomics (não a API paga):
+tradingeconomics.com/brazil/calendar e tradingeconomics.com/united-states/calendar
+— HTML server-rendered, sem bloqueio Cloudflare (ao contrário do investing.com,
+que bloqueou tanto o IP do VPS quanto o residencial local desde 17/jul/2026).
 
-BR: página pública do TradingEconomics (tradingeconomics.com/brazil/calendar)
-— não tem o bloqueio Cloudflare que o investing.com passou a ter (nem do IP
-do VPS nem do residencial local). Essa página gratuita não expõe nível de
-importância por evento (isso só vem na API paga), por isso usamos uma
-whitelist curada (_BR_WHITELIST) com os eventos relevantes e impacto manual.
+Essas páginas gratuitas não expõem nível de importância por evento (isso só
+vem na API paga), por isso usamos whitelists curadas (_BR_WHITELIST,
+_US_WHITELIST) com os eventos relevantes e impacto (High/Medium) manual —
+o mesmo padrão pros dois países.
 
 Migração de 20/jul/2026 — substitui o scraping do investing.com via
-cloudscraper (bloqueado por desafio Cloudflare tanto no IP do VPS quanto no
-IP residencial local desde 17/jul/2026) e elimina o mecanismo de push do PC
-local, que só existia pra contornar esse bloqueio por IP — como as fontes
-novas não bloqueiam nenhum dos dois IPs, o Hub busca direto.
+cloudscraper e elimina o mecanismo de push do PC local, que só existia pra
+contornar o bloqueio por IP. Ajuste de 20/jul/2026 (mesmo dia): a primeira
+versão usava o feed do ForexFactory pro US, mas esse feed só cobre "essa
+semana" (sem next-week/month), deixando o calendário quase vazio em semanas
+fracas — trocado pelo TradingEconomics também, que tem horizonte de várias
+semanas à frente igual o BR.
 """
 
 import re
@@ -26,20 +28,19 @@ from bs4 import BeautifulSoup
 
 
 class EconomicCalendar:
-    _FF_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
-    _ff_cache: dict = {"ts": 0.0, "data": None}
-    _FF_TTL = 900  # 15min — o feed do ForexFactory tem rate-limit agressivo
-
-    _TE_URL = "https://tradingeconomics.com/brazil/calendar"
-    _te_cache: dict = {"ts": 0.0, "data": None}
-    _TE_TTL = 1800  # 30min
-
     _HEADERS = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                       "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
     }
+    _TE_TTL = 1800  # 30min
 
-    # Eventos BR relevantes (nome como aparece no TradingEconomics, lowercase)
+    _BR_URL = "https://tradingeconomics.com/brazil/calendar"
+    _US_URL = "https://tradingeconomics.com/united-states/calendar"
+
+    _br_cache: dict = {"ts": 0.0, "data": None}
+    _us_cache: dict = {"ts": 0.0, "data": None}
+
+    # Eventos relevantes (nome como aparece no TradingEconomics, lowercase)
     # -> (impacto, nome traduzido). Curada manualmente porque a página grátis
     # do TE não expõe nível de importância por evento.
     _BR_WHITELIST: dict[str, tuple[str, str]] = {
@@ -72,160 +73,140 @@ class EconomicCalendar:
         "ibc-br economic activity":     ("Medium", "IBC-Br (Atividade Econômica)"),
     }
 
-    # ── tradução EN→PT pros eventos US (ForexFactory) ────────────────────────
-    _TRANSLATIONS: list[tuple[str, str]] = [
-        (r"\bm/m\b", "(M/M)"), (r"\by/y\b", "(A/A)"), (r"\bq/q\b", "(T/T)"),
-        ("Nonfarm Payrolls",           "Payrolls Não-Agrícolas"),
-        ("Non-Farm Employment Change", "Variação Payrolls Não-Agrícolas"),
-        ("Private Nonfarm Payrolls",   "Empregos Privados"),
-        ("ADP Nonfarm Employment Change", "Emprego Privado ADP"),
-        ("ADP Non-Farm Employment Change", "Emprego Privado ADP"),
-        ("Unemployment Claims",        "Pedidos Seguro-Desemprego"),
-        ("Unemployment Rate",          "Taxa de Desemprego"),
-        ("Average Hourly Earnings",    "Remuneração Média/Hora"),
-        ("CPI",                        "CPI"),
-        ("Core CPI",                   "CPI Núcleo"),
-        ("PPI",                        "PPI"),
-        ("Core PPI",                   "PPI Núcleo"),
-        ("Core PCE Price Index",       "PCE Núcleo"),
-        ("PCE Price Index",            "PCE"),
-        ("GDP",                        "PIB"),
-        ("Industrial Production",      "Produção Industrial"),
-        ("Retail Sales",               "Vendas no Varejo"),
-        ("Core Retail Sales",          "Vendas no Varejo Núcleo"),
-        ("Building Permits",           "Licenças de Construção"),
-        ("Housing Starts",             "Início de Construções"),
-        ("Existing Home Sales",        "Vendas Casas Usadas"),
-        ("New Home Sales",             "Vendas Casas Novas"),
-        ("ISM Manufacturing PMI",      "PMI Industrial ISM"),
-        ("ISM Manufacturing Prices",   "Preços Indústria ISM"),
-        ("ISM Services PMI",           "PMI Serviços ISM"),
-        ("ISM Non-Manufacturing PMI",  "PMI Serviços ISM"),
-        ("Final Manufacturing PMI",    "PMI Industrial Final"),
-        ("Final Services PMI",         "PMI Serviços Final"),
-        ("Prelim UoM Consumer Sentiment", "Sentimento U. Michigan (Prévia)"),
-        ("Revised UoM Consumer Sentiment", "Sentimento U. Michigan (Revisado)"),
-        ("CB Consumer Confidence",     "Confiança do Consumidor (CB)"),
-        ("Federal Funds Rate",         "Taxa dos Fed Funds"),
-        ("FOMC Statement",             "Comunicado do FOMC"),
-        ("FOMC Meeting Minutes",       "Ata do FOMC"),
-        ("FOMC Press Conference",      "Coletiva do Fed"),
-        ("FOMC Member",                "Membro do FOMC"),
-        ("Fed Chair",                  "Presidente do Fed"),
-        ("Federal Funds Rate Decision", "Decisão de Juros do Fed"),
-        ("Trade Balance",              "Balança Comercial"),
-        ("Current Account",            "Conta Corrente"),
-        ("Crude Oil Inventories",      "Estoques de Petróleo"),
-        ("Natural Gas Storage",        "Armazenamento Gás Natural"),
-        ("Consumer Confidence",        "Confiança do Consumidor"),
-        ("Speaks",                     "Discursa"),
-        ("Testifies",                  "Depoimento"),
-    ]
+    _US_WHITELIST: dict[str, tuple[str, str]] = {
+        "non farm payrolls":                    ("High", "Payrolls Não-Agrícolas"),
+        "nonfarm payrolls private":              ("High", "Empregos Privados"),
+        "government payrolls":                   ("Medium", "Empregos Governo"),
+        "manufacturing payrolls":                ("Medium", "Empregos Indústria"),
+        "unemployment rate":                     ("High", "Taxa de Desemprego"),
+        "adp employment change":                 ("High", "Emprego Privado ADP"),
+        "inflation rate mom":                    ("High", "CPI (M/M)"),
+        "inflation rate yoy":                    ("High", "CPI (A/A)"),
+        "core inflation rate mom":               ("High", "CPI Núcleo (M/M)"),
+        "core inflation rate yoy":               ("High", "CPI Núcleo (A/A)"),
+        "pce price index mom":                   ("High", "PCE (M/M)"),
+        "pce price index yoy":                   ("High", "PCE (A/A)"),
+        "core pce price index mom":              ("High", "PCE Núcleo (M/M)"),
+        "core pce price index yoy":               ("High", "PCE Núcleo (A/A)"),
+        "gdp growth rate qoq adv":                ("High", "PIB (T/T, prévia)"),
+        "fed interest rate decision":             ("High", "Decisão de Juros do Fed"),
+        "fed press conference":                   ("High", "Coletiva do Fed"),
+        "fomc meeting minutes":                   ("High", "Ata do FOMC"),
+        "fomc statement":                         ("High", "Comunicado do FOMC"),
+        "ism manufacturing pmi":                  ("High", "PMI Industrial ISM"),
+        "ism services pmi":                       ("High", "PMI Serviços ISM"),
+        "retail sales mom":                       ("High", "Vendas no Varejo (M/M)"),
+        "ppi mom":                                ("Medium", "PPI (M/M)"),
+        "ppi yoy":                                ("Medium", "PPI (A/A)"),
+        "core ppi mom":                           ("Medium", "PPI Núcleo (M/M)"),
+        "core ppi yoy":                           ("Medium", "PPI Núcleo (A/A)"),
+        "initial jobless claims":                 ("Medium", "Pedidos Seguro-Desemprego"),
+        "continuing jobless claims":              ("Medium", "Pedidos Contínuos Desemprego"),
+        "jolts job openings":                     ("Medium", "Vagas JOLTS"),
+        "durable goods orders mom":                ("Medium", "Pedidos Bens Duráveis (M/M)"),
+        "building permits":                       ("Medium", "Licenças de Construção"),
+        "housing starts":                         ("Medium", "Início de Construções"),
+        "existing home sales":                    ("Medium", "Vendas Casas Usadas"),
+        "new home sales":                         ("Medium", "Vendas Casas Novas"),
+        "michigan consumer sentiment prel":       ("Medium", "Sentimento U. Michigan (Prévia)"),
+        "michigan consumer sentiment final":      ("Medium", "Sentimento U. Michigan (Final)"),
+        "balance of trade":                       ("Medium", "Balança Comercial"),
+        "goods trade balance adv":                ("Medium", "Balança Comercial de Bens (Prévia)"),
+        "personal income mom":                    ("Medium", "Renda Pessoal (M/M)"),
+        "personal spending mom":                  ("Medium", "Gastos Pessoais (M/M)"),
+        "factory orders mom":                     ("Medium", "Pedidos de Fábricas (M/M)"),
+        "chicago pmi":                            ("Medium", "PMI Chicago"),
+        "s&p global composite pmi flash":         ("Medium", "PMI Composto S&P Global (Prévia)"),
+        "s&p global manufacturing pmi flash":      ("Medium", "PMI Industrial S&P Global (Prévia)"),
+        "s&p global services pmi flash":          ("Medium", "PMI Serviços S&P Global (Prévia)"),
+        "s&p global composite pmi final":         ("Medium", "PMI Composto S&P Global"),
+        "s&p global manufacturing pmi final":     ("Medium", "PMI Industrial S&P Global"),
+        "s&p global services pmi final":          ("Medium", "PMI Serviços S&P Global"),
+        "employment cost index qoq":              ("Medium", "Índice Custo de Emprego (T/T)"),
+        "eia crude oil stocks change":             ("Medium", "Estoques de Petróleo (EIA)"),
+        "consumer confidence":                    ("Medium", "Confiança do Consumidor"),
+        "monthly budget statement":               ("Medium", "Resultado Orçamentário Mensal"),
+        "total vehicle sales":                    ("Medium", "Vendas de Veículos"),
+        "s&p/case-shiller home price mom":        ("Medium", "Preços Case-Shiller (M/M)"),
+        "s&p/case-shiller home price yoy":        ("Medium", "Preços Case-Shiller (A/A)"),
+        "average hourly earnings mom":            ("Medium", "Remuneração Média/Hora (M/M)"),
+        "average hourly earnings yoy":            ("Medium", "Remuneração Média/Hora (A/A)"),
+    }
 
+    # ── scraper genérico do calendário público do TradingEconomics ────────
     @classmethod
-    def _translate(cls, name: str) -> str:
-        for pattern, replacement in cls._TRANSLATIONS:
-            if pattern.startswith(r"\b"):
-                name = re.sub(pattern, replacement, name, flags=re.IGNORECASE)
-            else:
-                name = name.replace(pattern, replacement)
-        return name
-
-    # ── US — ForexFactory ─────────────────────────────────────────────────
-    @classmethod
-    def _fetch_forexfactory(cls) -> list[dict]:
-        now = time.time()
-        if cls._ff_cache["data"] is not None and now - cls._ff_cache["ts"] < cls._FF_TTL:
-            return cls._ff_cache["data"]
+    def _scrape_te_calendar(cls, url: str, whitelist: dict, country: str, currency: str) -> list[dict]:
+        r = requests.get(url, headers=cls._HEADERS, timeout=25)
+        r.raise_for_status()
+        soup = BeautifulSoup(r.text, "html.parser")
+        table = soup.find(id="calendar")
         events: list[dict] = []
-        try:
-            r = requests.get(cls._FF_URL, headers=cls._HEADERS, timeout=20)
-            r.raise_for_status()
-            raw = r.json()
-            for e in raw:
-                if e.get("country") != "USD" or e.get("impact") not in ("High", "Medium"):
+        current_date = None
+        if table:
+            for row in table.find_all("tr"):
+                date_td = row.find("td", class_=re.compile(r"^\d{4}-\d{2}-\d{2}$"))
+                if date_td:
+                    current_date = date_td["class"][0]
+                ev_link = row.find("a", class_="calendar-event")
+                if not ev_link or not current_date:
                     continue
+                whitelisted = whitelist.get(ev_link.get_text(strip=True).lower())
+                if not whitelisted:
+                    continue
+                impact, pt_name = whitelisted
+                time_span = row.find("span", class_=re.compile(r"^event-"))
+                time_txt = time_span.get_text(strip=True) if time_span else ""
                 try:
-                    dt = datetime.fromisoformat(e["date"]).replace(tzinfo=None)
-                except (ValueError, KeyError):
-                    continue
+                    dt = datetime.strptime(f"{current_date} {time_txt}", "%Y-%m-%d %I:%M %p")
+                except ValueError:
+                    dt = datetime.strptime(current_date, "%Y-%m-%d")
+                actual = row.find("span", id="actual")
+                previous = row.find("span", id="previous")
+                consensus = row.find(id="consensus")
                 events.append({
                     "datetime": dt.isoformat(),
                     "date": dt.strftime("%a, %d %b %Y"),
                     "time": dt.strftime("%H:%M"),
-                    "country": "United States",
-                    "currency": "USD",
-                    "impact": e["impact"],
-                    "event": cls._translate(e.get("title", "")),
-                    "actual": e.get("actual") or "",
-                    "forecast": e.get("forecast") or "",
-                    "previous": e.get("previous") or "",
+                    "country": country,
+                    "currency": currency,
+                    "impact": impact,
+                    "event": pt_name,
+                    "actual": actual.get_text(strip=True) if actual else "",
+                    "forecast": consensus.get_text(strip=True) if consensus else "",
+                    "previous": previous.get_text(strip=True) if previous else "",
                 })
-            cls._ff_cache = {"ts": now, "data": events}
-            return events
-        except Exception:
-            # mantém o que tiver em cache (mesmo vencido) em vez de zerar;
-            # NÃO atualiza o cache com lista vazia, pra próxima chamada
-            # tentar de novo em vez de ficar 15min travado sem dado nenhum
-            return cls._ff_cache["data"] if cls._ff_cache["data"] is not None else []
+        return events
 
-    # ── BR — TradingEconomics (página pública) ────────────────────────────
     @classmethod
     def _fetch_tradingeconomics_br(cls) -> list[dict]:
         now = time.time()
-        if cls._te_cache["data"] is not None and now - cls._te_cache["ts"] < cls._TE_TTL:
-            return cls._te_cache["data"]
-        events: list[dict] = []
+        if cls._br_cache["data"] is not None and now - cls._br_cache["ts"] < cls._TE_TTL:
+            return cls._br_cache["data"]
         try:
-            r = requests.get(cls._TE_URL, headers=cls._HEADERS, timeout=25)
-            r.raise_for_status()
-            soup = BeautifulSoup(r.text, "html.parser")
-            table = soup.find(id="calendar")
-            current_date = None
-            if table:
-                for row in table.find_all("tr"):
-                    date_td = row.find("td", class_=re.compile(r"^\d{4}-\d{2}-\d{2}$"))
-                    if date_td:
-                        current_date = date_td["class"][0]
-                    ev_link = row.find("a", class_="calendar-event")
-                    if not ev_link or not current_date:
-                        continue
-                    whitelisted = cls._BR_WHITELIST.get(ev_link.get_text(strip=True).lower())
-                    if not whitelisted:
-                        continue
-                    impact, pt_name = whitelisted
-                    time_span = row.find("span", class_=re.compile(r"^event-"))
-                    time_txt = time_span.get_text(strip=True) if time_span else ""
-                    try:
-                        dt = datetime.strptime(f"{current_date} {time_txt}", "%Y-%m-%d %I:%M %p")
-                    except ValueError:
-                        dt = datetime.strptime(current_date, "%Y-%m-%d")
-                    actual = row.find("span", id="actual")
-                    previous = row.find("span", id="previous")
-                    consensus = row.find(id="consensus")
-                    events.append({
-                        "datetime": dt.isoformat(),
-                        "date": dt.strftime("%a, %d %b %Y"),
-                        "time": dt.strftime("%H:%M"),
-                        "country": "Brazil",
-                        "currency": "BRL",
-                        "impact": impact,
-                        "event": pt_name,
-                        "actual": actual.get_text(strip=True) if actual else "",
-                        "forecast": consensus.get_text(strip=True) if consensus else "",
-                        "previous": previous.get_text(strip=True) if previous else "",
-                    })
-            cls._te_cache = {"ts": now, "data": events}
+            events = cls._scrape_te_calendar(cls._BR_URL, cls._BR_WHITELIST, "Brazil", "BRL")
+            cls._br_cache = {"ts": now, "data": events}
             return events
         except Exception:
-            return cls._te_cache["data"] if cls._te_cache["data"] is not None else []
+            return cls._br_cache["data"] if cls._br_cache["data"] is not None else []
+
+    @classmethod
+    def _fetch_tradingeconomics_us(cls) -> list[dict]:
+        now = time.time()
+        if cls._us_cache["data"] is not None and now - cls._us_cache["ts"] < cls._TE_TTL:
+            return cls._us_cache["data"]
+        try:
+            events = cls._scrape_te_calendar(cls._US_URL, cls._US_WHITELIST, "United States", "USD")
+            cls._us_cache = {"ts": now, "data": events}
+            return events
+        except Exception:
+            return cls._us_cache["data"] if cls._us_cache["data"] is not None else []
 
     @classmethod
     def fetch_filtered(cls, days: int = 7) -> list[dict]:
         """Brazil + US (High+Medium), sorted by datetime, dentro da janela."""
         floor = datetime.now() - timedelta(days=1)  # mantém eventos recém-liberados
         ceiling = datetime.now() + timedelta(days=days)
-        combined = cls._fetch_forexfactory() + cls._fetch_tradingeconomics_br()
+        combined = cls._fetch_tradingeconomics_br() + cls._fetch_tradingeconomics_us()
         combined = [e for e in combined if floor <= datetime.fromisoformat(e["datetime"]) <= ceiling]
         combined.sort(key=lambda e: e["datetime"])
         return combined
