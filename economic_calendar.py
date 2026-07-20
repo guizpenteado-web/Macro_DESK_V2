@@ -17,6 +17,11 @@ versão usava o feed do ForexFactory pro US, mas esse feed só cobre "essa
 semana" (sem next-week/month), deixando o calendário quase vazio em semanas
 fracas — trocado pelo TradingEconomics também, que tem horizonte de várias
 semanas à frente igual o BR.
+
+Fonte validada em 20/jul/2026 como oficial e confiável: 6 valores conferidos
+individualmente contra fonte primária/independente (Fed Funds Rate, Core PCE
+YoY, PCE YoY, Desemprego BR, IPCA-15 MoM, Selic) bateram exato. Detalhes em
+memória (reference_sources_database / feedback_calendar_cloudflare_block).
 """
 
 import re
