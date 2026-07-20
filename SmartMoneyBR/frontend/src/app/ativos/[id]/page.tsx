@@ -50,8 +50,9 @@ export default function AssetDetailPage() {
   const [holders, setHolders] = useState<AssetHolder[]>([]);
   const [timeline, setTimeline] = useState<AssetTimelinePoint[]>([]);
   const [flow, setFlow] = useState<{ net_qty_delta: number; net_value_delta: number; n_funds_buying: number; n_funds_selling: number } | null>(null);
-  const [flow3m, setFlow3m] = useState<{ net_value_delta: number; n_funds_buying: number; n_funds_selling: number; n_months: number } | null>(null);
-  const [flow6m, setFlow6m] = useState<{ net_value_delta: number; n_funds_buying: number; n_funds_selling: number; n_months: number } | null>(null);
+  const [flow1m, setFlow1m] = useState<{ net_value_delta: number; n_funds_buying: number; n_funds_selling: number; n_months: number; ref_date_to: string | null } | null>(null);
+  const [flow3m, setFlow3m] = useState<{ net_value_delta: number; n_funds_buying: number; n_funds_selling: number; n_months: number; ref_date_to: string | null } | null>(null);
+  const [flow6m, setFlow6m] = useState<{ net_value_delta: number; n_funds_buying: number; n_funds_selling: number; n_months: number; ref_date_to: string | null } | null>(null);
   const [topMetric, setTopMetric] = useState<"pct" | "valor">("pct");
 
   const [selectedFund, setSelectedFund] = useState<{ id: number; name: string } | null>(null);
@@ -145,6 +146,7 @@ export default function AssetDetailPage() {
     api.getAsset(assetId).then(setAsset);
     api.getAssetTimeline(assetId).then(setTimeline);
     api.getAssetMovements(assetId).then(setFlow);
+    api.getAssetFlowAccumulated(assetId, 1).then(setFlow1m);
     api.getAssetFlowAccumulated(assetId, 3).then(setFlow3m);
     api.getAssetFlowAccumulated(assetId, 6).then(setFlow6m);
   }, [assetId]);
@@ -193,16 +195,20 @@ export default function AssetDetailPage() {
         </div>
       )}
 
-      {(flow3m || flow6m) && (
+      {(flow1m || flow3m || flow6m) && (
         <div>
           <h2 className="font-semibold mb-2">Fluxo Acumulado</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {[
-              { label: "Últimos 3 meses", data: flow3m },
-              { label: "Últimos 6 meses", data: flow6m },
-            ].map(({ label, data }) => (
+              { label: "Último mês", expected: 1, data: flow1m },
+              { label: "Últimos 3 meses", expected: 3, data: flow3m },
+              { label: "Últimos 6 meses", expected: 6, data: flow6m },
+            ].map(({ label, expected, data }) => (
               <div key={label} className="smb-card p-4">
-                <div className="text-xs mb-1" style={{ color: "var(--text3)" }}>{label}</div>
+                <div className="text-xs mb-1" style={{ color: "var(--text3)" }}>
+                  {label}
+                  {data?.ref_date_to && <span> · até {fmtMonth(data.ref_date_to)}</span>}
+                </div>
                 {data && data.n_months > 0 ? (
                   <>
                     <div className="text-lg font-bold" style={{ color: data.net_value_delta >= 0 ? "var(--green)" : "var(--red)" }}>
@@ -211,7 +217,7 @@ export default function AssetDetailPage() {
                     </div>
                     <div className="text-xs mt-1" style={{ color: "var(--text3)" }}>
                       {data.n_funds_buying} fundos compraram líquido · {data.n_funds_selling} venderam líquido
-                      {data.n_months < (label.includes("3") ? 3 : 6) && ` (${data.n_months} meses com dados)`}
+                      {data.n_months < expected && ` (${data.n_months} meses com dados)`}
                     </div>
                   </>
                 ) : (
