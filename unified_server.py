@@ -1962,6 +1962,28 @@ _MT5_DI_CACHE: dict = {"price": None, "change_pct": None, "ts": 0}
 import threading as _threading
 _MT5_LOCK = _threading.Lock()
 
+# yf.Ticker(ticker) sozinho não pode ser cacheado entre polls — fast_info
+# guarda o preço pra sempre no primeiro acesso (nunca invalida), então reusar
+# o MESMO objeto Ticker congelaria a cotação. O que vaza é a sessão HTTP
+# curl_cffi que cada yf.Ticker() cria por baixo quando nenhuma é passada —
+# isso abre 1+ socket novo por ticker a cada ciclo de 25s de /api/quotes e
+# nunca fecha, derrubando o processo por "Too many open files" em <10h
+# (mesma família do bug corrigido em 2aa31a9, agora na sessão HTTP do
+# yfinance em vez do cache sqlite de timezone). Reaproveita uma sessão por
+# THREAD do _QUOTES_EXECUTOR (não uma global única — Session do curl_cffi
+# não é garantidamente thread-safe pra uso concorrente entre as 16 threads
+# do pool), assim os objetos Ticker continuam novos (dado sempre fresco) mas
+# o socket por trás é o mesmo o tempo todo.
+_YF_SESSION_LOCAL = _threading.local()
+
+def _yf_ticker(ticker: str):
+    sess = getattr(_YF_SESSION_LOCAL, "session", None)
+    if sess is None:
+        tkr = yf.Ticker(ticker)
+        _YF_SESSION_LOCAL.session = tkr.session
+        return tkr
+    return yf.Ticker(ticker, session=sess)
+
 # ── Iron Ore 62% — cache com background thread (cloudscraper não é thread-safe) ──
 _IRON_ORE_CACHE: dict = {"price": None, "change_pct": None, "ts": 0}
 _IRON_ORE_LOCK = _threading.Lock()
@@ -2132,7 +2154,7 @@ async def api_quotes() -> JSONResponse:
 
         if ticker.endswith("=F"):
             try:
-                _yftkr = yf.Ticker(ticker)
+                _yftkr = _yf_ticker(ticker)
                 _fi    = _yftkr.fast_info
                 _price = float(_fi.last_price or 0)
 
@@ -2154,7 +2176,7 @@ async def api_quotes() -> JSONResponse:
 
         # ── Não-futuros (VIX, US10Y, DXY, IBOV, EWZ): fast_info ──
         try:
-            _fi = yf.Ticker(ticker).fast_info
+            _fi = _yf_ticker(ticker).fast_info
             _fp = float(_fi.last_price or 0)
             _fc = float(_fi.previous_close or 0)
             if _fp > 0 and _fc > 0:
