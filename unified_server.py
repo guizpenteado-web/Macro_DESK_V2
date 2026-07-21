@@ -334,6 +334,7 @@ _SHELL = """<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Macro Desk</title>
 <style>
+/*MACROREGIME_NAV_CSS*/
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
@@ -1640,7 +1641,17 @@ async def shell(request: Request) -> str:
   <form method="post" action="/api/auth/logout" style="display:inline">
     <button class="nav-btn" type="submit"><span style="font-size:13px">⏻</span> Sair</button>
   </form>"""
-    return _SHELL.replace("<!--USER_NAV-->", user_nav)
+    # MacroRegime ainda nao existe nessa maquina (ver MACROREGIME_DIR/
+    # _start_subservers acima) — sem essa aba escondida, o botao "Macro
+    # Regime" ficava visivel no VPS levando pra um iframe com "Internal
+    # Server Error" (o subserver nunca sobe la). So o CSS muda; o
+    # botao/iframe continuam no HTML (evita depender de reescrever a logica
+    # de show()/applyTab() em JS so pra isso) — reaparece sozinho quando o
+    # projeto for trazido pra essa maquina.
+    macroregime_css = "" if MACROREGIME_DIR.exists() else "#btn8 { display: none !important; }"
+    html = _SHELL.replace("<!--USER_NAV-->", user_nav)
+    html = html.replace("/*MACROREGIME_NAV_CSS*/", macroregime_css)
+    return html
 
 
 _ADMIN_PAGE = """<!DOCTYPE html>
