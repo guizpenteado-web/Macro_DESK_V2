@@ -11,6 +11,7 @@ Proxy reverso integrado: tudo passa pela porta 8000 (compativel com ngrok/Tailsc
   http://<host>:8000/ibov/        -> IBOV Calls             (proxy -> :8013)
    http://<host>:8000/rrg/         -> RRGCOMPLETO (Rotação Relativa) (proxy -> :8014)
    http://<host>:8000/smartmoney/  -> SmartMoneyBR (Next.js :3100 + FastAPI :8100 interno via rewrite)
+  http://<host>:8000/macroregime/ -> Macro Cycle Intelligence Terminal (proxy -> :8015)
 """
 from __future__ import annotations
 import asyncio
@@ -51,6 +52,21 @@ RRG_DIR       = BASE / "RRGCOMPLETO"
 # src="/) nao dá conta de _next/static nem de fetch client-side.
 SM_DIR        = BASE / "SmartMoneyBR"
 AUTH_DIR      = BASE / "auth"
+# Macro Cycle Intelligence Terminal ("Macro Regime") — ainda fora deste
+# repositorio (Downloads/MCICLE, nao Mktsentiment/), diferente dos modulos
+# acima que ja foram trazidos pra dentro via git subtree. Funciona igual: o
+# Hub so proxeia a porta; roda como build de producao (vinext build) servido
+# por "wrangler dev" apontado pro artefato compilado (dist/server/), porque
+# precisa do runtime workerd real pra bindings D1 — rodar via "vinext start"
+# (Node puro) quebra (env.DB fica undefined) e "vinext dev"/HMR quebraria
+# sob o proxy generico do Hub (mesmo motivo do SmartMoneyBR, ver comentario
+# acima). basePath "/macroregime" (next.config.ts) resolve pagina+API do
+# proprio Next; assets estaticos e as rotas de API escritas a mao no Worker
+# (fora do app router) precisam de um pequeno rewrite manual — ver
+# worker/index.ts nesse projeto. Rebuild com scripts/build-for-hub.sh sempre
+# que o codigo mudar (o Hub so RODA o artefato, nunca builda sozinho).
+MACROREGIME_DIR = Path(r"C:\Users\Guilherme\Downloads\MCICLE")
+WRANGLER_CMD = "wrangler.cmd" if sys.platform == "win32" else "wrangler"
 
 sys.path.insert(0, str(BASE))
 
@@ -81,6 +97,7 @@ PORT_IBOV        = 8013
 PORT_RRG         = 8014
 PORT_SMARTMONEY_BACKEND = 8100  # so o Next (rewrite) fala com essa porta, Hub nao proxeia direto
 PORT_SMARTMONEY  = 3100         # frontend — é o que o Hub proxeia em /smartmoney/
+PORT_MACROREGIME = 8015
 
 _procs: list[subprocess.Popen] = []
 
@@ -183,6 +200,25 @@ def _start_subservers() -> None:
             "port": PORT_SMARTMONEY,
             "cmd":  [NPM_CMD, "start"],
             "cwd":  str(SM_DIR / "frontend"),
+        },
+        {
+            # wrangler dev (nao "vinext start") apontado pro build ja
+            # compilado — precisa do runtime workerd real pra bindings D1 e
+            # env var (FRED_API_KEY, via dist/server/.dev.vars, copiado por
+            # scripts/build-for-hub.sh). --local evita qualquer chamada real
+            # à API do Cloudflare; --persist-to mantem o D1 (SQLite local)
+            # estavel entre reinicios do watchdog.
+            "name": "MacroRegime",
+            "port": PORT_MACROREGIME,
+            "cmd":  [
+                str(MACROREGIME_DIR / "node_modules" / ".bin" / WRANGLER_CMD),
+                "dev",
+                "--config", "dist/server/wrangler.json",
+                "--persist-to", ".wrangler/state",
+                "--port", str(PORT_MACROREGIME),
+                "--local",
+            ],
+            "cwd":  str(MACROREGIME_DIR),
         },
     ]
 
@@ -303,6 +339,7 @@ _SHELL = """<!DOCTYPE html>
     --c4:       #34d399;
     --c5:       #f472b6;
     --c6:       #fb923c;
+    --c7:       #ef4444;
     --text:     #e6edf3;
     --muted:    #8b949e;
     --border:   #21262d;
@@ -411,6 +448,12 @@ _SHELL = """<!DOCTYPE html>
     background: rgba(251,146,60,.08);
   }
   .nav-btn.active-9 .dot { opacity: 1; }
+  .nav-btn.active-10 {
+    border-color: var(--c7);
+    color: var(--c7);
+    background: rgba(239,68,68,.08);
+  }
+  .nav-btn.active-10 .dot { opacity: 1; }
   .nav-btn.active-5 { border-color: #6e7681; color: #d1d4dc; background: rgba(110,118,129,.12); }
   .nav-btn.active-6 { border-color: #6e7681; color: #d1d4dc; background: rgba(110,118,129,.12); }
   .nav-btn.active-7 { border-color: var(--c1); color: var(--c1); background: rgba(0,240,255,.08); }
@@ -762,6 +805,11 @@ _SHELL = """<!DOCTYPE html>
     SmartMoneyBR
   </button>
 
+  <button class="nav-btn" id="btn8" onclick="show(8)">
+    <span class="dot"></span>
+    Macro Regime
+  </button>
+
   <button class="nav-btn" id="btn5" onclick="show(5)">
     <span class="dot"></span>
     Biblioteca
@@ -860,6 +908,10 @@ _SHELL = """<!DOCTYPE html>
     <div class="spinner" style="border-top-color:var(--c1)"></div>
     Carregando SmartMoneyBR...
   </div>
+  <div class="loader hidden" id="loader8">
+    <div class="spinner" style="border-top-color:var(--c7)"></div>
+    Carregando Macro Regime...
+  </div>
 
   <iframe id="f1" src="" class="visible"
           onload="if(window.loaded)loaded(1)"></iframe>
@@ -875,12 +927,14 @@ _SHELL = """<!DOCTYPE html>
           onload="if(window.loaded)loaded(6)"></iframe>
   <iframe id="f7" src="about:blank"
           onload="if(window.loaded)loaded(7)"></iframe>
+  <iframe id="f8" src="about:blank"
+          onload="if(window.loaded)loaded(8)"></iframe>
 
 </div>
 
 <script>
-  var _loaded    = {1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false};
-  var _srcSet    = {1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false};
+  var _loaded    = {1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false, 8: false};
+  var _srcSet    = {1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false, 8: false};
   var _current   = 1;
 
   var _cv = Date.now();
@@ -892,6 +946,7 @@ _SHELL = """<!DOCTYPE html>
     5: "/biblioteca/?v=" + _cv,
     6: "/rrg/?v=" + _cv,
     7: "/smartmoney/?v=" + _cv,
+    8: "/macroregime/?v=" + _cv,
   };
 
   function loaded(n) {
@@ -909,7 +964,7 @@ _SHELL = """<!DOCTYPE html>
       document.getElementById("f" + n).src = URLS[n];
     }
 
-    [1, 2, 3, 4, 5, 6, 7].forEach(function(i) {
+    [1, 2, 3, 4, 5, 6, 7, 8].forEach(function(i) {
       document.getElementById("f" + i).classList.toggle("visible", i === n);
       document.getElementById("loader" + i).classList.toggle("hidden",
         i !== n || _loaded[i]);
@@ -923,6 +978,8 @@ _SHELL = """<!DOCTYPE html>
       "nav-btn" + (n === 3 ? " active-3" : "");
     document.getElementById("btn4").className =
       "nav-btn" + (n === 4 ? " active-4" : "");
+    document.getElementById("btn8").className =
+      "nav-btn" + (n === 8 ? " active-10" : "");
     document.getElementById("btn5").className =
       "nav-btn" + (n === 5 ? " active-8" : "");
     document.getElementById("btn6").className =
@@ -948,7 +1005,7 @@ _SHELL = """<!DOCTYPE html>
   // Restaura a última aba visitada ao atualizar a página, em vez de sempre abrir em IBOV Calls
   (function() {
     var saved = parseInt(localStorage.getItem("hub_active_tab"), 10);
-    var initial = (saved >= 1 && saved <= 7) ? saved : 1;
+    var initial = (saved >= 1 && saved <= 8) ? saved : 1;
     applyTab(initial);
   })();
 
@@ -1818,6 +1875,16 @@ async def proxy_smartmoney(request: Request, path: str = "") -> Response:
     return await _proxy(request, f"http://127.0.0.1:{PORT_SMARTMONEY}", "", rewrite_html=False)
 
 
+@app.api_route("/macroregime", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+@app.api_route("/macroregime/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+async def proxy_macroregime(request: Request, path: str = "") -> Response:
+    # Mesmo esquema do SmartMoneyBR: basePath nativo (next.config.ts) ja
+    # prefixa tudo sozinho, rewrite_html=False pra nao prefixar de novo em
+    # cima (double-prefix quebra), strip_prefix="" porque o Next exige o
+    # caminho completo COM "/macroregime".
+    return await _proxy(request, f"http://127.0.0.1:{PORT_MACROREGIME}", "", rewrite_html=False)
+
+
 @app.get("/biblioteca")
 @app.get("/biblioteca/{path:path}")
 async def biblioteca(path: str = "") -> Response:
@@ -2271,6 +2338,7 @@ if __name__ == "__main__":
     print(f"  Macro       -> http://localhost:{PORT_MACRO}")
     print(f"  Ibov Calls  -> http://localhost:{PORT_IBOV}")
     print(f"  SmartMoney  -> http://localhost:{PORT_SMARTMONEY}")
+    print(f"  MacroRegime -> http://localhost:{PORT_MACROREGIME}")
     print("  ==========================================")
     print()
 
