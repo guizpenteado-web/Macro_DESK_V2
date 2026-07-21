@@ -201,7 +201,15 @@ def _start_subservers() -> None:
             "cmd":  [NPM_CMD, "start"],
             "cwd":  str(SM_DIR / "frontend"),
         },
-        {
+    ]
+
+    # MacroRegime ainda so existe em Downloads/MCICLE na maquina Windows local
+    # (nao foi trazido pro repo/VPS ainda, ver comentario de MACROREGIME_DIR
+    # acima) -- sem essa checagem, subir o Hub em qualquer outra maquina
+    # (VPS Linux) derrubava o processo INTEIRO com FileNotFoundError no
+    # Popen, tirando do ar todos os outros modulos junto (502 geral).
+    if MACROREGIME_DIR.exists():
+        _SUBSERVER_SPECS.append({
             # wrangler dev (nao "vinext start") apontado pro build ja
             # compilado — precisa do runtime workerd real pra bindings D1 e
             # env var (FRED_API_KEY, via dist/server/.dev.vars, copiado por
@@ -219,8 +227,7 @@ def _start_subservers() -> None:
                 "--local",
             ],
             "cwd":  str(MACROREGIME_DIR),
-        },
-    ]
+        })
 
     for spec in _SUBSERVER_SPECS:
         p = _make_popen(spec)
