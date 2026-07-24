@@ -266,7 +266,17 @@ class EconomicCalendar:
                     dt = datetime.strptime(current_date, "%Y-%m-%d")
                 actual = row.find("span", id="actual")
                 previous = row.find("span", id="previous")
-                consensus = row.find(id="consensus")
+                # id="consensus" (survey) e id="forecast" (modelo próprio do TE)
+                # são dois valores DISTINTOS no HTML deles; a maioria dos eventos
+                # só tem "forecast" preenchido (consensus vem vazio), mas alguns
+                # (ex: New Home Sales) têm os dois com números diferentes — nesse
+                # caso o "Consenso" exibido no site deles é o de "consensus", não
+                # o "forecast". Confirmado inspecionando o HTML real em 24/jul/2026.
+                consensus_el = row.find(id="consensus")
+                forecast_el = row.find(id="forecast")
+                consensus_txt = consensus_el.get_text(strip=True) if consensus_el else ""
+                if not consensus_txt:
+                    consensus_txt = forecast_el.get_text(strip=True) if forecast_el else ""
                 events.append({
                     "datetime": dt.isoformat(),
                     "date": dt.strftime("%a, %d %b %Y"),
@@ -276,7 +286,7 @@ class EconomicCalendar:
                     "impact": impact,
                     "event": pt_name,
                     "actual": actual.get_text(strip=True) if actual else "",
-                    "forecast": consensus.get_text(strip=True) if consensus else "",
+                    "forecast": consensus_txt,
                     "previous": previous.get_text(strip=True) if previous else "",
                 })
         return events
