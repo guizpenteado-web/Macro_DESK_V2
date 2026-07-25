@@ -132,9 +132,11 @@ def _cot_chart_data(contract_key: str) -> str:
     rows   = [r for r in rows if r[0] >= COT_START]
     if len(rows) < 4:
         return "null"
-    dates  = [r[0] for r in rows]
-    mm_net = [round(r[1]) for r in rows]
-    am_net = [round(r[2]) for r in rows]
+    dates    = [r[0] for r in rows]
+    mm_net   = [round(r[1]) for r in rows]
+    am_net   = [round(r[2]) for r in rows]
+    mm_long  = [round(r[4]) if r[4] is not None else None for r in rows]
+    mm_short = [round(r[5]) if r[5] is not None else None for r in rows]
 
     p_dates: list[str] = []
     p_vals:  list[float] = []
@@ -156,6 +158,7 @@ def _cot_chart_data(contract_key: str) -> str:
                 p_vals  = [round(float(v), 4) for _, v in pr]
 
     return json.dumps({"dates": dates, "mm_net": mm_net, "am_net": am_net,
+                       "mm_long": mm_long, "mm_short": mm_short,
                        "p_dates": p_dates, "p_vals": p_vals})
 
 
@@ -740,6 +743,20 @@ def _render_html(**kw) -> str:
     def _cot_js(key: str) -> str:
         return cot.get(key, "null")
 
+    def _cot_weekly_html(key: str, category_label: str) -> str:
+        return f"""
+      <div class="cot-weekly-wrap">
+        <div class="cot-weekly-toolbar">
+          <span class="cot-weekly-title">Variação Semanal — {category_label}</span>
+          <span class="period-toggle" data-cot-key="{key}">
+            <button data-weeks="12" class="active">12S</button>
+            <button data-weeks="26">26S</button>
+            <button data-weeks="52">52S</button>
+          </span>
+        </div>
+        <div id="cot-{key}-weekly-tbl"></div>
+      </div>"""
+
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -807,6 +824,21 @@ tr:last-child td {{ border-bottom:none }}
 tr:hover td {{ background:rgba(255,255,255,.025) }}
 td.num {{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }}
 .badge {{ padding:3px 9px; border-radius:4px; font-size:10px; font-weight:700; letter-spacing:.5px }}
+
+/* COT weekly micro-table */
+.cot-weekly-wrap {{ margin-top:10px; border-top:1px solid var(--border); padding-top:10px }}
+.cot-weekly-toolbar {{ display:flex; align-items:center; gap:10px; margin-bottom:6px }}
+.cot-weekly-title {{ flex:1; font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--muted) }}
+.period-toggle {{ display:flex; gap:4px }}
+.period-toggle button {{ background:var(--surface2); border:1px solid var(--border); color:var(--muted); font-size:10px; font-weight:700; padding:3px 8px; border-radius:4px; cursor:pointer }}
+.period-toggle button:hover {{ color:var(--text) }}
+.period-toggle button.active {{ background:var(--gold,#c9a24b); border-color:var(--gold,#c9a24b); color:#000 }}
+.cot-weekly-wrap table {{ font-size:11px }}
+.cot-weekly-wrap th {{ padding:6px 8px; font-size:9px }}
+.cot-weekly-wrap td {{ padding:6px 8px }}
+.cot-weekly-wrap tr.cot-weekly-latest td {{ background:var(--surface2); font-weight:700; border-left:2px solid var(--gold,#c9a24b) }}
+.delta-pos {{ color:#10b981 }}
+.delta-neg {{ color:#f43f5e }}
 
 /* Grid 2 cols */
 .grid2 {{ display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px }}
@@ -1113,14 +1145,14 @@ td.num {{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
         <span class="chart-title" style="flex:1" id="cot-dxy-lbl">DXY — COT ICE &nbsp;|&nbsp; Asset Managers &amp; Lev. Funds</span>
         <span id="ch-cot-dxy-zlbl"></span>
       </div>
-      <div id="ch-cot-dxy" style="height:430px"></div>
+      <div id="ch-cot-dxy" style="height:430px"></div>{_cot_weekly_html('dxy', 'Asset Manager')}
     </div>
     <div class="chart-box">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
         <span class="chart-title" style="flex:1" id="cot-sp500-lbl">S&amp;P 500 E-Mini — COT CME &nbsp;|&nbsp; Asset Managers &amp; Lev. Funds</span>
         <span id="ch-cot-sp500-zlbl"></span>
       </div>
-      <div id="ch-cot-sp500" style="height:430px"></div>
+      <div id="ch-cot-sp500" style="height:430px"></div>{_cot_weekly_html('sp500', 'Asset Manager')}
     </div>
   </div>
   <div class="grid2">
@@ -1129,7 +1161,7 @@ td.num {{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
         <span class="chart-title" style="flex:1" id="cot-vix-lbl">VIX Futures — COT CBOE &nbsp;|&nbsp; Asset Managers &amp; Lev. Funds</span>
         <span id="ch-cot-vix-zlbl"></span>
       </div>
-      <div id="ch-cot-vix" style="height:430px"></div>
+      <div id="ch-cot-vix" style="height:430px"></div>{_cot_weekly_html('vix', 'Asset Manager')}
     </div>
     <div></div>
   </div>
@@ -1181,14 +1213,14 @@ td.num {{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
         <span class="chart-title" style="flex:1" id="cot-ouro-lbl">Ouro — COT COMEX &nbsp;|&nbsp; Managed Money &amp; Large Spec.</span>
         <span id="ch-cot-ouro-zlbl"></span>
       </div>
-      <div id="ch-cot-ouro" style="height:430px"></div>
+      <div id="ch-cot-ouro" style="height:430px"></div>{_cot_weekly_html('ouro', 'Managed Money')}
     </div>
     <div class="chart-box">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
         <span class="chart-title" style="flex:1" id="cot-prata-lbl">Prata — COT COMEX &nbsp;|&nbsp; Managed Money &amp; Large Spec.</span>
         <span id="ch-cot-prata-zlbl"></span>
       </div>
-      <div id="ch-cot-prata" style="height:430px"></div>
+      <div id="ch-cot-prata" style="height:430px"></div>{_cot_weekly_html('prata', 'Managed Money')}
     </div>
   </div>
   <div class="grid2">
@@ -1197,14 +1229,14 @@ td.num {{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
         <span class="chart-title" style="flex:1" id="cot-cobre-lbl">Cobre — COT COMEX &nbsp;|&nbsp; Managed Money &amp; Large Spec.</span>
         <span id="ch-cot-cobre-zlbl"></span>
       </div>
-      <div id="ch-cot-cobre" style="height:430px"></div>
+      <div id="ch-cot-cobre" style="height:430px"></div>{_cot_weekly_html('cobre', 'Managed Money')}
     </div>
     <div class="chart-box">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
         <span class="chart-title" style="flex:1" id="cot-wti-lbl">Petróleo WTI — COT ICE &nbsp;|&nbsp; Managed Money &amp; Large Spec.</span>
         <span id="ch-cot-wti-zlbl"></span>
       </div>
-      <div id="ch-cot-wti" style="height:430px"></div>
+      <div id="ch-cot-wti" style="height:430px"></div>{_cot_weekly_html('wti', 'Managed Money')}
     </div>
   </div>
   <div class="grid2">
@@ -1213,7 +1245,7 @@ td.num {{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
         <span class="chart-title" style="flex:1" id="cot-gasnat-lbl">Gás Natural — COT NYMEX &nbsp;|&nbsp; Managed Money &amp; Large Spec.</span>
         <span id="ch-cot-gasnat-zlbl"></span>
       </div>
-      <div id="ch-cot-gasnat" style="height:430px"></div>
+      <div id="ch-cot-gasnat" style="height:430px"></div>{_cot_weekly_html('gasnat', 'Managed Money')}
     </div>
     <div></div>
   </div>
@@ -1255,14 +1287,14 @@ td.num {{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
         <span class="chart-title" style="flex:1" id="cot-milho-lbl">Milho — COT CBOT &nbsp;|&nbsp; Managed Money &amp; Large Spec.</span>
         <span id="ch-cot-milho-zlbl"></span>
       </div>
-      <div id="ch-cot-milho" style="height:430px"></div>
+      <div id="ch-cot-milho" style="height:430px"></div>{_cot_weekly_html('milho', 'Managed Money')}
     </div>
     <div class="chart-box">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
         <span class="chart-title" style="flex:1" id="cot-trigo-lbl">Trigo SRW — COT CBOT &nbsp;|&nbsp; Managed Money &amp; Large Spec.</span>
         <span id="ch-cot-trigo-zlbl"></span>
       </div>
-      <div id="ch-cot-trigo" style="height:430px"></div>
+      <div id="ch-cot-trigo" style="height:430px"></div>{_cot_weekly_html('trigo', 'Managed Money')}
     </div>
   </div>
   <div class="grid2">
@@ -1271,7 +1303,7 @@ td.num {{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
         <span class="chart-title" style="flex:1" id="cot-soja-lbl">Soja — COT CBOT &nbsp;|&nbsp; Managed Money &amp; Large Spec.</span>
         <span id="ch-cot-soja-zlbl"></span>
       </div>
-      <div id="ch-cot-soja" style="height:430px"></div>
+      <div id="ch-cot-soja" style="height:430px"></div>{_cot_weekly_html('soja', 'Managed Money')}
     </div>
     <div></div>
   </div>
@@ -1295,7 +1327,7 @@ td.num {{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
         <span class="chart-title" style="flex:1" id="cot-bcom-lbl">BBG Commodity — COT CBOT &nbsp;|&nbsp; Asset Managers &amp; Lev. Funds</span>
         <span id="ch-cot-bcom-zlbl"></span>
       </div>
-      <div id="ch-cot-bcom" style="height:430px"></div>
+      <div id="ch-cot-bcom" style="height:430px"></div>{_cot_weekly_html('bcom', 'Asset Manager')}
     </div>
     <div></div>
   </div>
@@ -1424,7 +1456,7 @@ td.num {{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
         <span class="chart-title" style="flex:1" id="cot-btc-lbl">Bitcoin CME — COT TFF &nbsp;|&nbsp; Asset Managers &amp; Lev. Funds</span>
         <span id="ch-cot-btc-zlbl"></span>
       </div>
-      <div id="ch-cot-btc" style="height:430px"></div>
+      <div id="ch-cot-btc" style="height:430px"></div>{_cot_weekly_html('btc', 'Asset Manager')}
     </div>
     <div></div>
   </div>
@@ -1947,6 +1979,55 @@ function cotPanel(divId, zLblId, data, label, useLS) {{
   Plotly.newPlot(divId, traces, layout, CFG_Z);
 }}
 
+// ─── COT weekly micro-table (Long/Short/Net + variação + saldo acumulado) ─
+function renderCotWeeklyTable(key, weeks) {{
+  var wrap = document.getElementById("cot-" + key + "-weekly-tbl");
+  if (!wrap) return;
+  var data = DATA.cot[key];
+  if (!data || !data.mm_long || !data.mm_long.length) {{
+    wrap.innerHTML = '<p style="color:#7d90a8;padding:8px;font-size:11px">Dados não disponíveis.</p>';
+    return;
+  }}
+  var dates = data.dates, longs = data.mm_long, shorts = data.mm_short, net = data.mm_net;
+  var n = dates.length;
+  var deltas = net.map(function(v, i) {{ return (i === 0 || longs[i] === null || longs[i-1] === null) ? null : v - net[i-1]; }});
+  var start = Math.max(0, n - weeks);
+  var rows = [];
+  var cum = 0;
+  for (var i = start; i < n; i++) {{
+    if (deltas[i] !== null) cum += deltas[i];
+    rows.push({{date: dates[i], long: longs[i], short: shorts[i], net: net[i], delta: deltas[i], cum: cum}});
+  }}
+  rows.reverse();
+  var fmt = function(v) {{ return (v === null || v === undefined) ? "—" : Math.round(v).toLocaleString("pt-BR"); }};
+  var fmtSigned = function(v) {{ return (v === null || v === undefined) ? "—" : (v > 0 ? "+" : "") + Math.round(v).toLocaleString("pt-BR"); }};
+  var deltaCls = function(v) {{ return v > 0 ? "delta-pos" : (v < 0 ? "delta-neg" : ""); }};
+  var html = '<table><thead><tr><th>Data</th><th style="text-align:right">Long</th><th style="text-align:right">Short</th>'
+    + '<th style="text-align:right">Net</th><th style="text-align:right">Δ Semana</th><th style="text-align:right">Saldo Acum.</th></tr></thead><tbody>';
+  rows.forEach(function(r, idx) {{
+    html += '<tr' + (idx === 0 ? ' class="cot-weekly-latest"' : '') + '>'
+      + '<td>' + r.date + '</td>'
+      + '<td style="text-align:right">' + fmt(r.long) + '</td>'
+      + '<td style="text-align:right">' + fmt(r.short) + '</td>'
+      + '<td style="text-align:right">' + fmt(r.net) + '</td>'
+      + '<td style="text-align:right" class="' + deltaCls(r.delta) + '">' + fmtSigned(r.delta) + '</td>'
+      + '<td style="text-align:right" class="' + deltaCls(r.cum) + '">' + fmtSigned(r.cum) + '</td>'
+      + '</tr>';
+  }});
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}}
+
+document.addEventListener("click", function(e) {{
+  var btn = e.target.closest(".period-toggle button");
+  if (!btn) return;
+  var group = btn.closest(".period-toggle");
+  var key = group.getAttribute("data-cot-key");
+  group.querySelectorAll("button").forEach(function(b) {{ b.classList.remove("active"); }});
+  btn.classList.add("active");
+  renderCotWeeklyTable(key, parseInt(btn.getAttribute("data-weeks"), 10));
+}});
+
 // ─── BTC stats boxes ──────────────────────────────────────────────────
 function renderBtcStats(stats) {{
   if (!stats) return;
@@ -2027,6 +2108,9 @@ function renderCharts(tab) {{
     cotPanel("ch-cot-dxy",   "ch-cot-dxy-zlbl",   DATA.cot.dxy,   "Asset Managers");
     cotPanel("ch-cot-sp500", "ch-cot-sp500-zlbl", DATA.cot.sp500, "Asset Managers");
     cotPanel("ch-cot-vix",   "ch-cot-vix-zlbl",   DATA.cot.vix,   "Asset Managers");
+    renderCotWeeklyTable("dxy", 12);
+    renderCotWeeklyTable("sp500", 12);
+    renderCotWeeklyTable("vix", 12);
   }} else if (tab === "saz-energia") {{
     barChart("ch-saz-wti",  DATA.saz.wti);
     barChart("ch-saz-gas",  DATA.saz.gas);
@@ -2038,6 +2122,11 @@ function renderCharts(tab) {{
     cotPanel("ch-cot-cobre",  "ch-cot-cobre-zlbl",  DATA.cot.cobre);
     cotPanel("ch-cot-wti",    "ch-cot-wti-zlbl",    DATA.cot.wti);
     cotPanel("ch-cot-gasnat", "ch-cot-gasnat-zlbl", DATA.cot.gasnat);
+    renderCotWeeklyTable("ouro", 12);
+    renderCotWeeklyTable("prata", 12);
+    renderCotWeeklyTable("cobre", 12);
+    renderCotWeeklyTable("wti", 12);
+    renderCotWeeklyTable("gasnat", 12);
   }} else if (tab === "saz-agricola") {{
     barChart("ch-saz-milho", DATA.saz.milho);
     barChart("ch-saz-trigo", DATA.saz.trigo);
@@ -2047,11 +2136,16 @@ function renderCharts(tab) {{
     cotPanel("ch-cot-trigo", "ch-cot-trigo-zlbl", DATA.cot.trigo);
     cotPanel("ch-cot-soja",  "ch-cot-soja-zlbl",  DATA.cot.soja);
     cotPanel("ch-cot-bcom",  "ch-cot-bcom-zlbl",  DATA.cot.bcom, "Asset Managers");
+    renderCotWeeklyTable("milho", 12);
+    renderCotWeeklyTable("trigo", 12);
+    renderCotWeeklyTable("soja", 12);
+    renderCotWeeklyTable("bcom", 12);
   }} else if (tab === "bitcoin") {{
     renderBtcStats(DATA.btcStats);
     btcCycleChart(DATA.btcCycle);
     barChart("ch-btc-saz", DATA.btcSaz);
     cotPanel("ch-cot-btc", "ch-cot-btc-zlbl", DATA.cot.btc, "Asset Managers");
+    renderCotWeeklyTable("btc", 12);
   }}
 }}
 

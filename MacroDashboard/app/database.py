@@ -28,6 +28,11 @@ def init_db():
                 PRIMARY KEY (contract, date)
             );
         """)
+        for col in ("mm_long", "mm_short"):
+            try:
+                con.execute(f"ALTER TABLE cot_data ADD COLUMN {col} REAL")
+            except sqlite3.OperationalError:
+                pass  # coluna já existe
 
 
 @contextmanager
@@ -98,19 +103,19 @@ def last_price_date(ticker: str) -> str | None:
 
 
 def upsert_cot(rows: list[tuple]):
-    """rows: list of (contract, date, mm_net, am_net, oi)"""
+    """rows: list of (contract, date, mm_net, am_net, oi, mm_long, mm_short)"""
     with _conn() as con:
         con.executemany(
-            "INSERT OR REPLACE INTO cot_data (contract, date, mm_net, am_net, oi) VALUES (?,?,?,?,?)",
+            "INSERT OR REPLACE INTO cot_data (contract, date, mm_net, am_net, oi, mm_long, mm_short) VALUES (?,?,?,?,?,?,?)",
             rows,
         )
 
 
 def get_cot(contract: str) -> list[tuple]:
-    """Returns list of (date, mm_net, am_net, oi) sorted by date"""
+    """Returns list of (date, mm_net, am_net, oi, mm_long, mm_short) sorted by date"""
     with _conn() as con:
         cur = con.execute(
-            "SELECT date, mm_net, am_net, oi FROM cot_data WHERE contract=? ORDER BY date",
+            "SELECT date, mm_net, am_net, oi, mm_long, mm_short FROM cot_data WHERE contract=? ORDER BY date",
             (contract,),
         )
         return cur.fetchall()

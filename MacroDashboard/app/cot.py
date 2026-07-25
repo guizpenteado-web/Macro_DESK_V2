@@ -140,6 +140,8 @@ def collect_cot():
                         float(row["mm_net"]),
                         float(row["ls_net"]),       # Large Speculators ≈ Non-Commercial
                         float(row["Open_Interest_All"]),
+                        float(row["M_Money_Positions_Long_All"]),
+                        float(row["M_Money_Positions_Short_All"]),
                     ))
 
             all_rows.extend(year_rows)
@@ -214,6 +216,8 @@ def collect_cot_tff():
                         float(row["mm_net"]),
                         float(row["ls_net"]),
                         float(row["Open_Interest_All"]),
+                        float(row["Asset_Mgr_Positions_Long_All"]),
+                        float(row["Asset_Mgr_Positions_Short_All"]),
                     ))
 
             all_rows.extend(year_rows)
