@@ -749,8 +749,11 @@ def _render_html(**kw) -> str:
         <div class="cot-weekly-toolbar">
           <span class="cot-weekly-title">Variação Semanal — {category_label}</span>
           <span class="period-toggle" data-cot-key="{key}">
+            <button data-weeks="4">4S</button>
+            <button data-weeks="8">8S</button>
             <button data-weeks="12" class="active">12S</button>
             <button data-weeks="26">26S</button>
+            <button data-weeks="39">39S</button>
             <button data-weeks="52">52S</button>
           </span>
         </div>
@@ -829,7 +832,7 @@ td.num {{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
 .cot-weekly-wrap {{ margin-top:10px; border-top:1px solid var(--border); padding-top:10px }}
 .cot-weekly-toolbar {{ display:flex; align-items:center; gap:10px; margin-bottom:6px }}
 .cot-weekly-title {{ flex:1; font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--muted) }}
-.period-toggle {{ display:flex; gap:4px }}
+.period-toggle {{ display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end }}
 .period-toggle button {{ background:var(--surface2); border:1px solid var(--border); color:var(--muted); font-size:10px; font-weight:700; padding:3px 8px; border-radius:4px; cursor:pointer }}
 .period-toggle button:hover {{ color:var(--text) }}
 .period-toggle button.active {{ background:var(--gold,#c9a24b); border-color:var(--gold,#c9a24b); color:#000 }}
