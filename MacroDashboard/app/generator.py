@@ -23,6 +23,7 @@ COT_PRICE_MAP = {
     "sp500":  "^GSPC",       "vix":    "^VIX",
     "btc":    "BTC-USD",     "milho":  "ZC=F",
     "trigo":  "PWHEAMTUSDM", "soja":   "ZS=F",
+    "bcom":   "^BCOM",
 }
 _FRED_SET = set(FRED_TICKERS.keys())
 
@@ -147,10 +148,13 @@ def _cot_chart_data(contract_key: str) -> str:
             pr = [(d, v) for d, v in pr if d >= "2018-01-01" and v is not None]
             if len(pr) > 400:          # diário → resample semanal
                 import pandas as pd
+                # W-TUE: semana fecha na terça, igual à data de referência do COT
+                # (CFTC reporta posição de terça, publica sexta) — sem isso o preço
+                # cai no domingo (default de "W") e desalinha do COT no tooltip.
                 s = pd.Series(
                     [float(v) for _, v in pr],
                     index=pd.DatetimeIndex([d for d, _ in pr])
-                ).sort_index().resample("W").last().dropna()
+                ).sort_index().resample("W-TUE").last().dropna()
                 p_dates = [str(d.date()) for d in s.index]
                 p_vals  = [round(float(v), 4) for v in s.values]
             else:                      # mensal (FRED) — usar direto
@@ -749,12 +753,12 @@ def _render_html(**kw) -> str:
         <div class="cot-weekly-toolbar">
           <span class="cot-weekly-title">Variação Semanal — {category_label}</span>
           <span class="period-toggle" data-cot-key="{key}">
-            <button data-weeks="4">4S</button>
-            <button data-weeks="8">8S</button>
-            <button data-weeks="12" class="active">12S</button>
-            <button data-weeks="26">26S</button>
-            <button data-weeks="39">39S</button>
-            <button data-weeks="52">52S</button>
+            <button data-weeks="4">4W</button>
+            <button data-weeks="8">8W</button>
+            <button data-weeks="12" class="active">12W</button>
+            <button data-weeks="26">26W</button>
+            <button data-weeks="39">39W</button>
+            <button data-weeks="52">52W</button>
           </span>
         </div>
         <div id="cot-{key}-weekly-tbl"></div>
