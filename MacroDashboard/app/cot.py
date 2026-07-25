@@ -125,10 +125,9 @@ def collect_cot():
 
             df["mm_net"] = df["M_Money_Positions_Long_All"] - df["M_Money_Positions_Short_All"]
             # Large Speculators (≈ Non-Commercial do Legacy COT) = Managed Money + Other Reportables
-            df["ls_net"] = (
-                (df["M_Money_Positions_Long_All"]  + df["Other_Rept_Positions_Long_All"]) -
-                (df["M_Money_Positions_Short_All"] + df["Other_Rept_Positions_Short_All"])
-            )
+            df["ls_long"]  = df["M_Money_Positions_Long_All"]  + df["Other_Rept_Positions_Long_All"]
+            df["ls_short"] = df["M_Money_Positions_Short_All"] + df["Other_Rept_Positions_Short_All"]
+            df["ls_net"]   = df["ls_long"] - df["ls_short"]
 
             year_rows = []
             for _, row in df.iterrows():
@@ -142,6 +141,8 @@ def collect_cot():
                         float(row["Open_Interest_All"]),
                         float(row["M_Money_Positions_Long_All"]),
                         float(row["M_Money_Positions_Short_All"]),
+                        float(row["ls_long"]),
+                        float(row["ls_short"]),
                     ))
 
             all_rows.extend(year_rows)
@@ -218,6 +219,8 @@ def collect_cot_tff():
                         float(row["Open_Interest_All"]),
                         float(row["Asset_Mgr_Positions_Long_All"]),
                         float(row["Asset_Mgr_Positions_Short_All"]),
+                        float(row["Lev_Money_Positions_Long_All"]),
+                        float(row["Lev_Money_Positions_Short_All"]),
                     ))
 
             all_rows.extend(year_rows)

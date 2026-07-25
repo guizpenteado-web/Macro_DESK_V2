@@ -138,6 +138,8 @@ def _cot_chart_data(contract_key: str) -> str:
     am_net   = [round(r[2]) for r in rows]
     mm_long  = [round(r[4]) if r[4] is not None else None for r in rows]
     mm_short = [round(r[5]) if r[5] is not None else None for r in rows]
+    am_long  = [round(r[6]) if r[6] is not None else None for r in rows]
+    am_short = [round(r[7]) if r[7] is not None else None for r in rows]
 
     p_dates: list[str] = []
     p_vals:  list[float] = []
@@ -163,6 +165,7 @@ def _cot_chart_data(contract_key: str) -> str:
 
     return json.dumps({"dates": dates, "mm_net": mm_net, "am_net": am_net,
                        "mm_long": mm_long, "mm_short": mm_short,
+                       "am_long": am_long, "am_short": am_short,
                        "p_dates": p_dates, "p_vals": p_vals})
 
 
@@ -747,12 +750,12 @@ def _render_html(**kw) -> str:
     def _cot_js(key: str) -> str:
         return cot.get(key, "null")
 
-    def _cot_weekly_html(key: str, category_label: str) -> str:
+    def _cot_weekly_html(key: str, category_label: str, use_am: bool = False) -> str:
         return f"""
       <div class="cot-weekly-wrap">
         <div class="cot-weekly-toolbar">
           <span class="cot-weekly-title">Variação Semanal — {category_label}</span>
-          <span class="period-toggle" data-cot-key="{key}">
+          <span class="period-toggle" data-cot-key="{key}" data-use-am="{"1" if use_am else "0"}">
             <button data-weeks="4">4W</button>
             <button data-weeks="8">8W</button>
             <button data-weeks="12" class="active">12W</button>
@@ -1240,10 +1243,10 @@ td.num {{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
     </div>
     <div class="chart-box">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <span class="chart-title" style="flex:1" id="cot-wti-lbl">Petróleo WTI — COT ICE &nbsp;|&nbsp; Managed Money &amp; Large Spec.</span>
+        <span class="chart-title" style="flex:1" id="cot-wti-lbl">Petróleo WTI — COT NYMEX &nbsp;|&nbsp; Non-Comercial &amp; Managed Money</span>
         <span id="ch-cot-wti-zlbl"></span>
       </div>
-      <div id="ch-cot-wti" style="height:430px"></div>{_cot_weekly_html('wti', 'Managed Money')}
+      <div id="ch-cot-wti" style="height:430px"></div>{_cot_weekly_html('wti', 'Non-Comercial', use_am=True)}
     </div>
   </div>
   <div class="grid2">
@@ -1845,7 +1848,9 @@ function addBtcPriceScaleHandle() {{
 // Sem label = Managed Money + Large Spec (Disaggregated)
 // Com label = label + Lev. Funds (TFF)
 // Z-score global sobre todo o período visível (2018→now) — mesma metodologia do Sharketo
-// useLS=true → Z calculado sobre am_net (Non-Commercial/Large Spec) em vez de mm_net
+// useLS=true → INVERTE qual série é a linha principal (sólida) e o Z-score: am_net
+// (Large Speculators ≈ Non-Commercial) vira a primária, mm_net (Managed Money) vira
+// secundária pontilhada. Usado só no WTI, pra bater com o que o Sharketo mostra.
 function cotPanel(divId, zLblId, data, label, useLS) {{
   var el = document.getElementById(divId);
   if (!data) {{
@@ -1855,14 +1860,16 @@ function cotPanel(divId, zLblId, data, label, useLS) {{
   var n = data.mm_net.length;
   if (n < 8) return;
 
-  var lbl    = label || "Managed Money";
-  var lbl2   = label ? "Lev. Funds" : "Large Spec. (≈Non-Comm.)";
+  var primaryNet   = useLS ? data.am_net : data.mm_net;
+  var secondaryNet = useLS ? data.mm_net : data.am_net;
+  var lbl    = label || (useLS ? "Non-Comercial" : "Managed Money");
+  var lbl2   = useLS ? "Managed Money" : (label ? "Lev. Funds" : "Large Spec. (≈Non-Comm.)");
   var dates  = data.dates;
   var toK    = function(v){{return Math.round(v/100)/10;}};
 
   // ── Z-score rolling 52 semanas, ddof=1 — padrão COTInsight/Tradingster/indústria ──
   var W   = 52;
-  var zSrc = useLS ? data.am_net : data.mm_net;
+  var zSrc = primaryNet;
   var zs  = zSrc.map(function(v, i) {{
     var start = Math.max(0, i - W + 1);
     var win = zSrc.slice(start, i + 1);
@@ -1882,7 +1889,7 @@ function cotPanel(divId, zLblId, data, label, useLS) {{
   }}
 
   // ── Traces do painel superior ──
-  var allVals = data.mm_net.concat(data.am_net).map(toK);
+  var allVals = primaryNet.concat(secondaryNet).map(toK);
   var minV = Math.min.apply(null,allVals), maxV = Math.max.apply(null,allVals);
   var pad = (maxV - minV) * 0.12 || 5;
   var hasPrice = data.p_dates && data.p_dates.length > 0;
@@ -1891,13 +1898,13 @@ function cotPanel(divId, zLblId, data, label, useLS) {{
   var traces = [
     {{
       type:"scatter", mode:"lines", name:lbl, xaxis:"x", yaxis:"y",
-      x:dates, y:data.mm_net.map(toK),
+      x:dates, y:primaryNet.map(toK),
       line:{{color:"#f59e0b", width:1.8}},
       hovertemplate:lbl + ": <b>%{{y:.1f}}K ctts</b><extra></extra>",
     }},
     {{
       type:"scatter", mode:"lines", name:lbl2, xaxis:"x", yaxis:"y",
-      x:dates, y:data.am_net.map(toK),
+      x:dates, y:secondaryNet.map(toK),
       line:{{color:"rgba(129,140,248,0.7)", width:1.4, dash:"dot"}},
       visible:"legendonly",
       hovertemplate:lbl2 + ": <b>%{{y:.1f}}K ctts</b><extra></extra>",
@@ -1987,15 +1994,17 @@ function cotPanel(divId, zLblId, data, label, useLS) {{
 }}
 
 // ─── COT weekly micro-table (Long/Short/Net + variação + saldo acumulado) ─
-function renderCotWeeklyTable(key, weeks) {{
+// useAM=true → usa am_long/am_short/am_net (Non-Comercial) em vez de mm_* (Managed Money)
+function renderCotWeeklyTable(key, weeks, useAM) {{
   var wrap = document.getElementById("cot-" + key + "-weekly-tbl");
   if (!wrap) return;
   var data = DATA.cot[key];
-  if (!data || !data.mm_long || !data.mm_long.length) {{
+  var srcLong = useAM ? "am_long" : "mm_long", srcShort = useAM ? "am_short" : "mm_short", srcNet = useAM ? "am_net" : "mm_net";
+  if (!data || !data[srcLong] || !data[srcLong].length) {{
     wrap.innerHTML = '<p style="color:#7d90a8;padding:8px;font-size:11px">Dados não disponíveis.</p>';
     return;
   }}
-  var dates = data.dates, longs = data.mm_long, shorts = data.mm_short, net = data.mm_net;
+  var dates = data.dates, longs = data[srcLong], shorts = data[srcShort], net = data[srcNet];
   var n = dates.length;
   var deltas = net.map(function(v, i) {{ return (i === 0 || longs[i] === null || longs[i-1] === null) ? null : v - net[i-1]; }});
   var start = Math.max(0, n - weeks);
@@ -2030,9 +2039,10 @@ document.addEventListener("click", function(e) {{
   if (!btn) return;
   var group = btn.closest(".period-toggle");
   var key = group.getAttribute("data-cot-key");
+  var useAM = group.getAttribute("data-use-am") === "1";
   group.querySelectorAll("button").forEach(function(b) {{ b.classList.remove("active"); }});
   btn.classList.add("active");
-  renderCotWeeklyTable(key, parseInt(btn.getAttribute("data-weeks"), 10));
+  renderCotWeeklyTable(key, parseInt(btn.getAttribute("data-weeks"), 10), useAM);
 }});
 
 // ─── BTC stats boxes ──────────────────────────────────────────────────
@@ -2127,12 +2137,12 @@ function renderCharts(tab) {{
     cotPanel("ch-cot-ouro",   "ch-cot-ouro-zlbl",   DATA.cot.ouro);
     cotPanel("ch-cot-prata",  "ch-cot-prata-zlbl",  DATA.cot.prata);
     cotPanel("ch-cot-cobre",  "ch-cot-cobre-zlbl",  DATA.cot.cobre);
-    cotPanel("ch-cot-wti",    "ch-cot-wti-zlbl",    DATA.cot.wti);
+    cotPanel("ch-cot-wti",    "ch-cot-wti-zlbl",    DATA.cot.wti, "Non-Comercial", true);
     cotPanel("ch-cot-gasnat", "ch-cot-gasnat-zlbl", DATA.cot.gasnat);
     renderCotWeeklyTable("ouro", 12);
     renderCotWeeklyTable("prata", 12);
     renderCotWeeklyTable("cobre", 12);
-    renderCotWeeklyTable("wti", 12);
+    renderCotWeeklyTable("wti", 12, true);
     renderCotWeeklyTable("gasnat", 12);
   }} else if (tab === "saz-agricola") {{
     barChart("ch-saz-milho", DATA.saz.milho);
