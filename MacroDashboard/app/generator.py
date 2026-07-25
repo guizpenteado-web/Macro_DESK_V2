@@ -1243,10 +1243,10 @@ td.num {{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
     </div>
     <div class="chart-box">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <span class="chart-title" style="flex:1" id="cot-wti-lbl">Petróleo WTI — COT NYMEX &nbsp;|&nbsp; Non-Comercial &amp; Managed Money</span>
+        <span class="chart-title" style="flex:1" id="cot-wti-lbl">Petróleo WTI — COT NYMEX &nbsp;|&nbsp; Managed Money &amp; Large Spec.</span>
         <span id="ch-cot-wti-zlbl"></span>
       </div>
-      <div id="ch-cot-wti" style="height:430px"></div>{_cot_weekly_html('wti', 'Non-Comercial', use_am=True)}
+      <div id="ch-cot-wti" style="height:430px"></div>{_cot_weekly_html('wti', 'Managed Money')}
     </div>
   </div>
   <div class="grid2">
@@ -2137,12 +2137,12 @@ function renderCharts(tab) {{
     cotPanel("ch-cot-ouro",   "ch-cot-ouro-zlbl",   DATA.cot.ouro);
     cotPanel("ch-cot-prata",  "ch-cot-prata-zlbl",  DATA.cot.prata);
     cotPanel("ch-cot-cobre",  "ch-cot-cobre-zlbl",  DATA.cot.cobre);
-    cotPanel("ch-cot-wti",    "ch-cot-wti-zlbl",    DATA.cot.wti, "Non-Comercial", true);
+    cotPanel("ch-cot-wti",    "ch-cot-wti-zlbl",    DATA.cot.wti);
     cotPanel("ch-cot-gasnat", "ch-cot-gasnat-zlbl", DATA.cot.gasnat);
     renderCotWeeklyTable("ouro", 12);
     renderCotWeeklyTable("prata", 12);
     renderCotWeeklyTable("cobre", 12);
-    renderCotWeeklyTable("wti", 12, true);
+    renderCotWeeklyTable("wti", 12);
     renderCotWeeklyTable("gasnat", 12);
   }} else if (tab === "saz-agricola") {{
     barChart("ch-saz-milho", DATA.saz.milho);
