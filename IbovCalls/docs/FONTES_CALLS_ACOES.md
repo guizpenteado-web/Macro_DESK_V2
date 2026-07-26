@@ -6,6 +6,18 @@ Complementa (não substitui) `reference_sources_database.md`, que cobre a hierar
 
 ---
 
+## TIER-0 — grupo de WhatsApp do usuário (26/jul/2026)
+
+O usuário recebe calls diárias num grupo de WhatsApp (formato típico: `++ {Banco} tem recomendação de {compra/venda} para {Empresa}, com preço-alvo de R$ {X}` seguido de um parágrafo de contexto). Isso é potencialmente a fonte mais rica e mais fresca de todas — cobre calls que ainda não foram indexadas/republicadas por nenhum portal público.
+
+**Workflow acordado**: o usuário exporta o chat periodicamente (WhatsApp → grupo → ⋮ → Mais → Exportar conversa → **Sem mídia**, gera um `.txt`) e manda o arquivo. Processo ao receber:
+1. Extrair cada call do texto (banco, ativo, ação, alvo, alvo anterior se houver, data da mensagem)
+2. Tentar confirmar cada uma contra uma fonte pública (TIER-1/2 abaixo) — mesma disciplina de sempre, nunca inserir sem verificar
+3. As confirmadas entram no dataset normalmente, com a URL da fonte pública encontrada
+4. As **não confirmadas** ficam numa lista separada pra o usuário decidir: inserir mesmo assim com tag "fonte: grupo, não confirmada externamente", ou aguardar alguns dias pra ver se algum portal republica
+
+**Achado real (26/jul/2026)**: usuário mandou um exemplo — "JPMorgan compra Motiva, alvo R$19, após leilão Régis Bittencourt (23/jul)". Busca pública não confirmou JPMorgan com esse valor: achou **Bradesco BBI com R$19** (bate o valor, banco errado) e **JPMorgan com R$18** (bate o banco, mas de set/2025, desatualizado). Duas hipóteses: (a) o grupo tem uma nota do JPMorgan pós-leilão ainda não republicada publicamente — bem provável, já que o leilão foi só um dia antes; (b) troca de banco no repasse da mensagem. **Lição**: mesmo vindo de uma fonte "de dentro", sempre tentar cross-check — e se não confirmar, não travar a call no dataset como se fosse fato consolidado.
+
 ## TIER-1 — fontes diretas dos bancos (melhor sinal, mais raro de achar tudo)
 
 | Banco | Onde buscar |
