@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calls dos Bancos por Ação</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f1117; color: #e1e4e8; min-height: 100vh;
+}
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+.header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 20px 0; border-bottom: 1px solid #21262d; margin-bottom: 24px;
+    flex-wrap: wrap; gap: 16px;
+}
+.header-left h1 { font-size: 24px; font-weight: 600; color: #f0f6fc; }
+.header-left h1 span { color: #58a6ff; }
+.header-left .subtitle { font-size: 13px; color: #8b949e; margin-top: 4px; }
+.back-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 20px; border: 1px solid #30363d;
+    background: #161b22; color: #8b949e; text-decoration: none;
+    font-size: 13px; font-weight: 500; transition: all 0.2s;
+}
+.back-link:hover { background: #1c2128; color: #e1e4e8; }
+
+.search-wrapper { margin-bottom: 20px; }
+.search-input {
+    width: 100%; padding: 12px 18px; border-radius: 12px;
+    border: 1px solid #30363d; background: #161b22; color: #f0f6fc;
+    font-size: 15px; outline: none; transition: border-color 0.2s;
+}
+.search-input:focus { border-color: #58a6ff; }
+.search-input::placeholder { color: #6e7681; }
+
+.ticker-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+}
+.ticker-card {
+    background: #161b22; border-radius: 12px; border: 1px solid #21262d;
+    padding: 16px 18px; cursor: pointer; transition: all 0.15s;
+}
+.ticker-card:hover { border-color: #58a6ff; background: #1c2128; transform: translateY(-1px); }
+.ticker-card .symbol { font-size: 18px; font-weight: 700; color: #f0f6fc; }
+.ticker-card .company { font-size: 13px; color: #8b949e; margin-top: 2px; }
+.ticker-card .meta {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 12px; font-size: 12px; color: #6e7681;
+}
+.ticker-card .count-badge {
+    background: #1f6feb33; color: #58a6ff; padding: 3px 10px;
+    border-radius: 12px; font-weight: 600;
+}
+.empty-state { text-align: center; padding: 60px 20px; color: #8b949e; }
+
+.detail-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 20px; flex-wrap: wrap; gap: 16px;
+}
+.detail-header .ticker-title { font-size: 28px; font-weight: 700; color: #f0f6fc; }
+.detail-header .ticker-company { font-size: 14px; color: #8b949e; margin-top: 4px; }
+.detail-price { text-align: right; }
+.detail-price .price { font-size: 32px; font-weight: 700; color: #f0f6fc; }
+.detail-price .change { font-size: 14px; font-weight: 500; margin-top: 2px; }
+.change.positive { color: #3fb950; }
+.change.negative { color: #f85149; }
+
+.chart-wrapper {
+    background: #161b22; border-radius: 12px; border: 1px solid #21262d;
+    padding: 20px; margin-bottom: 24px; position: relative;
+}
+.chart-controls { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+.range-btn {
+    padding: 4px 14px; border-radius: 16px; border: 1px solid #30363d;
+    background: transparent; color: #8b949e; cursor: pointer;
+    font-size: 12px; font-weight: 500; transition: all 0.2s;
+}
+.range-btn:hover { background: #1c2128; color: #e1e4e8; }
+.range-btn.active { background: #1f6feb33; border-color: #1f6feb; color: #58a6ff; }
+.chart-wrapper canvas { width: 100% !important; max-height: 460px; }
+.loading-chart { text-align: center; padding: 40px; color: #8b949e; font-size: 14px; }
+
+.timeline-section h2 { font-size: 18px; color: #f0f6fc; margin-bottom: 16px; }
+.timeline { position: relative; padding-left: 32px; }
+.timeline::before {
+    content: ''; position: absolute; left: 12px; top: 0; bottom: 0;
+    width: 2px; background: #21262d;
+}
+.timeline-item {
+    position: relative; margin-bottom: 12px; padding: 14px 16px;
+    background: #161b22; border-radius: 8px; border: 1px solid #21262d;
+}
+.timeline-item::before {
+    content: ''; position: absolute; left: -24px; top: 20px;
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 2px solid; background: #0d1117;
+}
+.timeline-item .date { font-size: 12px; color: #8b949e; margin-bottom: 2px; }
+.timeline-item .bank-name {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 4px;
+}
+.timeline-item .title { font-size: 14px; font-weight: 600; color: #f0f6fc; margin-bottom: 6px; }
+.timeline-item .summary { font-size: 13px; color: #8b949e; line-height: 1.5; margin-bottom: 8px; }
+.timeline-item .targets { display: flex; gap: 8px; flex-wrap: wrap; }
+.pill {
+    display: inline-block; padding: 3px 10px; border-radius: 10px;
+    font-size: 11px; font-weight: 600; background: #21262d; color: #c9d1d9;
+}
+.pill.target { background: #1f6feb33; color: #58a6ff; }
+.timeline-item a { color: #58a6ff; font-size: 12px; text-decoration: none; }
+.timeline-item a:hover { text-decoration: underline; }
+
+.loading { text-align: center; padding: 80px 20px; color: #8b949e; }
+.loading .spinner {
+    width: 40px; height: 40px; border: 3px solid #21262d;
+    border-top-color: #58a6ff; border-radius: 50%;
+    animation: spin 0.8s linear infinite; margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 768px) {
+    .header { flex-direction: column; text-align: center; }
+    .detail-header { flex-direction: column; }
+    .detail-price { text-align: left; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="header-left">
+            <h1><span>AÇÕES</span> · Calls dos Bancos</h1>
+            <div class="subtitle">Preço-alvo e recomendações por ativo, desde início de 2026</div>
+        </div>
+        <a class="back-link" href="/">← Voltar pro Ibovespa</a>
+    </div>
+
+    <div id="listView">
+        <div class="search-wrapper">
+            <input type="text" class="search-input" id="searchInput" placeholder="Buscar por ativo (ex: PETR4, Vale, Itaú)...">
+        </div>
+        <div class="ticker-grid" id="tickerGrid">
+            <div class="loading"><div class="spinner"></div></div>
+        </div>
+    </div>
+
+    <div id="detailView" style="display:none">
+        <div class="detail-header">
+            <div>
+                <div class="ticker-title" id="detailTicker"></div>
+                <div class="ticker-company" id="detailCompany"></div>
+            </div>
+            <div class="detail-price" id="detailPrice"></div>
+        </div>
+
+        <div class="chart-wrapper">
+            <div class="chart-controls" id="rangeControls">
+                <button class="range-btn" data-range="3mo">3M</button>
+                <button class="range-btn" data-range="6mo">6M</button>
+                <button class="range-btn active" data-range="1y">1A</button>
+                <button class="range-btn" data-range="ytd">Desde jan/26</button>
+                <button class="range-btn" data-range="max">MAX</button>
+            </div>
+            <div class="loading-chart" id="chartLoading">Carregando cotação...</div>
+            <canvas id="stockChart"></canvas>
+        </div>
+
+        <div class="timeline-section">
+            <h2>Calls sobre este ativo</h2>
+            <div class="timeline" id="detailTimeline"></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+<script>
+const BANK_COLORS = {
+    'BTG Pactual': '#5c6bc0', 'Itaú BBA': '#ff8f00', 'Morgan Stanley': '#00bfa5',
+    'BofA': '#ef5350', 'Goldman Sachs': '#fdd835', 'JP Morgan': '#42a5f5',
+    'Citi': '#9c27b0', 'XP Investimentos': '#26c6da', 'UBS': '#e53935',
+    'Santander': '#c62828', 'BB Investimentos': '#0d47a1'
+};
+
+let allTickers = [];
+let currentTicker = null;
+let currentRange = '1y';
+let chartInstance = null;
+
+function fmtDate(d) {
+    return new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+function fmtPrice(v) {
+    return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+async function init() {
+    try {
+        const res = await fetch('/api/stock-tickers');
+        allTickers = await res.json();
+        renderTickerGrid(allTickers);
+    } catch (e) {
+        document.getElementById('tickerGrid').innerHTML = '<div class="empty-state">Erro ao carregar ativos.</div>';
+    }
+
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+        const q = e.target.value.trim().toUpperCase();
+        const filtered = allTickers.filter(t =>
+            t.ticker.includes(q) || t.company.toUpperCase().includes(q)
+        );
+        renderTickerGrid(filtered);
+    });
+
+    window.addEventListener('hashchange', route);
+    route();
+}
+
+function route() {
+    const hash = window.location.hash;
+    if (hash.startsWith('#/')) {
+        const ticker = hash.slice(2).toUpperCase();
+        if (ticker) { showDetail(ticker); return; }
+    }
+    showList();
+}
+
+function renderTickerGrid(tickers) {
+    const grid = document.getElementById('tickerGrid');
+    if (tickers.length === 0) {
+        grid.innerHTML = '<div class="empty-state">Nenhum ativo encontrado pra esse termo.</div>';
+        return;
+    }
+    grid.innerHTML = '';
+    [...tickers].sort((a, b) => b.last_date.localeCompare(a.last_date)).forEach(t => {
+        const card = document.createElement('div');
+        card.className = 'ticker-card';
+        card.innerHTML = `
+            <div class="symbol">${t.ticker}</div>
+            <div class="company">${t.company}</div>
+            <div class="meta">
+                <span>Último call: ${fmtDate(t.last_date)}</span>
+                <span class="count-badge">${t.count}</span>
+            </div>
+        `;
+        card.onclick = () => { window.location.hash = `#/${t.ticker}`; };
+        grid.appendChild(card);
+    });
+}
+
+function showList() {
+    document.getElementById('listView').style.display = '';
+    document.getElementById('detailView').style.display = 'none';
+    currentTicker = null;
+}
+
+async function showDetail(ticker) {
+    currentTicker = ticker;
+    document.getElementById('listView').style.display = 'none';
+    document.getElementById('detailView').style.display = '';
+    document.getElementById('detailTicker').textContent = ticker;
+    const known = allTickers.find(t => t.ticker === ticker);
+    document.getElementById('detailCompany').textContent = known ? known.company : '';
+    document.getElementById('detailPrice').innerHTML = '';
+    document.getElementById('chartLoading').style.display = '';
+    document.getElementById('chartLoading').textContent = 'Carregando cotação...';
+
+    currentRange = 'ytd';
+    document.querySelectorAll('#rangeControls .range-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.range === currentRange);
+    });
+
+    await Promise.all([loadQuote(ticker), loadCalls(ticker)]);
+}
+
+let currentCalls = [];
+
+async function loadCalls(ticker) {
+    const res = await fetch(`/api/stock-calls?ticker=${ticker}`);
+    currentCalls = await res.json();
+    renderDetailTimeline(currentCalls);
+}
+
+function renderDetailTimeline(calls) {
+    const c = document.getElementById('detailTimeline');
+    c.innerHTML = '';
+    [...calls].sort((a, b) => b.date.localeCompare(a.date)).forEach(call => {
+        const bc = BANK_COLORS[call.bank] || '#58a6ff';
+        const d = document.createElement('div');
+        d.className = 'timeline-item';
+        d.style.borderLeft = `3px solid ${bc}`;
+        const targetsHtml = [
+            call.target ? `<span class="pill target">Alvo: ${call.target}</span>` : '',
+            call.prior_target ? `<span class="pill">Antes: ${call.prior_target}</span>` : '',
+            call.action ? `<span class="pill">${call.action}</span>` : '',
+        ].join('');
+        d.innerHTML = `
+            <div class="date">${fmtDate(call.date)}</div>
+            <div class="bank-name" style="color:${bc}">${call.bank}</div>
+            <div class="title">${call.title}</div>
+            <div class="summary">${call.summary}</div>
+            <div class="targets">${targetsHtml}</div>
+            <br>
+            <a href="${call.url}" target="_blank" rel="noopener">Ver fonte original →</a>
+        `;
+        c.appendChild(d);
+    });
+}
+
+async function loadQuote(ticker) {
+    document.getElementById('chartLoading').style.display = '';
+    try {
+        const res = await fetch(`/api/stock-quote?ticker=${ticker}&range=${currentRange}`);
+        const quote = await res.json();
+        if (quote.error) {
+            document.getElementById('chartLoading').textContent = `Sem cotação disponível para ${ticker}.`;
+            return;
+        }
+        document.getElementById('chartLoading').style.display = 'none';
+        const cur = quote.current;
+        const cls = cur.change >= 0 ? 'positive' : 'negative';
+        const sign = cur.change >= 0 ? '+' : '';
+        document.getElementById('detailPrice').innerHTML = `
+            <div class="price">R$ ${fmtPrice(cur.price)}</div>
+            <div class="change ${cls}">${sign}${fmtPrice(cur.change)} (${sign}${cur.changePercent}%)</div>
+        `;
+        renderStockChart(quote.data);
+    } catch (e) {
+        document.getElementById('chartLoading').textContent = 'Erro ao carregar cotação.';
+    }
+}
+
+function renderStockChart(data) {
+    if (!data || data.length === 0) return;
+    const ctx = document.getElementById('stockChart').getContext('2d');
+    const labels = data.map(d => d.date);
+    const prices = data.map(d => d.close);
+
+    const annotations = {};
+    currentCalls.forEach((call, idx) => {
+        const di = labels.indexOf(call.date);
+        if (di === -1) return;
+        const bc = BANK_COLORS[call.bank] || '#58a6ff';
+        annotations[`c${idx}`] = {
+            type: 'point', xValue: call.date, yValue: prices[di],
+            backgroundColor: bc, borderColor: '#0d1117', borderWidth: 2,
+            radius: 8, pointStyle: 'rectRounded',
+            label: {
+                display: true, content: call.bank, position: 'start', yAdjust: -16,
+                backgroundColor: bc, color: '#0d1117',
+                font: { size: 9, weight: 'bold' },
+                padding: { top: 3, bottom: 3, left: 5, right: 5 }, borderRadius: 3
+            }
+        };
+    });
+
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    try { if (typeof ChartAnnotation !== 'undefined') Chart.register(ChartAnnotation); } catch (e) {}
+
+    chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: currentTicker, data: prices,
+                borderColor: '#58a6ff',
+                backgroundColor: (ctx) => {
+                    const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, ctx.chart.height);
+                    g.addColorStop(0, 'rgba(88,166,255,0.12)');
+                    g.addColorStop(1, 'rgba(88,166,255,0)');
+                    return g;
+                },
+                fill: true, borderWidth: 2, pointRadius: 0, pointHitRadius: 10, tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: true,
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#161b22', titleColor: '#f0f6fc', bodyColor: '#c9d1d9',
+                    borderColor: '#30363d', borderWidth: 1, padding: 12, cornerRadius: 8,
+                    callbacks: {
+                        title: (items) => {
+                            const d = new Date(items[0].label + 'T12:00:00');
+                            return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+                        },
+                        label: (item) => `${currentTicker}: R$ ${fmtPrice(item.raw)}`
+                    }
+                },
+                annotation: {
+                    annotations,
+                    click: (ctx) => {
+                        const id = ctx.elementId;
+                        if (id && id.startsWith('c')) {
+                            const idx = parseInt(id.substring(1));
+                            const call = currentCalls[idx];
+                            if (call) window.open(call.url, '_blank');
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: '#21262d' },
+                    ticks: {
+                        color: '#8b949e', font: { size: 11 }, maxTicksLimit: 16,
+                        callback: (val, idx) => {
+                            const d = new Date(labels[idx] + 'T12:00:00');
+                            return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' });
+                        }
+                    }
+                },
+                y: {
+                    grid: { color: '#21262d' },
+                    ticks: { color: '#8b949e', font: { size: 11 }, callback: (v) => v.toLocaleString('pt-BR') }
+                }
+            }
+        }
+    });
+}
+
+document.getElementById('rangeControls').addEventListener('click', (e) => {
+    const btn = e.target.closest('.range-btn');
+    if (!btn || !currentTicker) return;
+    document.querySelectorAll('#rangeControls .range-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentRange = btn.dataset.range;
+    loadQuote(currentTicker);
+});
+
+init();
+</script>
+</body>
+</html>

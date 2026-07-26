@@ -9,9 +9,22 @@ import concurrent.futures
 app = Flask(__name__, static_folder='.')
 CORS(app)
 
+
+@app.after_request
+def add_no_cache_headers(response):
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    return response
+
+
 @app.route('/')
 def serve_html():
     return send_from_directory('.', 'index.html')
+
+
+@app.route('/acoes')
+def serve_stocks_html():
+    return send_from_directory('.', 'acoes.html')
 
 @app.route('/api/ibov')
 def get_ibov_data():
@@ -143,7 +156,10 @@ def get_calls():
         {"date":"2026-07-01","bank":"BB Investimentos","title":"Carteira 5+ troca todas as a\u00e7\u00f5es ap\u00f3s queda de 6,44% em junho","summary":"BB Investimentos reformulou 100% da Carteira 5+ para julho/2026. Entram Allos (ALOS3), Bradesco (BBDC4), Cemig (CMIG4), Motiva (MOTV3) e Vivara (VIVA3), 20% cada. Saem Bradespar, C&A, CSN, Cury e Lojas Renner. Carteira anterior caiu 6,44% em junho, abaixo do Ibovespa (-1,01% no per\u00edodo).","url":"https://bpmoney.com.br/mercado/bb-investimentos-troca-todas-acoes-carteira/"},
         {"date":"2026-07-10","bank":"Mercado","title":"IPCA surpreende para baixo; Ibovespa sobe a maior valor em 2 meses","summary":"IPCA de junho veio a 0,16%, abaixo da mediana de mercado (~0,31%), levando a infla\u00e7\u00e3o acumulada em 12 meses a 4,64% (ante 4,72%). Ibovespa fechou em alta de 2,86% em 10/jul, aos 177.680 pontos \u2014 maior patamar desde 14/mai e terceira semana consecutiva de ganhos (+2,18% na semana). Mercado passou a precificar maior chance de corte de 0,25p.p. na Selic j\u00e1 na reuni\u00e3o do Copom de 4-5/ago. Bancos lideraram a alta (BPAC11 +5,48%, BBAS3 +2,90%).","url":"https://www.infomoney.com.br/mercados/ibovespa-hoje-bolsa-de-valores-ao-vivo-10072026/"},
         {"date":"2026-07-10","bank":"Goldman Sachs","title":"13 a\u00e7\u00f5es preferidas e 5 preteridas para aproveitar a corre\u00e7\u00e3o da Bolsa","summary":"Goldman Sachs recomenda aproveitar a queda de 17% do MSCI Brazil desde as m\u00e1ximas de abril/2026 (tese de revers\u00e3o \u00e0 m\u00e9dia), citando ambiente incerto: Fed mais restritivo, baixa exposi\u00e7\u00e3o do Brasil a IA, elei\u00e7\u00f5es presidenciais. 13 preferidas (compra): Petrobras (valuation 4x lucro, alto dividend yield), Ita\u00fa Unibanco (maior ROE do setor, 25,4% em 2026), BTG Pactual, Nubank (EPS +41% 2025-28), Cyrela, Bradsa\u00fade (caixa l\u00edquido R$8bi), GPS, Lojas Renner, Smartfit, Vibra, Direcional, Rede D'Or, Sabesp (TIR real 10%). 5 preteridas (venda): Banco do Brasil (inadimpl\u00eancia subindo, ROE abaixo do custo de capital), CSN, CSN Minera\u00e7\u00e3o (vis\u00e3o baixista min\u00e9rio de ferro), Engie Brasil, Telef\u00f4nica Brasil.","url":"https://www.infomoney.com.br/onde-investir/goldman-aponta-13-acoes-preferidas-e-5-preteridas-para-aproveitar-a-queda-da-bolsa/"},
-        {"date":"2026-07-16","bank":"Mercado","title":"Novo tarifa\u00e7o dos EUA sobre o Brasil derruba Ibovespa","summary":"USTR anunciou na noite de 15/07 taxa\u00e7\u00e3o adicional de 25% sobre produtos brasileiros a partir de 22/07, ap\u00f3s investiga\u00e7\u00e3o Section 301 sobre pr\u00e1ticas comerciais do pa\u00eds. Ibovespa abriu em forte queda em 16/07, chegando a cair mais de 2.000 pontos (-1,11%, 174.056 pts \u00e0s 10h53). D\u00f3lar subiu 0,38% a R$5,0975. Produtos afetados: a\u00e7\u00facar, m\u00e1quinas agr\u00edcolas, vestu\u00e1rio, m\u00e1quinas el\u00e9tricas, papel e a\u00e7o. Isentos: caf\u00e9, carne bovina, terras raras, energia, aeronaves e pe\u00e7as.","url":"https://www.moneytimes.com.br/ibovespa-futuro-16-7-26-apsa/"}
+        {"date":"2026-07-16","bank":"Mercado","title":"Novo tarifa\u00e7o dos EUA sobre o Brasil derruba Ibovespa","summary":"USTR anunciou na noite de 15/07 taxa\u00e7\u00e3o adicional de 25% sobre produtos brasileiros a partir de 22/07, ap\u00f3s investiga\u00e7\u00e3o Section 301 sobre pr\u00e1ticas comerciais do pa\u00eds. Ibovespa abriu em forte queda em 16/07, chegando a cair mais de 2.000 pontos (-1,11%, 174.056 pts \u00e0s 10h53). D\u00f3lar subiu 0,38% a R$5,0975. Produtos afetados: a\u00e7\u00facar, m\u00e1quinas agr\u00edcolas, vestu\u00e1rio, m\u00e1quinas el\u00e9tricas, papel e a\u00e7o. Isentos: caf\u00e9, carne bovina, terras raras, energia, aeronaves e pe\u00e7as.","url":"https://www.moneytimes.com.br/ibovespa-futuro-16-7-26-apsa/"},
+        {"date":"2026-07-14","bank":"Morgan Stanley","title":"Refor\u00e7a aposta no Brasil \u2014 S\u00e3o Martinho entra, Axia \u00e9 maior convic\u00e7\u00e3o","summary":"Morgan Stanley refor\u00e7ou a aposta no Brasil como mercado favorito na Am\u00e9rica Latina, citando pessimismo elevado dos investidores locais como gatilho para recupera\u00e7\u00e3o de fluxos. S\u00e3o Martinho (SMTO3) entrou na carteira apostando na alta dos pre\u00e7os do a\u00e7\u00facar em contexto de El Ni\u00f1o. Axia Energia (AXIA3) teve a posi\u00e7\u00e3o aumentada, descrita como a aposta de maior convic\u00e7\u00e3o do banco no Brasil, beneficiada por pre\u00e7os de energia em alta. Suzano (SUZB3) tamb\u00e9m teve exposi\u00e7\u00e3o refor\u00e7ada. Copel (CPLE6) teve posi\u00e7\u00e3o parcialmente reduzida por risco de chuvas intensas no Sul pressionarem pre\u00e7os de energia.","url":"https://bpmoney.com.br/mercado/morgan-stanley-reforca-aposta-no-brasil-veja-acoes-favoritas-para-julho/"},
+        {"date":"2026-07-20","bank":"Citi","title":"3 motivos para comprar Brasil em meio ao caos global","summary":"Citi listou 3 motivos para comprar a\u00e7\u00f5es brasileiras em meio \u00e0 turbul\u00eancia global: (1) menor exposi\u00e7\u00e3o da economia brasileira a atividades ligadas a IA vs. outros mercados; (2) dist\u00e2ncia geogr\u00e1fica dos principais focos de tens\u00e3o geopol\u00edtica; (3) resili\u00eancia das exporta\u00e7\u00f5es brasileiras apesar da escalada protecionista dos EUA (tarifa\u00e7o). Carteira com 10% cada em Petrobras (PETR4), Multiplan (MULT3), Cury (CURY3), Embraer (EMBR3), Equatorial (EQTL3) e RD Sa\u00fade (RADL3); 5% cada em Ita\u00fa Unibanco (ITUB4), Caixa Seguridade (CXSE3), Prio (PRIO3), Axia (AXIA3), Smart Fit (SMFT3) e Vivara (VIVA3).","url":"https://www.seudinheiro.com/2026/bolsa-dolar/citi-lista-3-motivos-para-comprar-brasil-em-meio-ao-caos-global-e-estas-sao-as-acoes-escolhidas-pelo-banco-bdap/"},
+        {"date":"2026-07-24","bank":"JP Morgan","title":"Rebaixa Caixa Seguridade (CXSE3) para venda ap\u00f3s forte alta","summary":"JP Morgan revisou sua vis\u00e3o para o setor de seguros brasileiro ap\u00f3s forte valoriza\u00e7\u00e3o das a\u00e7\u00f5es desde junho e rebaixou Caixa Seguridade (CXSE3) de neutro para underweight (venda). Pre\u00e7o-alvo de R$22 para dezembro de 2027, praticamente em linha com a cota\u00e7\u00e3o da \u00e9poca, indicando potencial de alta pr\u00f3ximo de zero. CXSE3 fechou em queda de 5,21% a R$21,27 na sexta-feira (24/07) \u2014 a a\u00e7\u00e3o j\u00e1 havia subido mais de 35% no acumulado de 2026, chegando a R$22,54 em julho. Banco passou a preferir IRB e Porto Seguro no setor de seguros. Risco citado: desacelera\u00e7\u00e3o do crescimento da carteira de cr\u00e9dito da Caixa, especialmente no segmento imobili\u00e1rio, em 2027.","url":"https://www.infomoney.com.br/mercados/jpmorgan-rebaixa-caixa-seguridade-e-prefere-irb-e-porto-no-setor-de-seguros-desempenho-acoes/"}
     ]
     bank_filter = request.args.get('bank')
     if bank_filter:
@@ -166,6 +182,122 @@ def get_banks():
         {"name": "BB Investimentos", "color": "#0d47a1"}
     ]
     return jsonify(banks)
+
+
+TICKER_NAMES = {
+    "PETR4": "Petrobras", "VALE3": "Vale", "WEGE3": "WEG", "RENT3": "Localiza",
+    "MGLU3": "Magazine Luiza", "B3SA3": "B3", "EQTL3": "Equatorial Energia",
+    "BPAC11": "BTG Pactual", "ITUB4": "Itaú Unibanco", "BBDC4": "Bradesco",
+    "BBAS3": "Banco do Brasil", "SANB11": "Santander Brasil", "CXSE3": "Caixa Seguridade",
+}
+
+
+@app.route('/api/stock-calls')
+def get_stock_calls():
+    calls = [
+        {"ticker": "PETR4", "bank": "BTG Pactual", "date": "2026-05-04", "action": "eleva alvo", "target": "US$ 25 (ADR)", "prior_target": "US$ 22,03 (ADR)", "view": "BULL", "title": "BTG eleva ADR da Petrobras para US$ 25", "summary": "BTG Pactual elevou o preço-alvo do ADR da Petrobras (PBR) de US$ 22,03 para US$ 25, citando trimestre forte e dividendos robustos esperados. Mantém recomendação de compra.", "url": "https://www.seudinheiro.com/2026/empresas/petrobras-petr4-deve-entregar-trimestre-forte-e-dividendos-robustos-diz-btg-preco-alvo-do-adr-sobe-para-us-25-lvgb/"},
+        {"ticker": "PETR4", "bank": "BofA", "date": "2026-06-19", "action": "corta alvo", "target": "R$ 55 / US$ 22 (ADR)", "prior_target": "R$ 65 / US$ 24,80 (ADR)", "view": "BULL", "title": "BofA corta alvo de Petrobras após queda do petróleo", "summary": "BofA cortou o preço-alvo de PETR4 de R$ 65 para R$ 55 (-15%) e do ADR de US$ 24,80 para US$ 22 (-11%), acompanhando corte também em Prio, após a queda do petróleo no período. Manteve recomendação de compra. Data aproximada (período de queda do petróleo pós-acordo EUA-Irã, jun/2026 — ajustada para sexta-feira 19/jun, dia útil mais próximo).", "url": "https://www.seudinheiro.com/2026/empresas/petrobras-petr4-prio-prio3-e-mais-bofa-corta-precos-alvo-apos-queda-do-petroleo-lvgb/"},
+        {"ticker": "VALE3", "bank": "JP Morgan", "date": "2026-05-22", "action": "eleva alvo", "target": "R$ 104", "prior_target": "R$ 99", "view": "BULL", "title": "JP Morgan eleva alvo da Vale, vê ação descontada", "summary": "JP Morgan elevou o preço-alvo de VALE3 de R$ 99 para R$ 104, mantendo overweight (compra). Driver principal: segmento de metais básicos (cobre e níquel), com a divisão revisada para US$ 5,1 bi (+57% vs. estimativa anterior).", "url": "https://www.seudinheiro.com/2026/empresas/jp-morgan-ve-vale-vale3-descontada-demais-e-eleva-preco-alvo-lvgb/"},
+        {"ticker": "VALE3", "bank": "Safra", "date": "2026-06-15", "action": "eleva alvo", "target": "R$ 86", "prior_target": None, "view": "NEUTRAL", "title": "Safra eleva alvo da Vale mas rebaixa para neutro", "summary": "Safra elevou o preço-alvo de VALE3 para R$ 86 por ação, mas rebaixou a recomendação para neutro após a forte alta do papel no período. Data aproximada (mesma janela do rali de metais básicos, jun/2026).", "url": "https://oespecialista.safra.com.br/analise/vale-vale3-safra-eleva-preco-alvo/"},
+        {"ticker": "WEGE3", "bank": "Safra", "date": "2026-05-07", "action": "corta alvo", "target": "R$ 53", "prior_target": "R$ 57,40", "view": "NEUTRAL", "title": "Safra corta alvo da WEG após 1T26 fraco", "summary": "Safra reduziu o preço-alvo de WEGE3 de R$ 57,40 para R$ 53 (potencial de 19%) e rebaixou para neutro, após resultados fracos do 1T26 — câmbio desfavorável, demanda doméstica fraca e pressão de margem. Lucro líquido 2026 revisado -10,7% para R$ 6,089 bi.", "url": "https://www.moneytimes.com.br/weg-wege3-safra-e-bba-cortam-preco-alvo-apos-balanco-do-1t26-veja-projecoes-jvka/"},
+        {"ticker": "WEGE3", "bank": "Itaú BBA", "date": "2026-05-07", "action": "corta alvo", "target": "R$ 48", "prior_target": "R$ 50", "view": "BULL", "title": "Itaú BBA corta alvo da WEG mas mantém compra", "summary": "Itaú BBA reduziu o preço-alvo de WEGE3 de R$ 50 para R$ 48 após o 1T26 fraco, mas manteve recomendação de compra. Lucro líquido 2026 revisado de R$ 6,6 bi para R$ 6 bi.", "url": "https://www.moneytimes.com.br/weg-wege3-safra-e-bba-cortam-preco-alvo-apos-balanco-do-1t26-veja-projecoes-jvka/"},
+        {"ticker": "RENT3", "bank": "Citi", "date": "2026-05-08", "action": "corta alvo", "target": "R$ 54", "prior_target": "R$ 55", "view": "BULL", "title": "Citi corta levemente alvo da Localiza após 1T26", "summary": "Citi cortou o preço-alvo de RENT3 de R$ 55 para R$ 54 após o 1T26 — frota encerrou o trimestre menor, e o banco espera sazonalidade fraca e mix mais premium no 2T. Manteve compra: seminovos com desempenho sólido e ciclo de depreciação virtuoso. Data aproximada (janela de resultados do 1T26).", "url": "https://www.moneytimes.com.br/localiza-rent3-citi-corta-preco-alvo-apos-1t26-e-hora-de-comprar-ou-vender/"},
+        {"ticker": "MGLU3", "bank": "BB Investimentos", "date": "2026-03-13", "action": "corta alvo", "target": "R$ 9,60", "prior_target": "R$ 9,80", "view": "NEUTRAL", "title": "BB-BI revisa levemente pra baixo alvo do Magalu", "summary": "BB Investimentos revisou o preço-alvo de MGLU3 de R$ 9,80 para R$ 9,60 ao fim de 2026, mantendo recomendação neutra. Data aproximada (mês de março/2026, conforme referência da publicação — ajustada para sexta-feira 13/mar, dia útil mais próximo).", "url": "https://investalk.bb.com.br/noticias/mercado/magazine-luiza-mglu3-revisao-preco-marco-26"},
+        {"ticker": "B3SA3", "bank": "Citi", "date": "2026-04-09", "action": "eleva alvo", "target": "R$ 23", "prior_target": "R$ 19", "view": "BULL", "title": "Citi eleva B3 para compra e sobe alvo a R$ 23", "summary": "Citi elevou o preço-alvo de B3SA3 de R$ 19 para R$ 23 e mudou a recomendação de neutra para compra (+20% de potencial vs. fechamento de 09/abr). Suportado por revisão de lucro +17% (2026) e +13% (2027) após decisão do STJ sobre dedução de JCP, permitindo maior distribuição.", "url": "https://www.seudinheiro.com/2026/bolsa-dolar/b3-b3sa3-deve-distribuir-r-63-bilhoes-em-proventos-neste-ano-segundo-o-citi-banco-eleva-recomendacao-e-preco-alvo-lvgb/"},
+        {"ticker": "EQTL3", "bank": "Itaú BBA", "date": "2026-05-15", "action": "eleva alvo", "target": "R$ 53,30", "prior_target": "R$ 48,70", "view": "BULL", "title": "Itaú BBA eleva alvo da Equatorial e elege top pick do setor", "summary": "Itaú BBA elevou o preço-alvo de EQTL3 de R$ 48,70 para R$ 53,30 (potencial de 40,2%), citando melhora no balanço e perfil de alavancagem, com espaço adicional pra investimentos orgânicos em distribuição. Mantém compra. Data aproximada (relatório publicado em maio/2026).", "url": "https://www.moneytimes.com.br/para-itau-bba-equatorial-eqtl3-esta-mal-precificada-lils/"},
+        {"ticker": "BPAC11", "bank": "JP Morgan", "date": "2026-06-26", "action": "eleva alvo", "target": "R$ 66", "prior_target": "R$ 61", "view": "BULL", "title": "JP Morgan eleva BTG Pactual para compra; vê 30% de upside", "summary": "JP Morgan elevou BPAC11 de neutro para overweight (compra), com preço-alvo revisado de R$ 61 para R$ 66 por unit (fim de 2027), implicando ~30% de potencial de alta. Banco vê o BTG como 'vencedor em participação de mercado'.", "url": "https://www.moneytimes.com.br/btg-pactual-bpac11-jp-morgan-eleva-recomendacao-para-compra-e-ve-banco-como-vencedor-em-participacao-de-mercado-lmrs/"},
+        {"ticker": "BPAC11", "bank": "Goldman Sachs", "date": "2026-01-13", "action": "reitera", "target": "R$ 63", "prior_target": None, "view": "BULL", "title": "Goldman lista BTG entre preferidas para bancos em 2026", "summary": "Goldman Sachs listou BTG Pactual como uma das ações preferidas do setor bancário brasileiro para 2026, com preço-alvo de R$ 63. Banco projeta crescimento de crédito de 9,5% em 2026 para o setor.", "url": "https://www.infomoney.com.br/mercados/goldman-sachs-projeta-2026-solido-para-bancos-brasileiros-e-destaca-acoes-preferidas/"},
+        {"ticker": "ITUB4", "bank": "Citi", "date": "2026-06-24", "action": "corta alvo", "target": "R$ 50", "prior_target": "R$ 54", "view": "BULL", "title": "Citi corta alvo de Itaú mas mantém entre preferidas", "summary": "Citi reduziu o preço-alvo de ITUB4 de R$ 54 para R$ 50, refletindo custo de capital mais elevado e juros altos por mais tempo, mas manteve compra — Itaú segue preferido do banco no setor.", "url": "https://www.cnnbrasil.com.br/economia/negocios/citi-corta-preco-alvo-de-bancos-brasileiros-por-deterioracao-macroeconomica/"},
+        {"ticker": "BBDC4", "bank": "Citi", "date": "2026-06-24", "action": "corta alvo", "target": "R$ 20", "prior_target": "R$ 24", "view": "BULL", "title": "Citi corta alvo do Bradesco, mantém compra", "summary": "Citi reduziu o preço-alvo de BBDC4 de R$ 24 para R$ 20, refletindo deterioração macroeconômica e aumento sistêmico de ativos problemáticos no setor, mas manteve recomendação de compra.", "url": "https://www.cnnbrasil.com.br/economia/negocios/citi-corta-preco-alvo-de-bancos-brasileiros-por-deterioracao-macroeconomica/"},
+        {"ticker": "BBAS3", "bank": "Citi", "date": "2026-06-24", "action": "corta alvo", "target": "R$ 21", "prior_target": "R$ 25", "view": "NEUTRAL", "title": "Citi corta alvo do Banco do Brasil pra neutro", "summary": "Citi reduziu o preço-alvo de BBAS3 de R$ 25 para R$ 21, recomendação neutra, preocupado com possível renegociação de dívidas rurais no agronegócio.", "url": "https://www.cnnbrasil.com.br/economia/negocios/citi-corta-preco-alvo-de-bancos-brasileiros-por-deterioracao-macroeconomica/"},
+        {"ticker": "BBAS3", "bank": "Goldman Sachs", "date": "2026-04-29", "action": "rebaixa venda", "target": "R$ 21", "prior_target": "R$ 24", "view": "BEAR", "title": "Goldman rebaixa Banco do Brasil para venda", "summary": "Goldman Sachs rebaixou BBAS3 de neutro para venda e reduziu o preço-alvo de R$ 24 para R$ 21. Maior preocupação: carteira rural, com inadimplência subindo nas linhas de custeio — projeta R$ 64 bi em provisões em 2026, acima do teto do guidance do próprio banco. Lucro 2026 projetado em R$ 21 bi (~6% abaixo do piso do guidance).", "url": "https://guiadoinvestidor.com.br/mercado/goldman-vira-a-mao-no-banco-do-brasil-bbas3-e-recomendacao-de-venda-derruba-acao/"},
+        {"ticker": "SANB11", "bank": "Citi", "date": "2026-06-24", "action": "corta alvo", "target": "R$ 28", "prior_target": "R$ 36", "view": "NEUTRAL", "title": "Citi corta forte o alvo do Santander Brasil", "summary": "Citi reduziu o preço-alvo de SANB11 de R$ 36 para R$ 28 (o maior corte entre os bancos revisados nesse relatório), recomendação neutra.", "url": "https://www.cnnbrasil.com.br/economia/negocios/citi-corta-preco-alvo-de-bancos-brasileiros-por-deterioracao-macroeconomica/"},
+        {"ticker": "CXSE3", "bank": "JP Morgan", "date": "2026-07-24", "action": "rebaixa venda", "target": "R$ 22", "prior_target": None, "view": "BEAR", "title": "JP Morgan rebaixa Caixa Seguridade para venda", "summary": "JP Morgan rebaixou CXSE3 de neutro para underweight (venda) após forte alta desde junho (+35% no acumulado de 2026). Preço-alvo de R$ 22 (dez/2027), próximo da cotação da época — upside próximo de zero. Ação caiu 5,21% no dia da rebaixa. Banco passou a preferir IRB e Porto Seguro no setor.", "url": "https://www.infomoney.com.br/mercados/jpmorgan-rebaixa-caixa-seguridade-e-prefere-irb-e-porto-no-setor-de-seguros-desempenho-acoes/"},
+    ]
+    ticker_filter = request.args.get('ticker')
+    if ticker_filter:
+        calls = [c for c in calls if c['ticker'] == ticker_filter.upper()]
+    return jsonify(calls)
+
+
+@app.route('/api/stock-tickers')
+def get_stock_tickers():
+    resp = get_stock_calls()
+    calls = resp.get_json()
+    grouped = {}
+    for c in calls:
+        t = c['ticker']
+        if t not in grouped:
+            grouped[t] = {"ticker": t, "company": TICKER_NAMES.get(t, t), "count": 0, "last_date": c['date']}
+        grouped[t]['count'] += 1
+        if c['date'] > grouped[t]['last_date']:
+            grouped[t]['last_date'] = c['date']
+    tickers = sorted(grouped.values(), key=lambda x: x['ticker'])
+    return jsonify(tickers)
+
+
+@app.route('/api/stock-quote')
+def get_stock_quote():
+    ticker = request.args.get('ticker', '').upper().strip()
+    if not ticker:
+        return jsonify({'error': 'ticker é obrigatório'}), 400
+    yf_ticker = ticker if '.' in ticker else f'{ticker}.SA'
+
+    range_param = request.args.get('range', '1y')
+    period_map = {'3mo': '3mo', '6mo': '6mo', '1y': '1y', '2y': '2y', 'ytd': 'ytd', 'max': 'max'}
+    period = period_map.get(range_param, '1y')
+
+    try:
+        stock = yf.Ticker(yf_ticker)
+        hist = stock.history(period=period, interval='1d')
+
+        if hist.empty:
+            return jsonify({'error': f'Sem dados para {ticker}'}), 404
+
+        hist = hist.reset_index()
+        data = []
+        for _, row in hist.iterrows():
+            ts = row['Date']
+            if isinstance(ts, pd.Timestamp):
+                ts = ts.to_pydatetime()
+            data.append({
+                'date': ts.strftime('%Y-%m-%d'),
+                'open': round(float(row['Open']), 2),
+                'high': round(float(row['High']), 2),
+                'low': round(float(row['Low']), 2),
+                'close': round(float(row['Close']), 2),
+                'volume': int(row['Volume'])
+            })
+
+        quote = stock.history(period='5d', interval='1d')
+        current_price = None
+        change = None
+        change_pct = None
+        if not quote.empty:
+            last = quote.iloc[-1]
+            current_price = round(float(last['Close']), 2)
+            if len(quote) > 1:
+                prev_close = round(float(quote.iloc[-2]['Close']), 2)
+                change = round(current_price - prev_close, 2)
+                change_pct = round((change / prev_close) * 100, 2)
+            else:
+                change = 0
+                change_pct = 0
+
+        return jsonify({
+            'ticker': ticker,
+            'company': TICKER_NAMES.get(ticker, ticker),
+            'data': data,
+            'current': {
+                'price': current_price or data[-1]['close'],
+                'change': change,
+                'changePercent': change_pct
+            }
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/market-data')
 def get_market_data():

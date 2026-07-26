@@ -189,6 +189,12 @@ body {
         <div class="header-right" id="priceHeader"></div>
     </div>
 
+    <div style="margin-bottom:20px">
+        <a href="/acoes" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:#1f6feb33;border:1px solid #1f6feb;border-radius:8px;color:#58a6ff;text-decoration:none;font-size:13px;font-weight:600;transition:all 0.2s" onmouseover="this.style.background='#1f6feb55'" onmouseout="this.style.background='#1f6feb33'">
+            📊 Ver calls por ação (preço-alvo por ativo)
+        </a>
+    </div>
+
     <div class="filters" id="filters">
         <button class="filter-btn active" data-bank="all">TODOS</button>
     </div>
@@ -249,7 +255,11 @@ const BANK_COLORS = {
     'BofA': '#ef5350',
     'Goldman Sachs': '#fdd835',
     'JP Morgan': '#42a5f5',
-    'Citi': '#9c27b0'
+    'Citi': '#9c27b0',
+    'XP Investimentos': '#26c6da',
+    'UBS': '#e53935',
+    'Santander': '#c62828',
+    'BB Investimentos': '#0d47a1'
 };
 const RANGES = ['7d','14d','1mo','3mo','6mo','1y','2y','3y','4y','5y','max'];
 

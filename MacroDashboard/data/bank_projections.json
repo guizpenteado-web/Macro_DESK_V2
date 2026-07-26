@@ -1,6 +1,6 @@
 {
   "_instrucoes": "Atualizar manualmente quando os bancos revisarem targets. Verificar fontes listadas abaixo.",
-  "last_updated": "2026-07-16",
+  "last_updated": "2026-07-26",
 
   "macro_snapshot": {
     "fed_rate": {
@@ -10,10 +10,11 @@
       "decision": "HOLD",
       "decision_date": "2026-06-17",
       "next_meeting": "2026-07-29",
-      "fomc_probability_hold": 68.0,
-      "fomc_probability_cut": 32.0,
+      "fomc_probability_hold": 64.0,
+      "fomc_probability_cut": 0.0,
       "source": "Federal Reserve / CME FedWatch",
-      "chair": "Kevin Warsh"
+      "chair": "Kevin Warsh",
+      "note": "Atualizado 22/jul: probabilidade de CORTE na reunião de 29/jul é ~0%. O risco que resta é de ALTA — CME FedWatch precificava ~35-36,5% de chance de alta de 25bps (mais que triplicou desde início de julho), refletindo preocupação com inflação persistente puxada pela escalada do petróleo (conflito Irã)."
     },
     "cpi": {
       "yoy": 3.5,
@@ -290,6 +291,16 @@
         "source_url": "https://www.estadao.com.br/einvestidor/cenarios-e-mercado/bofa-corta-brasil-para-neutro-e-ve-selic-mais-alta-por-mais-tempo/"
       },
       {
+        "bank": "BTG Pactual (revisão jul/26)",
+        "selic_fim_2026": 13.75,
+        "selic_label": "13.75%",
+        "movimento": "2 cortes adicionais no 2S26",
+        "view": "DOVE",
+        "rationale": "BTG revisou de 14,25% (HOLD, ver entrada anterior) para 13,75%, incorporando mais dois cortes de 25bps no 2º semestre. Ambiente externo menos pressionado pela alta do petróleo (à época da revisão) + atividade doméstica perdendo fôlego. Dólar fim-2026 revisado de R$4,90 para R$5,40 (Fed mais duro). Nota: revisão pré-data a escalada recente do WTI a $82+ (ver commodity_targets).",
+        "date_published": "2026-07",
+        "source_url": "https://www.seudinheiro.com/2026/economia/btg-muda-visao-para-selic-e-passa-a-projetar-mais-dois-cortes-de-juros-em-2026-veja-o-que-mudou-lvgb/"
+      },
+      {
         "bank": "JP Morgan",
         "selic_fim_2026": 13.00,
         "selic_label": "~13.00%",
@@ -360,10 +371,10 @@
 
   "commodity_targets": {
     "_nota": "Atualizado Jul/2026 via hierarquia TIER-1→TIER-2→TIER-3. TIER-1: jpmorgan.com/insights (pag. individuais por commodity), kitco.com (BofA/GS), investing.com (Citi). TIER-3: zawya.com (MS oil), Reuters, CNBC.",
-    "_precos_referencia": "Gold ~$4,040/oz (16/jul, caindo de $4,174) | Silver $62.27/oz | Cobre COMEX ~$6.20/lb | WTI $68.78/bbl (Jul/03-04/2026) — ouro pressionado por EUA seguir atacando alvos militares iranianos (5º dia consecutivo em 16/jul), elevando preço de energia e reduzindo expectativa de corte do Fed",
+    "_precos_referencia": "Gold ~$4,052-4,070/oz (24/jul) | Silver ~$58.40/oz (24/jul, volátil — chegou a $62+ em meados de jul e recuou) | Cobre COMEX ~$6.17/lb (sem atualização nova desde meados de jul) | WTI ~$90/bbl (24-25/jul; Brent chegou a bater $102 em 23/jul, alta acumulada de ~45% desde a mínima de $70,14 em 03/jul) — a reescalada do conflito EUA-Irã (147 dias, 13ª onda de ataques) que estava sem resposta dos bancos até 18/jul finalmente gerou revisão: Goldman Sachs e Morgan Stanley já revisaram pra cima (ver targets abaixo, 23-24/jul); JPMorgan manteve o mesmo call de jun/jul (Brent Q3 $86/Q4 $80); Citi ainda não tinha nova nota pública encontrada até 26/jul — segue com o target bearish antigo (pré-reescalada), provável defasagem.",
     "ouro": {
       "unit": "USD/oz",
-      "preco_atual": 4040,
+      "preco_atual": 4052,
       "bank_targets": [
         {"bank": "Goldman Sachs", "target": 4900, "view": "BULL",    "rationale": "Cortou de $5.400→$4.900 (20/jun/26). Fade de ETF flows asiáticos + remoção de cortes do Fed em 2026. Suporte: BCs emergentes comprando +1.000 ton/ano. Kitco 30/jun/26.", "date": "2026-06"},
         {"bank": "JP Morgan",     "target": 4500, "view": "BULL",    "rationale": "Cortou de $6.000→$4.500 (03/jul/26) — corte de 25%. Q3/26: $4.300 | Q4/26: $4.500. Demanda mais fraca que o esperado em setores-chave. Mantém viés bullish de longo prazo (compras de BCs + demanda física seguem sustentando alta para 2027). jpmorgan.com (pág. oficial gold-prices).", "date": "2026-07"},
@@ -374,7 +385,7 @@
     },
     "prata": {
       "unit": "USD/oz",
-      "preco_atual": 62.27,
+      "preco_atual": 58.40,
       "bank_targets": [
         {"bank": "JP Morgan",     "target": 85, "view": "BULL", "rationale": "Q4/26: $85/oz | Q1: $84 | Q2: $75 | Q3: $80. Média anual 2026: $81 (+102% vs 2025 avg $40). Demanda solar + déficit físico. Ratio Au/Ag >60:1. jpmorgan.com (pág. oficial silver-prices).", "date": "2026-Q1"},
         {"bank": "BofA",          "target": 86, "view": "BULL", "rationale": "Média 2026: $85.93/oz (+15% vs est. anterior de $75). Demanda solar e EV sustentam déficit estrutural de oferta. Near-term fraqueza esperada, outlook bullish. Kitco 01/mai/26.", "date": "2026-05"},
@@ -383,10 +394,10 @@
     },
     "petroleo_wti": {
       "unit": "USD/barril",
-      "preco_atual": 68.78,
+      "preco_atual": 90.0,
       "bank_targets": [
-        {"bank": "Goldman Sachs", "target": 76, "view": "BULL",    "rationale": "Q4/26 Brent $80 → WTI ~$76 (cortou de $90 após deal EUA-Irã, jun/26). Normalização do Hormuz em jul/26. Upside: Brent $115+ se ceasefire falhar. Reuters/Investing.com.", "date": "2026-06"},
-        {"bank": "Morgan Stanley","target": 71, "view": "NEUTRAL", "rationale": "Q3/Q4 Brent $75 → WTI ~$71 (cortou de $90/$80, jul/26). Hormuz normalizou mais rápido que esperado. Surplus global 4.8M bpd sinaliza pressão em 2027. Zawya/Reuters.", "date": "2026-07"},
+        {"bank": "Goldman Sachs", "target": 116, "view": "BULL", "rationale": "REVISADO 23-24/jul: banco sinaliza Brent podendo voltar a superar $120/bbl (~WTI $116) no Q4/26 se o Estreito de Hormuz continuar interrompido — reescalada do conflito EUA-Irã invalidou o corte de jun/26 (que previa Brent $80/WTI $76 pós-acordo de paz). TheStreet/Yahoo Finance.", "date": "2026-07-24"},
+        {"bank": "Morgan Stanley","target": 86, "view": "BULL", "rationale": "REVISADO 23-24/jul: Q3/26 elevado para Brent $90 (~WTI $86), de $75 (~$71) em jun/26. Q4/26 mantido em Brent $80 (~WTI $76) — banco vê a alta como concentrada no Q3 enquanto durar a disrupção de Hormuz. IndexBox/CNBC.", "date": "2026-07-24"},
         {"bank": "Citi",          "target": 66, "view": "BEAR",    "rationale": "Q4/26 Brent $70 → WTI ~$66 (cortou após deal EUA-Irã). OPEC+ retoma produção com reabertura do Hormuz. Excesso de oferta estrutural retorna. TheStreet/Investing.com.", "date": "2026-07"},
         {"bank": "JP Morgan",     "target": 76, "view": "BEAR",    "rationale": "Q3/26 Brent $86 (WTI ~$82) | Q4/26 Brent $80 (WTI ~$76), saindo o ano a ~$78 Brent. Revisão de jun/26 após normalização do Estreito de Ormuz e retomada OPEC+. Demanda global fraca pressionada por high-for-longer Fed. Investing.com/TheStreet.", "date": "2026-06"}
       ]
@@ -406,7 +417,7 @@
 
   "pesquisas_eleitorais_2026": {
     "_nota": "Eleição presidencial brasileira — outubro 2026. Fontes: Datafolha (TIER-1) e Quaest (TIER-1). Atualizado jul/2026.",
-    "_nivel_atual": "Ibovespa: ~174.056 pts (16/jul/2026, -1,11% no dia após novo tarifaço dos EUA de 25% sobre produtos brasileiros a partir de 22/jul) | USD/BRL: R$ 5,0975 (16/jul/2026) | Ibovespa fechou 15/jul em 176.010 pts (-0,36%)",
+    "_nivel_atual": "Ibovespa: 174.042 pts (25/jul/2026, -1,52% no dia, realização de lucros — PETR4 -1,7%, PETR3 -2,4%, VALE3 -0,6%) | S&P 500: ~7.412 pts (24/jul/2026, +0,05% no dia, ~2,7% abaixo da máxima histórica de 7.620,90 de 02/jun) | USD/BRL: R$ 5,0873 (25/jul/2026, -0,06% no dia) | Entre as duas leituras: tarifaço de 25% dos EUA entrou em vigor em 22/jul; Ibovespa chegou a cair a 174.056 pts direto após o anúncio (16/jul) e depois disparou +2% em 22/jul puxado por blue chips antes de recuar de novo em 24-25/jul",
     "institutos": [
       {
         "instituto": "Datafolha",
@@ -475,8 +486,10 @@
           {"candidato": "Lula", "partido": "PT", "pct": 40},
           {"candidato": "Flávio Bolsonaro", "partido": "PL", "pct": 28}
         ],
-        "segundo_turno": [],
-        "resumo": "Diferença de 12p.p. (40% vs 28%) é a maior vantagem de Lula sobre Flávio em todas as 6 rodadas Quaest de 2026. Rejeição a Flávio Bolsonaro subiu para 57%. Pesquisa contratada pelo Banco Genial.",
+        "segundo_turno": [
+          {"cenario": "Lula vs Flávio Bolsonaro", "lula": 45, "oponente": 37, "vencedor": "Lula"}
+        ],
+        "resumo": "COMPLETADO 26/jul — 2º turno estava faltando: Lula 45% vs Flávio 37% (vantagem de 8p.p., acima da margem de erro). Consolida tendência desde abril: Lula subiu de 40%→45%, Flávio caiu de 42%→37% no cenário de 2º turno. Diferença de 12p.p. no 1º turno (40% vs 28%) é a maior vantagem de Lula sobre Flávio em todas as 6 rodadas Quaest de 2026. Rejeição a Flávio Bolsonaro subiu para 57%. Pesquisa contratada pelo Banco Genial.",
         "source_url": "https://www.gazetadopovo.com.br/eleicoes/2026/pesquisa-eleitoral-2026/genial-quaest-presidente-julho-2026/"
       },
       {
@@ -488,14 +501,14 @@
         "metodo": "Online (coleta massiva)",
         "nivel_confianca": 95,
         "primeiro_turno": [
-          {"candidato": "Lula", "partido": "PT", "pct": 46.6},
-          {"candidato": "Flávio Bolsonaro", "partido": "PL", "pct": 39.7}
+          {"candidato": "Lula", "partido": "PT", "pct": 46.3},
+          {"candidato": "Flávio Bolsonaro", "partido": "PL", "pct": 36.6}
         ],
         "segundo_turno": [
           {"cenario": "Lula vs Flávio Bolsonaro", "lula": 48.8, "oponente": 42.3, "vencedor": "Lula"}
         ],
-        "resumo": "Lula lidera em 1T com 46,6% vs Flávio 39,7%. No 2T: 48,8% vs 42,3% (margem 6,5pp). Lula com +6pp de média em 7 institutos desde final de maio.",
-        "source_url": "https://atlasintel.com.br"
+        "resumo": "CORRIGIDO 26/jul — número de primeiro turno do Flávio estava registrado como 39,7%, o correto (conferido na fonte, TSE nº BR-04582/2026) é 36,6%. Lula lidera em 1T com 46,3% vs Flávio 36,6% (demais candidatos somam ~17,1%). No 2T: 48,8% vs 42,3% (margem 6,5pp, 8,9% branco/nulo/não sabe).",
+        "source_url": "https://www.gazetadopovo.com.br/eleicoes/2026/pesquisa-eleitoral-2026/atlasintel-presidente-julho-2026/"
       }
     ]
   }
