@@ -26,13 +26,6 @@ body {
     text-decoration: none; transition: all 0.2s;
 }
 .view-toggle-btn:hover { background: #1c2128; color: #e1e4e8; border-color: #484f58; }
-.back-btn {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 36px; height: 36px; border-radius: 50%; border: 1px solid #30363d;
-    background: #161b22; color: #8b949e; cursor: pointer;
-    font-size: 16px; transition: all 0.2s;
-}
-.back-btn:hover { background: #1c2128; color: #e1e4e8; border-color: #484f58; }
 .header-right { text-align: right; }
 .header-right .price { font-size: 36px; font-weight: 700; color: #f0f6fc; }
 .header-right .price .currency { font-size: 18px; color: #8b949e; }
@@ -196,7 +189,7 @@ body {
 <div class="container">
     <div class="header">
         <div class="header-left">
-            <h1><button class="back-btn" onclick="history.back()" title="Voltar pra página anterior">←</button><span>IBOVESPA</span><a href="/acoes" class="view-toggle-btn">AÇÕES</a></h1>
+            <h1><span>IBOVESPA</span><a href="/acoes" class="view-toggle-btn">AÇÕES</a></h1>
             <div class="subtitle">Calls e recomenda&ccedil;&otilde;es dos principais bancos desde 2025</div>
         </div>
         <div class="header-right" id="priceHeader"></div>
