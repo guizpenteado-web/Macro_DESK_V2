@@ -25,6 +25,13 @@ body {
     text-decoration: none; transition: all 0.2s;
 }
 .view-toggle-btn:hover { background: #1c2128; color: #e1e4e8; border-color: #484f58; }
+.back-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; border-radius: 50%; border: 1px solid #30363d;
+    background: #161b22; color: #8b949e; cursor: pointer;
+    font-size: 16px; transition: all 0.2s;
+}
+.back-btn:hover { background: #1c2128; color: #e1e4e8; border-color: #484f58; }
 
 .search-wrapper { margin-bottom: 16px; }
 .search-input {
@@ -145,7 +152,7 @@ body {
 <div class="container">
     <div class="header">
         <div class="header-left">
-            <h1><span>AÇÕES</span><a href="/" class="view-toggle-btn">IBOVESPA</a></h1>
+            <h1><button class="back-btn" onclick="history.back()" title="Voltar pra página anterior">←</button><span>AÇÕES</span><a href="/" class="view-toggle-btn">IBOVESPA</a></h1>
             <div class="subtitle">Preço-alvo e recomendações por ativo, desde início de 2026</div>
         </div>
     </div>
