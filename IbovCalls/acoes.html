@@ -27,7 +27,7 @@ body {
 }
 .back-link:hover { background: #1c2128; color: #e1e4e8; }
 
-.search-wrapper { margin-bottom: 20px; }
+.search-wrapper { margin-bottom: 16px; }
 .search-input {
     width: 100%; padding: 12px 18px; border-radius: 12px;
     border: 1px solid #30363d; background: #161b22; color: #f0f6fc;
@@ -35,6 +35,18 @@ body {
 }
 .search-input:focus { border-color: #58a6ff; }
 .search-input::placeholder { color: #6e7681; }
+
+.bank-filter { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+.bank-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 16px; border: 1px solid #30363d;
+    background: #161b22; color: #8b949e; cursor: pointer;
+    font-size: 12px; font-weight: 600; transition: all 0.15s;
+}
+.bank-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.bank-chip .count { color: #6e7681; font-weight: 500; }
+.bank-chip:hover { background: #1c2128; color: #e1e4e8; border-color: #484f58; }
+.bank-chip.active { background: #1f6feb33; border-color: #58a6ff; color: #f0f6fc; }
 
 .ticker-grid {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -144,6 +156,7 @@ body {
         <div class="search-wrapper">
             <input type="text" class="search-input" id="searchInput" placeholder="Buscar por ativo (ex: PETR4, Vale, Itaú)...">
         </div>
+        <div class="bank-filter" id="bankFilter"></div>
         <div class="ticker-grid" id="tickerGrid">
             <div class="loading"><div class="spinner"></div></div>
         </div>
@@ -184,10 +197,13 @@ const BANK_COLORS = {
     'BTG Pactual': '#5c6bc0', 'Itaú BBA': '#ff8f00', 'Morgan Stanley': '#00bfa5',
     'BofA': '#ef5350', 'Goldman Sachs': '#fdd835', 'JP Morgan': '#42a5f5',
     'Citi': '#9c27b0', 'XP Investimentos': '#26c6da', 'UBS': '#e53935',
-    'Santander': '#c62828', 'BB Investimentos': '#0d47a1'
+    'Santander': '#c62828', 'BB Investimentos': '#0d47a1',
+    'Safra': '#00695c', 'Bradesco BBI': '#c40000'
 };
 
 let allTickers = [];
+let allCalls = [];
+let activeBank = null;
 let currentTicker = null;
 let currentRange = '1y';
 let chartInstance = null;
@@ -201,23 +217,60 @@ function fmtPrice(v) {
 
 async function init() {
     try {
-        const res = await fetch('/api/stock-tickers');
-        allTickers = await res.json();
-        renderTickerGrid(allTickers);
+        const [tickersRes, callsRes] = await Promise.all([
+            fetch('/api/stock-tickers'),
+            fetch('/api/stock-calls')
+        ]);
+        allTickers = await tickersRes.json();
+        allCalls = await callsRes.json();
+        renderBankFilter();
+        applyFilters();
     } catch (e) {
         document.getElementById('tickerGrid').innerHTML = '<div class="empty-state">Erro ao carregar ativos.</div>';
     }
 
-    document.getElementById('searchInput').addEventListener('input', (e) => {
-        const q = e.target.value.trim().toUpperCase();
-        const filtered = allTickers.filter(t =>
-            t.ticker.includes(q) || t.company.toUpperCase().includes(q)
-        );
-        renderTickerGrid(filtered);
-    });
+    document.getElementById('searchInput').addEventListener('input', applyFilters);
 
     window.addEventListener('hashchange', route);
     route();
+}
+
+function renderBankFilter() {
+    const counts = {};
+    allCalls.forEach(c => { counts[c.bank] = (counts[c.bank] || 0) + 1; });
+    const banks = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+
+    const box = document.getElementById('bankFilter');
+    box.innerHTML = '';
+
+    const allChip = document.createElement('div');
+    allChip.className = 'bank-chip' + (activeBank === null ? ' active' : '');
+    allChip.innerHTML = '<span>Todos os bancos</span>';
+    allChip.onclick = () => { activeBank = null; renderBankFilter(); applyFilters(); };
+    box.appendChild(allChip);
+
+    banks.forEach(bank => {
+        const bc = BANK_COLORS[bank] || '#58a6ff';
+        const chip = document.createElement('div');
+        chip.className = 'bank-chip' + (activeBank === bank ? ' active' : '');
+        chip.innerHTML = `<span class="dot" style="background:${bc}"></span><span>${bank}</span><span class="count">${counts[bank]}</span>`;
+        chip.onclick = () => { activeBank = (activeBank === bank ? null : bank); renderBankFilter(); applyFilters(); };
+        box.appendChild(chip);
+    });
+}
+
+function applyFilters() {
+    const q = document.getElementById('searchInput').value.trim().toUpperCase();
+    let tickersForBank = null;
+    if (activeBank) {
+        tickersForBank = new Set(allCalls.filter(c => c.bank === activeBank).map(c => c.ticker));
+    }
+    const filtered = allTickers.filter(t => {
+        if (tickersForBank && !tickersForBank.has(t.ticker)) return false;
+        if (q && !(t.ticker.includes(q) || t.company.toUpperCase().includes(q))) return false;
+        return true;
+    });
+    renderTickerGrid(filtered);
 }
 
 function route() {
