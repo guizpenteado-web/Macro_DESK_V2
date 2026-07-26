@@ -57,3 +57,12 @@ Ver [[project-ibov-calls]]: call sobre **uma ação específica** por dinâmica 
 
 - **26/jul/2026** (primeira leva): 13 ativos, 18 calls
 - **26/jul/2026** (segunda leva, mesmo dia): 21 ativos, 32 calls — PRIO3, SUZB3, RDOR3, LREN3, BBSE3, GGBR4, ABEV3, ASAI3 adicionados
+- **26/jul/2026** (terceira leva, mesmo dia): 28 ativos, 39 calls — EMBJ3, RAIL3, TOTS3, VIVT3, USIM5, CSNA3, MULT3 adicionados
+
+## Armadilha real: tickers que mudaram de código na B3
+
+**Embraer trocou de EMBR3 para EMBJ3 em novembro/2025** (ADR: de ERJ para EMBJ na NYSE). Mesma empresa, mesmo papel — só o código mudou. A maioria dos resultados de busca de 2026 já usa o código novo (EMBJ3), mas fontes mais antigas ou não atualizadas ainda citam EMBR3. **Antes de cadastrar um ticker novo, sempre confirmar se o código ainda é o vigente na B3** — pesquisar `"{empresa}" ticker B3 mudou` se o ticker retornado nos resultados parecer estranho ou inconsistente entre fontes. Cadastrar sempre com o código atual (o `/api/stock-quote` via yfinance só funciona com o ticker vigente + `.SA`).
+
+## Bancos fora dos 11 rastreados no IBOV Calls macro que aparecem em calls de ação individual
+
+**Safra** e **Bradesco BBI** cobrem bastante ação individual mas não fazem parte da lista de 11 bancos macro do IBOV Calls principal. Ambos têm cor própria em `BANK_COLORS` no `acoes.html` (Safra `#00695c`, Bradesco BBI `#c40000`) — **sempre que adicionar um banco novo ao `STOCK_CALLS`, conferir se ele já tem cor em `BANK_COLORS`**, senão cai no fallback genérico `#58a6ff` e fica indistinguível de outro banco sem cor definida.
