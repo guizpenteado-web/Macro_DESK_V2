@@ -280,7 +280,7 @@ async function showDetail(ticker) {
 let currentCalls = [];
 
 async function loadCalls(ticker) {
-    const res = await fetch(`/api/stock-calls?ticker=${ticker}`);
+    const res = await fetch('/api/stock-calls?ticker=' + encodeURIComponent(ticker));
     currentCalls = await res.json();
     renderDetailTimeline(currentCalls);
 }
@@ -314,7 +314,7 @@ function renderDetailTimeline(calls) {
 async function loadQuote(ticker) {
     document.getElementById('chartLoading').style.display = '';
     try {
-        const res = await fetch(`/api/stock-quote?ticker=${ticker}&range=${currentRange}`);
+        const res = await fetch('/api/stock-quote?ticker=' + encodeURIComponent(ticker) + '&range=' + encodeURIComponent(currentRange));
         const quote = await res.json();
         if (quote.error) {
             document.getElementById('chartLoading').textContent = `Sem cotação disponível para ${ticker}.`;
