@@ -26,10 +26,21 @@ memória (reference_sources_database / feedback_calendar_cloudflare_block).
 
 import re
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 import requests
 from bs4 import BeautifulSoup
+
+# TradingEconomics serve o horario em UTC por padrao pra visitante sem
+# cookie de preferencia de fuso (confirmado ao vivo em 26/jul/2026: "Durable
+# Goods Orders", que sai 8:30 ET, aparece na pagina como "12:30 PM" = 8:30
+# EDT (UTC-4) + 4h = 12:30 UTC). O scraper original nao convertia isso pra
+# nenhum fuso — o horario cru (UTC) ia direto pro frontend como se fosse
+# hora de Brasilia, deixando todo evento com hora certa 3h adiantado (Selic
+# fixo em UTC-3, sem horario de verao desde 2019, entao a conversao e
+# sempre "-3h", sem ambiguidade sazonal).
+_BRT = ZoneInfo("America/Sao_Paulo")
 
 
 class EconomicCalendar:
@@ -263,10 +274,21 @@ class EconomicCalendar:
                 impact, pt_name = whitelisted
                 time_span = row.find("span", class_=re.compile(r"^event-"))
                 time_txt = time_span.get_text(strip=True) if time_span else ""
+                has_time = False
                 try:
                     dt = datetime.strptime(f"{current_date} {time_txt}", "%Y-%m-%d %I:%M %p")
+                    has_time = True
                 except ValueError:
                     dt = datetime.strptime(current_date, "%Y-%m-%d")
+                if has_time:
+                    # dt e o clock-time cru em UTC (ver comentario no topo do
+                    # arquivo) - converte pra Brasilia antes de expor.
+                    dt = dt.replace(tzinfo=timezone.utc).astimezone(_BRT)
+                else:
+                    # Evento sem horario intradiario (ex: BCB Focus) - nao ha
+                    # hora real pra converter; so marca o fuso pra manter a
+                    # data como veio, sem deslocar de dia por causa do UTC.
+                    dt = dt.replace(tzinfo=_BRT)
                 actual = row.find("span", id="actual")
                 previous = row.find("span", id="previous")
                 # id="consensus" (survey) e id="forecast" (modelo próprio do TE)
@@ -283,7 +305,7 @@ class EconomicCalendar:
                 events.append({
                     "datetime": dt.isoformat(),
                     "date": dt.strftime("%a, %d %b %Y"),
-                    "time": dt.strftime("%H:%M"),
+                    "time": dt.strftime("%H:%M") if has_time else "",
                     "country": country,
                     "currency": currency,
                     "impact": impact,
@@ -321,8 +343,14 @@ class EconomicCalendar:
     @classmethod
     def fetch_filtered(cls, days: int = 7) -> list[dict]:
         """Brazil + US (High+Medium), sorted by datetime, dentro da janela."""
-        floor = datetime.now() - timedelta(days=1)  # mantém eventos recém-liberados
-        ceiling = datetime.now() + timedelta(days=days)
+        # datetime.now() sem tzinfo comparava "hora local da maquina que
+        # roda o servidor" contra os horarios dos eventos (que agora vem
+        # com tzinfo de Brasilia) - usar now(timezone.utc), que e sempre
+        # comparavel corretamente contra qualquer datetime com tzinfo,
+        # independente do fuso da maquina.
+        now = datetime.now(timezone.utc)
+        floor = now - timedelta(days=1)  # mantém eventos recém-liberados
+        ceiling = now + timedelta(days=days)
         combined = cls._fetch_tradingeconomics_br() + cls._fetch_tradingeconomics_us()
         combined = [e for e in combined if floor <= datetime.fromisoformat(e["datetime"]) <= ceiling]
         combined.sort(key=lambda e: e["datetime"])
