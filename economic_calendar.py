@@ -27,6 +27,7 @@ memória (reference_sources_database / feedback_calendar_cloudflare_block).
 import re
 import time
 from datetime import datetime, timedelta, timezone
+from datetime import time as dtime
 from zoneinfo import ZoneInfo
 
 import requests
@@ -350,7 +351,15 @@ class EconomicCalendar:
         # independente do fuso da maquina.
         now = datetime.now(timezone.utc)
         floor = now - timedelta(days=1)  # mantém eventos recém-liberados
-        ceiling = now + timedelta(days=days)
+        # Ceiling ate o FIM do N-esimo dia (23:59:59 em Brasilia), nao
+        # N*24h corridas a partir de agora - achado real em 27/jul/2026:
+        # eventos tarde no ultimo dia da janela (ex: ISM Manufacturing PMI,
+        # 14:00 UTC = 11:00 BRT) sumiam quando "agora" era mais cedo no dia
+        # do que o horario do evento, mesmo o evento estando dentro dos "N
+        # dias" que o usuario pediu (achado comparando contra o calendario
+        # do myfxbook.com, que o usuario usa como referencia externa).
+        ceiling_date = now.astimezone(_BRT).date() + timedelta(days=days)
+        ceiling = datetime.combine(ceiling_date, dtime(23, 59, 59), tzinfo=_BRT)
         combined = cls._fetch_tradingeconomics_br() + cls._fetch_tradingeconomics_us()
         combined = [e for e in combined if floor <= datetime.fromisoformat(e["datetime"]) <= ceiling]
         combined.sort(key=lambda e: e["datetime"])
