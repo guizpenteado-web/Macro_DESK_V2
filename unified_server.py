@@ -618,6 +618,15 @@ _SHELL = """<!DOCTYPE html>
     cursor: pointer; font-size: 15px; padding: 2px 6px; border-radius: 4px;
   }
   .cal-close:hover { background: var(--btn-hover); color: var(--text); }
+  .cal-hdr-right { display: flex; align-items: center; gap: 8px; }
+  .cimp-dot {
+    width: 7px; height: 7px; border-radius: 50%; border: none; padding: 0;
+    cursor: pointer; opacity: .28; transition: opacity .15s, transform .1s;
+  }
+  .cimp-dot.active { opacity: 1; }
+  .cimp-dot:hover { transform: scale(1.35); }
+  .cimp-dot.H { background: #ef5350; }
+  .cimp-dot.M { background: #f59e0b; }
 
   .cal-days {
     display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0;
@@ -860,7 +869,11 @@ _SHELL = """<!DOCTYPE html>
 <div id="cal-panel">
   <div class="cal-hdr">
     <span>📅 Calendário Econômico</span>
-    <button class="cal-close" onclick="toggleCal()">✕</button>
+    <div class="cal-hdr-right">
+      <button class="cimp-dot H active" data-imp="H" onclick="toggleImpFilter('H',this)" title="Alto impacto"></button>
+      <button class="cimp-dot M active" data-imp="M" onclick="toggleImpFilter('M',this)" title="Médio impacto"></button>
+      <button class="cal-close" onclick="toggleCal()">✕</button>
+    </div>
   </div>
   <div class="cal-days">
     <button class="cdtab active" onclick="calLoad(3,this)">3 dias</button>
@@ -1069,6 +1082,15 @@ _SHELL = """<!DOCTYPE html>
   var _calOpen = false;
   var _calDays = 3;
   var _calData = {};
+  var _impFilter = { H: true, M: true };
+
+  function toggleImpFilter(imp, btn) {
+    var activeCount = (_impFilter.H ? 1 : 0) + (_impFilter.M ? 1 : 0);
+    if (_impFilter[imp] && activeCount === 1) return; // mantém sempre pelo menos um ativo
+    _impFilter[imp] = !_impFilter[imp];
+    btn.classList.toggle("active", _impFilter[imp]);
+    if (_calData[_calDays]) renderCal(_calData[_calDays]);
+  }
 
   function toggleCal() {
     _calOpen = !_calOpen;
@@ -1097,13 +1119,24 @@ _SHELL = """<!DOCTYPE html>
   }
 
   function renderCal(events) {
-    if (!events || events.length === 0) {
+    var impMap = {High:"H",Medium:"M",Low:"L"};
+    var totalCount = (events || []).length;
+    events = (events || []).filter(function(e) {
+      var imp = impMap[e.impact] || "L";
+      if (imp === "H") return _impFilter.H;
+      if (imp === "M") return _impFilter.M;
+      return true;
+    });
+    if (totalCount === 0) {
       document.getElementById("cal-list").innerHTML = "<div class='cal-empty'>Nenhum evento encontrado para o período.</div>";
+      return;
+    }
+    if (events.length === 0) {
+      document.getElementById("cal-list").innerHTML = "<div class='cal-empty'>Nenhum evento com o impacto filtrado.</div>";
       return;
     }
     var html = "<div class='cal-val-hdr'><span></span><span></span><span></span><span>Evento</span><span>Real</span><span>Prev.</span><span>Ant.</span></div>";
     var lastDate = "";
-    var impMap = {High:"H",Medium:"M",Low:"L"};
     var _c2f = {
       USD:"us", BRL:"br", EUR:"eu", GBP:"gb", JPY:"jp",
       CNY:"cn", AUD:"au", CAD:"ca", CHF:"ch", MXN:"mx",
