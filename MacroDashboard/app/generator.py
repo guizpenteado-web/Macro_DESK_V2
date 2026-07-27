@@ -10,6 +10,8 @@ from app.seasonality import (
     calc_seasonality_returns, calc_seasonality_level,
     calc_btc_seasonality, calc_btc_cycle, get_cycle_stats,
 )
+from app.btc_cost_model import compute_prodcost_series
+from app.market import BTC_HASHRATE_TICKER
 
 log = logging.getLogger(__name__)
 
@@ -124,6 +126,14 @@ def _btc_stats_data() -> str:
     return json.dumps(stats) if stats else "null"
 
 
+def _btc_prodcost_data() -> str:
+    """Bitcoin Production Cost (modelo Capriole) — ver app/btc_cost_model.py."""
+    price_rows = get_prices(BTC_TICKER)
+    hash_rows = get_prices(BTC_HASHRATE_TICKER)
+    series = compute_prodcost_series(price_rows, hash_rows)
+    return json.dumps(series) if series else "null"
+
+
 COT_START = "2019-01-01"   # data de início igual ao Sharketo
 
 def _cot_chart_data(contract_key: str) -> str:
@@ -218,6 +228,7 @@ def generate():
     btc_saz   = _seasonality_chart_data(BTC_TICKER)
     btc_cycle = _btc_cycle_data()
     btc_stats = _btc_stats_data()
+    btc_prodcost = _btc_prodcost_data()
 
     cot_data = {key: _cot_chart_data(key) for key in {**COT_CONTRACTS, **COT_CONTRACTS_TFF}}
 
@@ -243,7 +254,7 @@ def generate():
         nfp_hist=nfp_hist, fed_hist=fed_hist,
         sp500_targets=sp500_targets, fed_views=fed_views,
         brazil=brazil, copom_views=copom_views,
-        saz=saz, btc_saz=btc_saz, btc_cycle=btc_cycle, btc_stats=btc_stats,
+        saz=saz, btc_saz=btc_saz, btc_cycle=btc_cycle, btc_stats=btc_stats, btc_prodcost=btc_prodcost,
         last_updated=bank.get("last_updated","—"),
         current_spx=current_spx, nfp_table=nfp_table, nfp_fp_json=nfp_fp_json, wage_json=wage_json,
         cot_data=cot_data,
@@ -1472,6 +1483,22 @@ td.num {{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
   </div>
   <div class="source-note">Fonte: CFTC TFF Report. Bitcoin CME Futures (código 133741). <b style="color:#f59e0b">Leveraged Funds</b> net longo em BTC = hedge funds com viés bullish. Correlacionar com ciclo do halving — especuladores tendem a acumular long antes de topos de ciclo.</div>
 
+  <div class="section-title">Bitcoin — Custo de Produção (Modelo Capriole)</div>
+  <div id="btc-prodcost-stats" class="btc-stats"></div>
+  <div class="chart-box" style="margin-bottom:20px">
+    <div class="chart-title">Preço vs. Custo Elétrico de Produção</div>
+    <div id="ch-btc-prodcost" style="height:420px"></div>
+  </div>
+  <div class="source-note">
+    Fonte: preço e hashrate via blockchain.info (7 dias, média móvel) &middot; metodologia Capriole Investments
+    (capriole.com/bitcoins-production-cost). A eficiência de fleet (J/TH) não é publicada pela Capriole — foi recuperada
+    resolvendo de trás pra frente 6 leituras reais e datadas do Bitcoin Electrical Cost publicado pela própria Capriole
+    (nov/2022 a jul/2026, via capriole.com, newsletter e X de Charles Edwards), não ajustada a nenhum gráfico externo.
+    Premissas: $0,05/kWh, PUE 1,10, razão elétrico/total 79% (atualizada do documento de metodologia de 2019, que
+    indicava 60%, para bater com os prints reais recentes). Histórico anterior a nov/2022 é reconstrução própria.
+    Atualizado semanalmente junto com o restante do pipeline.
+  </div>
+
 </section>
 
 </main>
@@ -2065,6 +2092,60 @@ function renderBtcStats(stats) {{
   document.getElementById("btc-stats-boxes").innerHTML = html;
 }}
 
+// ─── BTC Production Cost (modelo Capriole) ─────────────────────────────
+var BTC_HALVING_DATES = ["2012-11-28","2016-07-09","2020-05-11","2024-04-20"];
+
+function renderBtcProdCostStats(data) {{
+  var el = document.getElementById("btc-prodcost-stats");
+  if (!data || !data.dates || !data.dates.length) {{ el.innerHTML = ''; return; }}
+  var n = data.dates.length;
+  var price = data.price[n-1], elec = data.elec[n-1], prod = data.prod[n-1],
+      margin = data.margin[n-1], hash = data.hashEH[n-1];
+  var eff = data.meta ? data.meta.last_eff_jth : null;
+  var marginColor = margin >= 0 ? "#10b981" : "#f43f5e";
+  var fmtUsd = function(v) {{ return "$ " + Math.round(v).toLocaleString("pt-BR"); }};
+  var boxes = [
+    ["Preço Atual (BTC)", fmtUsd(price), "#e8eef5"],
+    ["Custo Elétrico (piso)", fmtUsd(elec), "#00bfff"],
+    ["Custo Total (Produção)", fmtUsd(prod), "#e8eef5"],
+    ["Margem vs. Custo Elétrico", (margin >= 0 ? "+" : "") + margin.toFixed(1) + "%", marginColor],
+    ["Hashrate da Rede", hash.toFixed(1) + " EH/s", "#e8eef5"],
+    ["Eficiência Implícita (Fleet)", (eff !== null ? eff.toFixed(1) : "—") + " J/TH", "#e8eef5"],
+  ];
+  var html = "";
+  boxes.forEach(function(b) {{
+    html += '<div class="stat-box"><div class="stat-lbl">' + b[0] + '</div><div class="stat-val" style="color:' + b[2] + '">' + b[1] + '</div></div>';
+  }});
+  el.innerHTML = html;
+}}
+
+function btcProdCostChart(divId, data) {{
+  if (!data || !data.dates || !data.dates.length) {{
+    document.getElementById(divId).innerHTML = '<p style="color:#7d90a8;padding:20px;text-align:center">Aguardando dados — clique em Atualizar.</p>';
+    return;
+  }}
+  var traces = [
+    {{ type:"scatter", mode:"lines", name:"Preço BTC", x:data.dates, y:data.price,
+       line:{{color:"#c9a227", width:2}}, hovertemplate:"<b>%{{x}}</b><br>Preço: $%{{y:,.0f}}<extra></extra>" }},
+    {{ type:"scatter", mode:"lines", name:"Custo Elétrico (piso)", x:data.dates, y:data.elec,
+       line:{{color:"#00bfff", width:2}}, hovertemplate:"<b>%{{x}}</b><br>Custo elétrico: $%{{y:,.0f}}<extra></extra>" }},
+  ];
+  var shapes = BTC_HALVING_DATES
+    .filter(function(d) {{ return d >= data.dates[0]; }})
+    .map(function(d) {{
+      return {{ type:"line", x0:d, x1:d, y0:0, y1:1, yref:"paper",
+                line:{{color:"rgba(245,158,11,.35)", width:1, dash:"dot"}} }};
+    }});
+  var layout = Object.assign({{}}, LAYOUT_BASE, {{
+    margin:{{ t:14, b:40, l:64, r:20 }},
+    yaxis: Object.assign({{}}, LAYOUT_BASE.yaxis, {{ type:"log", title:"USD (log)" }}),
+    shapes: shapes,
+    hovermode:"x unified",
+    legend:{{ x:0.01, y:0.98, bgcolor:"rgba(0,0,0,0.3)", font:{{color:"#e8eef5",size:11}} }},
+  }});
+  Plotly.newPlot(divId, traces, layout, CFG_Z);
+}}
+
 // ─── Embed data ───────────────────────────────────────────────────────
 var DATA = {{
   cpi:    {kw['cpi_hist']},
@@ -2104,6 +2185,7 @@ var DATA = {{
   btcSaz:   {kw['btc_saz']},
   btcCycle: {kw['btc_cycle']},
   btcStats: {kw['btc_stats']},
+  btcProdCost: {kw.get('btc_prodcost','null')},
   nfpFP:    {kw['nfp_fp_json']},
   wageGrowth: {kw['wage_json']},
 }};
@@ -2163,6 +2245,8 @@ function renderCharts(tab) {{
     barChart("ch-btc-saz", DATA.btcSaz);
     cotPanel("ch-cot-btc", "ch-cot-btc-zlbl", DATA.cot.btc, "Asset Managers");
     renderCotWeeklyTable("btc", 12);
+    renderBtcProdCostStats(DATA.btcProdCost);
+    btcProdCostChart("ch-btc-prodcost", DATA.btcProdCost);
   }}
 }}
 

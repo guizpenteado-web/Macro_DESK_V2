@@ -43,6 +43,29 @@ def collect_ticker(ticker: str):
         log.error("yfinance %s error: %s", ticker, e)
 
 
+BTC_HASHRATE_TICKER = "BTC-HASHRATE"
+
+
+def collect_btc_hashrate():
+    """Coleta hashrate diário da rede Bitcoin (blockchain.info, TH/s) — insumo do modelo
+    de custo de produção (Capriole). Busca a série inteira (~250KB) toda vez: roda só
+    semanalmente, então simplicidade > economia de banda, e se autocorrige contra gaps."""
+    url = "https://api.blockchain.info/charts/hash-rate?timespan=all&format=json&sampled=false"
+    try:
+        r = requests.get(url, timeout=30)
+        r.raise_for_status()
+        values = r.json().get("values", [])
+        rows = [
+            (pd.Timestamp(v["x"], unit="s").strftime("%Y-%m-%d"), float(v["y"]))
+            for v in values if v.get("y") is not None
+        ]
+        if rows:
+            upsert_prices(BTC_HASHRATE_TICKER, rows)
+            log.info("blockchain.info hashrate: %d registros", len(rows))
+    except Exception as e:
+        log.error("blockchain.info hashrate error: %s", e)
+
+
 def collect_fred():
     """Coleta series do FRED via CSV e armazena como precos mensais."""
     start_year = pd.Timestamp.now().year - SEASONALITY_YEARS
@@ -74,3 +97,4 @@ def collect_all():
         collect_ticker(ticker)
         time.sleep(0.3)
     collect_fred()
+    collect_btc_hashrate()
