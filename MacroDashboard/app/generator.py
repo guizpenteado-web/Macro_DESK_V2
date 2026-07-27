@@ -894,7 +894,7 @@ td.num {{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
   <button class="tab-btn" onclick="showTab('saz-mercados',this)">Sazonalidade — Mercados</button>
   <button class="tab-btn" onclick="showTab('saz-energia',this)">Sazonalidade — Energia e Metais</button>
   <button class="tab-btn" onclick="showTab('saz-agricola',this)">Sazonalidade — Agrícola</button>
-  <button class="tab-btn" onclick="showTab('bitcoin',this)">Bitcoin — Ciclo 4 Anos</button>
+  <button class="tab-btn" onclick="showTab('bitcoin',this)">Bitcoin — Ciclos</button>
   <div class="upd">Atualizado: {last_upd} &nbsp;|&nbsp; <a href="#" onclick="triggerUpdate();return false" style="color:var(--gold);text-decoration:none">↻ Atualizar</a></div>
 </nav>
 
