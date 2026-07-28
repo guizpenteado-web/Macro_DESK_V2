@@ -1,6 +1,6 @@
 {
   "_instrucoes": "Atualizar manualmente quando os bancos revisarem targets. Verificar fontes listadas abaixo.",
-  "last_updated": "2026-07-26",
+  "last_updated": "2026-07-28",
 
   "macro_snapshot": {
     "fed_rate": {
@@ -14,7 +14,7 @@
       "fomc_probability_cut": 0.0,
       "source": "Federal Reserve / CME FedWatch",
       "chair": "Kevin Warsh",
-      "note": "Atualizado 22/jul: probabilidade de CORTE na reunião de 29/jul é ~0%. O risco que resta é de ALTA — CME FedWatch precificava ~35-36,5% de chance de alta de 25bps (mais que triplicou desde início de julho), refletindo preocupação com inflação persistente puxada pela escalada do petróleo (conflito Irã)."
+      "note": "Atualizado 27/jul: probabilidade de CORTE na reunião de 29/jul segue ~0%. Risco de ALTA de 25bps na faixa 34-38% (CME FedWatch, leituras de 27/jul) — estável frente aos ~35-36,5% de 22/jul, ainda elevado mas sem nova alta adicional. EUA e Irã anunciaram TRÉGUA no fim de semana (24-26/jul) após Trump suspender a campanha de bombardeios; petróleo caiu 6-9% em 27/jul (ver commodity_targets), reduzindo o principal driver que vinha pressionando a leitura de inflação persistente. Mercado deve aguardar a decisão de 29/jul (coletiva às 14h30 ET) pra confirmar direção — trégua é sinal positivo mas analistas alertam que não é acordo formal/verificável."
     },
     "cpi": {
       "yoy": 3.5,
@@ -194,11 +194,11 @@
       "period": "Jun/2026",
       "meta": 3.0,
       "teto": 4.5,
-      "projecao_fim_2026": 5.33,
+      "projecao_fim_2026": 5.12,
       "release_date": "2026-07-10",
       "next_release": "2026-08-11",
-      "source": "IBGE",
-      "note": "IPCA de junho veio bem abaixo do esperado (0,16% vs. ~0,31% de mediana), levando o acumulado 12m de 4,72% para 4,64%. Ibovespa subiu 2,86% no dia (10/jul), maior patamar em 2 meses, com mercado precificando maior chance de corte da Selic no Copom de 4-5/ago."
+      "source": "IBGE / Boletim Focus (projeção)",
+      "note": "IPCA de junho veio bem abaixo do esperado (0,16% vs. ~0,31% de mediana), levando o acumulado 12m de 4,72% para 4,64%. Ibovespa subiu 2,86% no dia (10/jul), maior patamar em 2 meses, com mercado precificando maior chance de corte da Selic no Copom de 4-5/ago. Projeção do Boletim Focus pro fim de 2026 reduzida de 5,15% para 5,12% (leitura de 27/jul) — segue acima do teto da meta (4,5%)."
     },
     "selic": {
       "value": 14.25,
@@ -215,8 +215,8 @@
         "selic_label": "14.00%",
         "movimento": "1 corte",
         "view": "NEUTRAL",
-        "rationale": "Mediana do Focus 29/jun/2026 (Banco Central). IPCA 2026 projetado em 5.33% — acima do teto de 4.5%. Selic 2027 em 12.00%. Corte de 25bps esperado para 4T/2026.",
-        "date_published": "2026-06-29"
+        "rationale": "Mediana do Focus 27/jul/2026 (Banco Central) — Selic 2026 MANTIDA em 14,00% e Selic 2027 MANTIDA em 12,00%. IPCA 2026 projetado em 5.12% (reduzido de 5.15%) — segue acima do teto de 4.5%. PIB 2026 mantido em 1,99%. Copom de 4-5/ago (280ª reunião): mercado majoritariamente não espera corte nem em agosto nem em setembro, vê espaço pra só mais 1 corte de 25bps até dezembro.",
+        "date_published": "2026-07-27"
       },
       {
         "bank": "Itaú BBA",
@@ -371,7 +371,7 @@
 
   "commodity_targets": {
     "_nota": "Atualizado Jul/2026 via hierarquia TIER-1→TIER-2→TIER-3. TIER-1: jpmorgan.com/insights (pag. individuais por commodity), kitco.com (BofA/GS), investing.com (Citi). TIER-3: zawya.com (MS oil), Reuters, CNBC.",
-    "_precos_referencia": "Gold ~$4,052-4,070/oz (24/jul) | Silver ~$58.40/oz (24/jul, volátil — chegou a $62+ em meados de jul e recuou) | Cobre COMEX ~$6.17/lb (sem atualização nova desde meados de jul) | WTI ~$90/bbl (24-25/jul; Brent chegou a bater $102 em 23/jul, alta acumulada de ~45% desde a mínima de $70,14 em 03/jul) — a reescalada do conflito EUA-Irã (147 dias, 13ª onda de ataques) que estava sem resposta dos bancos até 18/jul finalmente gerou revisão: Goldman Sachs e Morgan Stanley já revisaram pra cima (ver targets abaixo, 23-24/jul); JPMorgan manteve o mesmo call de jun/jul (Brent Q3 $86/Q4 $80); Citi ainda não tinha nova nota pública encontrada até 26/jul — segue com o target bearish antigo (pré-reescalada), provável defasagem.",
+    "_precos_referencia": "Gold ~$4,093/oz (26/jul) | Silver ~$58.38/oz (27/jul) | Cobre COMEX ~$6.17/lb (sem atualização nova desde meados de jul) | WTI ~$83-84/bbl (27/jul, Brent ~$91/bbl) — VIRADA IMPORTANTE: EUA e Irã anunciaram TRÉGUA no fim de semana de 24-26/jul (Trump suspendeu a campanha de bombardeios após alerta de assessores sobre escassez de alvos viáveis e risco de esgotamento de munições; Irã sinalizou disposição de suspender ataques também), encerrando 13 noites consecutivas de escalada. Petróleo caiu 6-9% em 27/jul, revertendo boa parte da alta acumulada de ~45% que vinha desde a mínima de $70,14 (03/jul). Os targets de Goldman Sachs ($116, 24/jul) e Morgan Stanley ($86, 24/jul) abaixo foram revisados ANTES da trégua, na expectativa de disrupção contínua do Estreito de Hormuz — com a trégua, esses cenários bull ficam mais distantes no curto prazo, mas analistas alertam que não é acordo formal/verificável e a volatilidade deve persistir. Citi ($66, bear) e JPMorgan ($76, bear) seguem mais alinhados com o cenário pós-trégua.",
     "ouro": {
       "unit": "USD/oz",
       "preco_atual": 4052,
@@ -394,7 +394,7 @@
     },
     "petroleo_wti": {
       "unit": "USD/barril",
-      "preco_atual": 90.0,
+      "preco_atual": 83.8,
       "bank_targets": [
         {"bank": "Goldman Sachs", "target": 116, "view": "BULL", "rationale": "REVISADO 23-24/jul: banco sinaliza Brent podendo voltar a superar $120/bbl (~WTI $116) no Q4/26 se o Estreito de Hormuz continuar interrompido — reescalada do conflito EUA-Irã invalidou o corte de jun/26 (que previa Brent $80/WTI $76 pós-acordo de paz). TheStreet/Yahoo Finance.", "date": "2026-07-24"},
         {"bank": "Morgan Stanley","target": 86, "view": "BULL", "rationale": "REVISADO 23-24/jul: Q3/26 elevado para Brent $90 (~WTI $86), de $75 (~$71) em jun/26. Q4/26 mantido em Brent $80 (~WTI $76) — banco vê a alta como concentrada no Q3 enquanto durar a disrupção de Hormuz. IndexBox/CNBC.", "date": "2026-07-24"},
