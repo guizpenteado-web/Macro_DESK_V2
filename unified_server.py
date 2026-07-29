@@ -1952,6 +1952,17 @@ async def _proxy(request: Request, target_base: str, strip_prefix: str, rewrite_
         content = html.encode("utf-8")
 
     resp_headers = {k: v for k, v in resp.headers.items() if k.lower() not in _SKIP_HEADERS}
+    # Redirects do sub-app (Flask redirect(url_for(...)) etc.) vem com Location
+    # relativo a raiz do sub-app ("/", "/login"...) — sem reescrever aqui, o
+    # browser segue pra raiz do PROPRIO HUB (nao pro sub-app sob o prefixo),
+    # o que quebra navegacao (ex.: botao dentro de um iframe do Hub que da
+    # redirect acaba recarregando o Hub inteiro dentro do proprio iframe).
+    if strip_prefix:
+        for hk in list(resp_headers.keys()):
+            if hk.lower() == "location":
+                loc = resp_headers[hk]
+                if loc.startswith("/") and not loc.startswith(strip_prefix):
+                    resp_headers[hk] = strip_prefix + loc
     return Response(content=content, status_code=resp.status_code, headers=resp_headers)
 
 
