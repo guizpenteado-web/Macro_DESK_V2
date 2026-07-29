@@ -68,6 +68,12 @@ AUTH_DIR      = BASE / "auth"
 MACROREGIME_DIR = Path(r"C:\Users\Guilherme\Downloads\MCICLE")
 WRANGLER_CMD = "wrangler.cmd" if sys.platform == "win32" else "wrangler"
 
+# Portfolio (carteira por cliente, login por usuario) — 29/jul/2026, movido
+# pra dentro do repo (era Downloads/TestCarlao antes, so local) pra virar
+# modulo de verdade do Hub, deployado no VPS igual aos outros. Tem seu
+# proprio .venv (so Flask), mesmo padrao do IbovCalls/RRG/etc.
+PORTFOLIO_DIR = BASE / "Portfolio"
+
 sys.path.insert(0, str(BASE))
 
 
@@ -87,6 +93,7 @@ PYTHON_3 = _venv_python(MACRO_DIR)
 PYTHON_4 = _venv_python(IBOV_DIR)
 PYTHON_5 = _venv_python(RRG_DIR)
 PYTHON_SM_BACKEND = _venv_python(SM_DIR / "backend")
+PYTHON_PORTFOLIO = _venv_python(PORTFOLIO_DIR)
 NPM_CMD = "npm.cmd" if sys.platform == "win32" else "npm"  # SmartMoneyBR frontend (Next.js)
 
 PORT_SHELL       = 8000
@@ -98,6 +105,7 @@ PORT_RRG         = 8014
 PORT_SMARTMONEY_BACKEND = 8100  # so o Next (rewrite) fala com essa porta, Hub nao proxeia direto
 PORT_SMARTMONEY  = 3100         # frontend — é o que o Hub proxeia em /smartmoney/
 PORT_MACROREGIME = 8015
+PORT_PORTFOLIO   = 8016
 
 _procs: list[subprocess.Popen] = []
 
@@ -200,6 +208,13 @@ def _start_subservers() -> None:
             "port": PORT_SMARTMONEY,
             "cmd":  [NPM_CMD, "start"],
             "cwd":  str(SM_DIR / "frontend"),
+        },
+        {
+            "name": "Portfolio",
+            "port": PORT_PORTFOLIO,
+            "cmd":  [PYTHON_PORTFOLIO, "server.py"],
+            "cwd":  str(PORTFOLIO_DIR),
+            "env":  {**__import__("os").environ, "PORTFOLIO_PORT": str(PORT_PORTFOLIO)},
         },
     ]
 
@@ -462,6 +477,12 @@ _SHELL = """<!DOCTYPE html>
     background: rgba(239,68,68,.08);
   }
   .nav-btn.active-10 .dot { opacity: 1; }
+  .nav-btn.active-11 {
+    border-color: #d4af37;
+    color: #d4af37;
+    background: rgba(212,175,55,.08);
+  }
+  .nav-btn.active-11 .dot { opacity: 1; }
   .nav-btn.active-5 { border-color: #6e7681; color: #d1d4dc; background: rgba(110,118,129,.12); }
   .nav-btn.active-6 { border-color: #6e7681; color: #d1d4dc; background: rgba(110,118,129,.12); }
   .nav-btn.active-7 { border-color: var(--c1); color: var(--c1); background: rgba(0,240,255,.08); }
@@ -833,6 +854,11 @@ _SHELL = """<!DOCTYPE html>
     <span class="call-badge" id="biblio-badge" style="display:none"></span>
   </button>
 
+  <button class="nav-btn" id="btn9" onclick="show(9)">
+    <span class="dot"></span>
+    Portfolio
+  </button>
+
   <button class="nav-btn" id="btn-news" onclick="toggleNews()" style="margin-left:auto">
     <span style="font-size:14px">📰</span>
     Notícias
@@ -933,6 +959,10 @@ _SHELL = """<!DOCTYPE html>
     <div class="spinner" style="border-top-color:var(--c7)"></div>
     Carregando Macro Regime...
   </div>
+  <div class="loader hidden" id="loader9">
+    <div class="spinner" style="border-top-color:#d4af37"></div>
+    Carregando Portfolio...
+  </div>
 
   <iframe id="f1" src="" class="visible"
           onload="if(window.loaded)loaded(1)"></iframe>
@@ -950,12 +980,14 @@ _SHELL = """<!DOCTYPE html>
           onload="if(window.loaded)loaded(7)"></iframe>
   <iframe id="f8" src="about:blank"
           onload="if(window.loaded)loaded(8)"></iframe>
+  <iframe id="f9" src="about:blank"
+          onload="if(window.loaded)loaded(9)"></iframe>
 
 </div>
 
 <script>
-  var _loaded    = {1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false, 8: false};
-  var _srcSet    = {1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false, 8: false};
+  var _loaded    = {1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false, 8: false, 9: false};
+  var _srcSet    = {1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false, 8: false, 9: false};
   var _current   = 1;
 
   var _cv = Date.now();
@@ -968,6 +1000,7 @@ _SHELL = """<!DOCTYPE html>
     6: "/rrg/?v=" + _cv,
     7: "/smartmoney/?v=" + _cv,
     8: "/macroregime/?v=" + _cv,
+    9: "/portfolio/?v=" + _cv,
   };
 
   function loaded(n) {
@@ -985,7 +1018,7 @@ _SHELL = """<!DOCTYPE html>
       document.getElementById("f" + n).src = URLS[n];
     }
 
-    [1, 2, 3, 4, 5, 6, 7, 8].forEach(function(i) {
+    [1, 2, 3, 4, 5, 6, 7, 8, 9].forEach(function(i) {
       document.getElementById("f" + i).classList.toggle("visible", i === n);
       document.getElementById("loader" + i).classList.toggle("hidden",
         i !== n || _loaded[i]);
@@ -1007,6 +1040,8 @@ _SHELL = """<!DOCTYPE html>
       "nav-btn" + (n === 6 ? " active-9" : "");
     document.getElementById("btn7").className =
       "nav-btn" + (n === 7 ? " active-7" : "");
+    document.getElementById("btn9").className =
+      "nav-btn" + (n === 9 ? " active-11" : "");
     if (n === 1) {
       var today = new Date().toISOString().slice(0,10);
       localStorage.setItem("calls_last_seen", today);
@@ -1026,7 +1061,7 @@ _SHELL = """<!DOCTYPE html>
   // Restaura a última aba visitada ao atualizar a página, em vez de sempre abrir em IBOV Calls
   (function() {
     var saved = parseInt(localStorage.getItem("hub_active_tab"), 10);
-    var initial = (saved >= 1 && saved <= 8) ? saved : 1;
+    var initial = (saved >= 1 && saved <= 9) ? saved : 1;
     applyTab(initial);
   })();
 
@@ -1833,6 +1868,33 @@ async def admin_delete_user(user_id: int) -> Response:
 # ── Proxy reverso ─────────────────────────────────────────────────────────────
 
 _SKIP_HEADERS = {"host", "content-length", "transfer-encoding", "content-encoding"}
+# Headers de identidade que só o Hub pode setar — nunca repassar o que o
+# próprio cliente mandou, senão qualquer usuário logado forja "X-Hub-Username"
+# na requisição e se passa por outro (furava o isolamento de Carteira do
+# SmartMoneyBR e furaria o do Portfolio). Comparação é case-insensitive
+# porque dict normal é case-sensitive e "X-Hub-Username" != "x-hub-username"
+# — sem isso os dois coexistem e o header forjado (inserido primeiro) vence
+# no .get() do Werkzeug/Flask do lado do sub-app.
+_IDENTITY_HEADERS = {"x-hub-username", "x-hub-role"}
+
+# Client httpx unico e reaproveitado entre requisicoes (pool de conexoes
+# keep-alive), em vez de "async with httpx.AsyncClient(...)" abrindo uma
+# conexao TCP nova pra CADA arquivo proxeado. Uma pagina como o SmartMoneyBR
+# faz ~50 requisicoes (chunks JS, RSC prefetch de cada link da nav) — sem
+# reuso, cada uma pagava handshake TCP do zero contra o backend interno,
+# turbinando um carregamento de ~2s (direto) pra 8s+ (via Hub). Confirmado
+# comparando timing direto (porta 3100) vs via proxy (porta 8000) 22/jul/2026.
+_proxy_client: httpx.AsyncClient | None = None
+
+
+def _get_proxy_client() -> httpx.AsyncClient:
+    global _proxy_client
+    if _proxy_client is None:
+        _proxy_client = httpx.AsyncClient(
+            timeout=120.0,
+            limits=httpx.Limits(max_connections=200, max_keepalive_connections=50),
+        )
+    return _proxy_client
 
 
 async def _proxy(request: Request, target_base: str, strip_prefix: str, rewrite_html: bool = True) -> Response:
@@ -1843,23 +1905,27 @@ async def _proxy(request: Request, target_base: str, strip_prefix: str, rewrite_
     if request.url.query:
         url += f"?{request.url.query}"
 
-    req_headers = {k: v for k, v in request.headers.items() if k.lower() not in _SKIP_HEADERS}
+    req_headers = {
+        k: v for k, v in request.headers.items()
+        if k.lower() not in _SKIP_HEADERS and k.lower() not in _IDENTITY_HEADERS
+    }
     # Repassa a identidade de quem esta logado no Hub pros sub-apps — usado
     # hoje pelo SmartMoneyBR pra isolar a Carteira por usuario (pedido
-    # 16/jul/2026). Os outros sub-apps simplesmente ignoram esses headers.
+    # 16/jul/2026) e pelo Portfolio (29/jul/2026). Os outros sub-apps
+    # simplesmente ignoram esses headers.
     hub_user = request.session.get("user") or {}
     if hub_user:
         req_headers["X-Hub-Username"] = hub_user.get("username", "")
         req_headers["X-Hub-Role"] = hub_user.get("role", "")
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        resp = await client.request(
-            method=request.method,
-            url=url,
-            headers=req_headers,
-            content=await request.body(),
-            follow_redirects=False,
-        )
+    client = _get_proxy_client()
+    resp = await client.request(
+        method=request.method,
+        url=url,
+        headers=req_headers,
+        content=await request.body(),
+        follow_redirects=False,
+    )
 
     content = resp.content
     content_type = resp.headers.get("content-type", "")
@@ -1934,6 +2000,15 @@ async def proxy_macroregime(request: Request, path: str = "") -> Response:
     # cima (double-prefix quebra), strip_prefix="" porque o Next exige o
     # caminho completo COM "/macroregime".
     return await _proxy(request, f"http://127.0.0.1:{PORT_MACROREGIME}", "", rewrite_html=False)
+
+
+@app.api_route("/portfolio", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+@app.api_route("/portfolio/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+async def proxy_portfolio(request: Request, path: str = "") -> Response:
+    # Flask simples (nao Next), gera caminhos root-relative normais
+    # ("/login", "/api/portfolio") — mesmo esquema do Intermarket/Breadth/etc,
+    # rewrite_html=True prefixa esses caminhos com "/portfolio" automaticamente.
+    return await _proxy(request, f"http://127.0.0.1:{PORT_PORTFOLIO}", "/portfolio")
 
 
 @app.get("/biblioteca")

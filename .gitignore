@@ -23,8 +23,15 @@ MacroDashboard/data/price_cache.json
 # Dados da Biblioteca (posts reais do usuário, mídias e chave de API) — nunca no git
 biblioteca/data/
 
+# Dados do Portfolio (carteiras reais de clientes + secret_key da sessão) — nunca no git,
+# igual Biblioteca acima. Provisionamento roda direto em cada ambiente (local/VPS).
+Portfolio/data/
+
 # Segredo de sessão do login do Hub (gerado por ambiente, nunca compartilhado)
 auth/.session_secret
+
+# Segredo do push do calendário econômico (PC local -> VPS), nunca compartilhado
+.calendar_push_secret
 
 # Arquivos de configuração local do Claude
 .claude/

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CÉU INVESTIMENTOS — Acesso à Carteira</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy-950:#03060f; --navy-900:#060b1a; --navy-800:#0a1128; --line:#22315c;
+    --gold:#d4af37; --gold-light:#f4d675; --text:#e9edf7; --text-mid:#aab3cf; --text-dim:#6c7699; --neg:#ff5470;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    display:flex; align-items:center; justify-content:center; min-height:100vh;
+    background:
+      radial-gradient(ellipse at 20% -10%, rgba(212,175,55,0.10), transparent 40%),
+      radial-gradient(ellipse at 100% 0%, rgba(46,230,214,0.06), transparent 45%),
+      linear-gradient(180deg, var(--navy-950), var(--navy-900) 40%, #050914 100%);
+    color:var(--text); font-family:'Inter', system-ui, sans-serif; padding:20px;
+  }
+  .card{
+    width:100%; max-width:380px; background:var(--navy-800); border:1px solid var(--line);
+    border-top:1px solid rgba(212,175,55,0.5); border-radius:8px; padding:34px 30px;
+  }
+  .brand{display:flex; flex-direction:column; align-items:center; gap:6px; margin-bottom:26px;}
+  .brand-mark{
+    width:48px; height:48px; border-radius:6px; border:1px solid var(--gold);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Orbitron'; font-weight:700; color:var(--gold); font-size:18px;
+  }
+  .brand-t1{font-weight:700; letter-spacing:1.2px; font-size:16px; color:var(--gold-light); margin-top:8px;}
+  .brand-t2{font-size:12.5px; color:var(--text-dim); letter-spacing:1.5px;}
+  label{display:block; font-size:12.5px; color:var(--text-dim); letter-spacing:0.6px; text-transform:uppercase; margin-bottom:6px;}
+  .field{margin-bottom:18px;}
+  input[type=text], input[type=password]{
+    width:100%; background:var(--navy-900); border:1px solid var(--line); color:var(--text);
+    border-radius:5px; padding:11px 12px; font-size:15px; font-family:'Inter';
+  }
+  input:focus{outline:none; border-color:var(--gold);}
+  button{
+    width:100%; background:linear-gradient(90deg, var(--gold), var(--gold-light)); color:#1a1400;
+    border:none; border-radius:5px; padding:12px; font-size:15px; font-weight:700; cursor:pointer; letter-spacing:0.4px;
+  }
+  button:hover{filter:brightness(1.05);}
+  .error{
+    background:rgba(255,84,112,0.1); border:1px solid rgba(255,84,112,0.4); color:#ff8fa3;
+    border-radius:6px; padding:10px 12px; font-size:13.5px; margin-bottom:18px;
+  }
+  .foot{text-align:center; margin-top:20px; font-size:12px; color:var(--text-dim);}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">
+      <div class="brand-mark">CI</div>
+      <div class="brand-t1">CÉU INVESTIMENTOS</div>
+      <div class="brand-t2">PORTAL DE CARTEIRAS</div>
+    </div>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <form method="post" action="{{ url_for('login') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field">
+        <label for="username">Usuário</label>
+        <input type="text" id="username" name="username" autocomplete="username" required autofocus>
+      </div>
+      <div class="field">
+        <label for="password">Senha</label>
+        <input type="password" id="password" name="password" autocomplete="current-password" required>
+      </div>
+      <button type="submit">Entrar</button>
+    </form>
+    <div class="foot">Acesso restrito — cada cliente vê apenas a própria carteira.</div>
+  </div>
+</body>
+</html>
