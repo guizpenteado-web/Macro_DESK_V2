@@ -62,6 +62,16 @@
   .tabbtn:hover{color:var(--gold-light);}
   .tabbtn.active{color:var(--gold-light); border-bottom-color:var(--gold); background:rgba(212,175,55,0.05);}
   .tabbtn.active .idx{color:var(--gold);}
+  .subnav{display:flex; gap:8px; margin-bottom:22px; flex-wrap:wrap;}
+  .subtabbtn{
+    background:var(--navy-800); border:1px solid var(--line); cursor:pointer; color:var(--text-mid);
+    font-family:'Inter', sans-serif; font-weight:600; font-size:13.5px; padding:9px 18px; border-radius:20px;
+    transition:all .15s ease;
+  }
+  .subtabbtn:hover{color:var(--gold-light); border-color:var(--gold-dim);}
+  .subtabbtn.active{color:var(--navy-950); background:var(--gold); border-color:var(--gold);}
+  .subtabpanel{display:none;}
+  .subtabpanel.active{display:block;}
   main{max-width:1360px; margin:0 auto; padding:26px 24px 70px;}
   .tabpanel{display:none; animation:fadein .25s ease;}
   .tabpanel.active{display:block;}
@@ -437,10 +447,8 @@
   <button class="tabbtn" data-tab="aloc"><span class="idx">03</span> Alocação</button>
   <button class="tabbtn" data-tab="strategy"><span class="idx">04</span> Diagnóstico &amp; Estratégia</button>
   <button class="tabbtn" data-tab="committee"><span class="idx">05</span> Comitê de Investimentos</button>
-  <button class="tabbtn" data-tab="tese"><span class="idx">06</span> Tese</button>
-  <button class="tabbtn" data-tab="helios"><span class="idx">07</span> HELIOS</button>
-  <button class="tabbtn" data-tab="analise-tecnica"><span class="idx">08</span> Análise Técnica</button>
-  <button class="tabbtn" data-tab="notes"><span class="idx">09</span> Anotações</button>
+  <button class="tabbtn" data-tab="analise-tecnica"><span class="idx">06</span> Análise Técnica</button>
+  <button class="tabbtn" data-tab="notes"><span class="idx">07</span> Anotações</button>
 </nav>
 
 <main>
@@ -494,94 +502,101 @@
     <div id="strategyContent" style="display:none;"></div>
   </section>
 
-  <!-- ================= TAB 04 — COMMITTEE ================= -->
+  <!-- ================= TAB 04 — COMMITTEE (+ TESE + HELIOS como sub-abas) ================= -->
   <section class="tabpanel" id="tab-committee">
-    <div id="committeePlaceholder">
-      <div class="section-head"><h2>COMITÊ DE INVESTIMENTOS</h2><div class="gold-rule"></div></div>
-      <div class="warn-strip"><span>⚠</span><span><b>Aba ainda não preenchida.</b> Recomendações e pontos de validação com o cliente entram aqui após a primeira reunião de comitê sobre esta carteira.</span></div>
-      <div class="card stub-card"><div class="asset-name" style="color:var(--gold-light); font-size:17px;">Sem dados cadastrados ainda</div></div>
+
+    <div class="subnav" id="committeeSubnav">
+      <button class="subtabbtn active" data-subtab="committee-main">Comitê de Investimentos</button>
+      <button class="subtabbtn" data-subtab="committee-tese">Tese</button>
+      <button class="subtabbtn" data-subtab="committee-helios">HELIOS</button>
     </div>
-    <div id="committeeContent" style="display:none;">
-      <div class="section-head"><h2>COMITÊ DE INVESTIMENTOS — ANÁLISE INSTITUCIONAL</h2><div class="gold-rule"></div><div class="sub">Avaliação técnica e independente da carteira atual</div></div>
-      <div class="warn-strip"><span>⚠</span><span><b>Este relatório é um material de trabalho interno</b>, gerado a partir dos dados da carteira do cliente e de dados macro públicos. Não constitui recomendação final e deve ser validado com o cliente antes de qualquer execução.</span></div>
 
-      <div class="section-head" id="macroKpisHead" style="margin-top:4px; display:none;"><h2 style="font-size:16px;">CENÁRIO MACROECONÔMICO</h2></div>
-      <div class="grid grid-4" id="macroKpis" style="margin-bottom:22px;"></div>
-
-      <div class="card" style="margin-bottom:22px;" id="diagExecCard">
-        <div class="asset-name" style="color:var(--gold-light); font-size:17px; margin-bottom:10px;">DIAGNÓSTICO EXECUTIVO</div>
-        <p style="font-size:15.5px; color:var(--text-mid); line-height:1.7;" id="diagExecText"></p>
+    <div class="subtabpanel active" id="subtab-committee-main">
+      <div id="committeePlaceholder">
+        <div class="section-head"><h2>COMITÊ DE INVESTIMENTOS</h2><div class="gold-rule"></div></div>
+        <div class="warn-strip"><span>⚠</span><span><b>Aba ainda não preenchida.</b> Recomendações e pontos de validação com o cliente entram aqui após a primeira reunião de comitê sobre esta carteira.</span></div>
+        <div class="card stub-card"><div class="asset-name" style="color:var(--gold-light); font-size:17px;">Sem dados cadastrados ainda</div></div>
       </div>
+      <div id="committeeContent" style="display:none;">
+        <div class="section-head"><h2>COMITÊ DE INVESTIMENTOS — ANÁLISE INSTITUCIONAL</h2><div class="gold-rule"></div><div class="sub">Avaliação técnica e independente da carteira atual</div></div>
+        <div class="warn-strip"><span>⚠</span><span><b>Este relatório é um material de trabalho interno</b>, gerado a partir dos dados da carteira do cliente e de dados macro públicos. Não constitui recomendação final e deve ser validado com o cliente antes de qualquer execução.</span></div>
 
-      <div class="grid grid-2" style="margin-bottom:24px;">
-        <div class="card strength-card">
-          <div class="asset-name" style="color:var(--pos); font-size:17px; margin-bottom:12px;">✓ PONTOS FORTES DA ALOCAÇÃO ATUAL</div>
-          <ul class="list-clean" id="strengthsList"></ul>
+        <div class="section-head" id="macroKpisHead" style="margin-top:4px; display:none;"><h2 style="font-size:16px;">CENÁRIO MACROECONÔMICO</h2></div>
+        <div class="grid grid-4" id="macroKpis" style="margin-bottom:22px;"></div>
+
+        <div class="card" style="margin-bottom:22px;" id="diagExecCard">
+          <div class="asset-name" style="color:var(--gold-light); font-size:17px; margin-bottom:10px;">DIAGNÓSTICO EXECUTIVO</div>
+          <p style="font-size:15.5px; color:var(--text-mid); line-height:1.7;" id="diagExecText"></p>
         </div>
-        <div class="card point-card">
-          <div class="asset-name" style="color:var(--neg); font-size:17px; margin-bottom:12px;">⚠ RISCOS E FRAGILIDADES IDENTIFICADOS</div>
-          <ul class="list-clean" id="risksList"></ul>
+
+        <div class="grid grid-2" style="margin-bottom:24px;">
+          <div class="card strength-card">
+            <div class="asset-name" style="color:var(--pos); font-size:17px; margin-bottom:12px;">✓ PONTOS FORTES DA ALOCAÇÃO ATUAL</div>
+            <ul class="list-clean" id="strengthsList"></ul>
+          </div>
+          <div class="card point-card">
+            <div class="asset-name" style="color:var(--neg); font-size:17px; margin-bottom:12px;">⚠ RISCOS E FRAGILIDADES IDENTIFICADOS</div>
+            <ul class="list-clean" id="risksList"></ul>
+          </div>
         </div>
-      </div>
 
-      <div class="section-head" id="diversifHead" style="display:none;"><h2 style="font-size:16px;">DIVERSIFICAÇÃO — GEOGRAFIA, MOEDA E FATORES DE RISCO</h2></div>
-      <div class="tablewrap" id="diversifWrap" style="margin-bottom:24px; display:none;">
-        <table>
-          <thead><tr><th>Dimensão</th><th>Exposição Atual</th><th>Lacuna Identificada</th></tr></thead>
-          <tbody id="diversifBody"></tbody>
-        </table>
-      </div>
-
-      <div class="section-head" id="recoHead" style="display:none;"><h2 style="font-size:16px;">SUGESTÕES DE AJUSTE</h2></div>
-      <div id="recoList" style="display:flex; flex-direction:column; gap:16px; margin-bottom:26px;"></div>
-
-      <div id="portfolioCompareWrap" style="display:none;">
-        <div class="section-head"><h2 style="font-size:16px;">PORTFÓLIO ATUAL vs. PORTFÓLIO SUGERIDO (ILUSTRATIVO)</h2></div>
-        <div class="warn-strip"><span>⚠</span><span>Alocação sugerida é <b>ilustrativa e preliminar</b> — sujeita a ajuste fino conforme perfil de risco formal e validação do cliente.</span></div>
-        <div class="card" style="margin-bottom:14px;">
-          <div class="canvas-box" style="height:340px;"><canvas id="portfolioCompareChart"></canvas></div>
-        </div>
-        <div class="tablewrap" style="margin-bottom:24px;">
+        <div class="section-head" id="diversifHead" style="display:none;"><h2 style="font-size:16px;">DIVERSIFICAÇÃO — GEOGRAFIA, MOEDA E FATORES DE RISCO</h2></div>
+        <div class="tablewrap" id="diversifWrap" style="margin-bottom:24px; display:none;">
           <table>
-            <thead><tr><th>Categoria</th><th>Atual</th><th>Sugerido</th><th>Direção</th></tr></thead>
-            <tbody id="portfolioCompareBody"></tbody>
+            <thead><tr><th>Dimensão</th><th>Exposição Atual</th><th>Lacuna Identificada</th></tr></thead>
+            <tbody id="diversifBody"></tbody>
           </table>
         </div>
-      </div>
 
-      <div id="validationWrap" style="display:none;">
-        <div class="section-head"><h2 style="font-size:16px;">PONTOS QUE EXIGEM VALIDAÇÃO COM O CLIENTE</h2></div>
-        <div class="card"><ul class="check-list" id="validationList"></ul></div>
+        <div class="section-head" id="recoHead" style="display:none;"><h2 style="font-size:16px;">SUGESTÕES DE AJUSTE</h2></div>
+        <div id="recoList" style="display:flex; flex-direction:column; gap:16px; margin-bottom:26px;"></div>
+
+        <div id="portfolioCompareWrap" style="display:none;">
+          <div class="section-head"><h2 style="font-size:16px;">PORTFÓLIO ATUAL vs. PORTFÓLIO SUGERIDO (ILUSTRATIVO)</h2></div>
+          <div class="warn-strip"><span>⚠</span><span>Alocação sugerida é <b>ilustrativa e preliminar</b> — sujeita a ajuste fino conforme perfil de risco formal e validação do cliente.</span></div>
+          <div class="card" style="margin-bottom:14px;">
+            <div class="canvas-box" style="height:340px;"><canvas id="portfolioCompareChart"></canvas></div>
+          </div>
+          <div class="tablewrap" style="margin-bottom:24px;">
+            <table>
+              <thead><tr><th>Categoria</th><th>Atual</th><th>Sugerido</th><th>Direção</th></tr></thead>
+              <tbody id="portfolioCompareBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="validationWrap" style="display:none;">
+          <div class="section-head"><h2 style="font-size:16px;">PONTOS QUE EXIGEM VALIDAÇÃO COM O CLIENTE</h2></div>
+          <div class="card"><ul class="check-list" id="validationList"></ul></div>
+        </div>
       </div>
     </div>
-  </section>
 
-  <!-- ================= TAB 05 — TESE ================= -->
-  <section class="tabpanel" id="tab-tese">
-    <div id="tesePlaceholder">
-      <div class="section-head"><h2>TESE — PARECER CIO</h2><div class="gold-rule"></div></div>
-      <div class="warn-strip"><span>⚠</span><span><b>Aba ainda não preenchida.</b> Parecer do CIO/Comitê de Investimentos sobre esta carteira entra aqui quando disponível.</span></div>
+    <div class="subtabpanel" id="subtab-committee-tese">
+      <div id="tesePlaceholder">
+        <div class="section-head"><h2>TESE — PARECER CIO</h2><div class="gold-rule"></div></div>
+        <div class="warn-strip"><span>⚠</span><span><b>Aba ainda não preenchida.</b> Parecer do CIO/Comitê de Investimentos sobre esta carteira entra aqui quando disponível.</span></div>
+        <div class="card stub-card"><div class="asset-name" style="color:var(--gold-light); font-size:17px;">Sem dados cadastrados ainda</div></div>
+      </div>
+      <div id="teseContent" style="display:none;"></div>
+    </div>
+
+    <div class="subtabpanel" id="subtab-committee-helios" {% if has_helios %}style="padding:0;"{% endif %}>
+      {% if has_helios %}
+      <div class="section-head"><h2>PROJECT HELIOS — INSTITUTIONAL PORTFOLIO INTELLIGENCE SYSTEM</h2><div class="gold-rule"></div><div class="sub">Sistema operacional de decisão em 12 módulos · V1 arquitetura estática</div></div>
+      <div class="info-strip">
+        <span>ℹ</span>
+        <span>O HELIOS é carregado abaixo como sistema independente (arquivo próprio, embutido nesta aba) para preservar sua arquitetura de 12 módulos sem conflitar com o design do Terminal. Use a barra lateral do HELIOS para navegar entre os módulos. Se preferir tela cheia, <a href="/helios-embed" target="_blank" style="color:var(--cyan);">abra em nova aba</a>.</span>
+      </div>
+      <div style="border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; height:calc(100vh - 120px); min-height:700px;">
+        <iframe src="/helios-embed" title="Project Helios" style="width:100%; height:100%; border:none; display:block;"></iframe>
+      </div>
+      {% else %}
+      <div class="section-head"><h2>PROJECT HELIOS</h2><div class="gold-rule"></div><div class="sub">Sistema institucional de inteligência de carteira</div></div>
+      <div class="warn-strip"><span>⚠</span><span><b>Não aplicável a esta carteira ainda.</b> O HELIOS é um sistema à parte, montado sob medida por cliente — ainda não foi gerado para {{ client.display_name }}.</span></div>
       <div class="card stub-card"><div class="asset-name" style="color:var(--gold-light); font-size:17px;">Sem dados cadastrados ainda</div></div>
+      {% endif %}
     </div>
-    <div id="teseContent" style="display:none;"></div>
-  </section>
-
-  <!-- ================= TAB 06 — HELIOS ================= -->
-  <section class="tabpanel" id="tab-helios" {% if has_helios %}style="padding:0;"{% endif %}>
-    {% if has_helios %}
-    <div class="section-head"><h2>PROJECT HELIOS — INSTITUTIONAL PORTFOLIO INTELLIGENCE SYSTEM</h2><div class="gold-rule"></div><div class="sub">Sistema operacional de decisão em 12 módulos · V1 arquitetura estática</div></div>
-    <div class="info-strip">
-      <span>ℹ</span>
-      <span>O HELIOS é carregado abaixo como sistema independente (arquivo próprio, embutido nesta aba) para preservar sua arquitetura de 12 módulos sem conflitar com o design do Terminal. Use a barra lateral do HELIOS para navegar entre os módulos. Se preferir tela cheia, <a href="/helios-embed" target="_blank" style="color:var(--cyan);">abra em nova aba</a>.</span>
-    </div>
-    <div style="border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; height:calc(100vh - 120px); min-height:700px;">
-      <iframe src="/helios-embed" title="Project Helios" style="width:100%; height:100%; border:none; display:block;"></iframe>
-    </div>
-    {% else %}
-    <div class="section-head"><h2>PROJECT HELIOS</h2><div class="gold-rule"></div><div class="sub">Sistema institucional de inteligência de carteira</div></div>
-    <div class="warn-strip"><span>⚠</span><span><b>Não aplicável a esta carteira ainda.</b> O HELIOS é um sistema à parte, montado sob medida por cliente — ainda não foi gerado para {{ client.display_name }}.</span></div>
-    <div class="card stub-card"><div class="asset-name" style="color:var(--gold-light); font-size:17px;">Sem dados cadastrados ainda</div></div>
-    {% endif %}
   </section>
 
   <!-- ================= TAB 07 — ALOC ================= -->
@@ -742,6 +757,16 @@ document.querySelectorAll('.tabbtn').forEach(btn=>{
     document.querySelectorAll('.tabpanel').forEach(p=>p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ---------- Sub-tabs (Comitê / Tese / HELIOS) ----------
+document.querySelectorAll('.subtabbtn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.subtabbtn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.subtabpanel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('subtab-'+btn.dataset.subtab).classList.add('active');
   });
 });
 
