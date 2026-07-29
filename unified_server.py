@@ -1615,7 +1615,14 @@ async def _auth_gate(request: Request, call_next):
     if (path == "/admin" or path.startswith("/api/admin/")) and not is_admin:
         return JSONResponse({"detail": "Acesso restrito a administradores."}, status_code=403)
 
-    if request.method not in ("GET", "HEAD", "OPTIONS") and not is_admin:
+    # Portfolio e excecao a essa regra: cada cliente ("user") precisa poder
+    # escrever na PROPRIA carteira (add/remover ativo, editar valor, trocar
+    # regime) — o modulo ja isola por X-Hub-Username (ver resolve_client()
+    # em Portfolio/server.py), entao liberar POST/DELETE aqui nao da acesso
+    # a dado de outro cliente. Sem essa excecao, "user" comum nunca consegue
+    # salvar nada na propria aba Portfolio (só-leitura vale pro resto do Hub).
+    is_portfolio_write = path == "/portfolio" or path.startswith("/portfolio/")
+    if request.method not in ("GET", "HEAD", "OPTIONS") and not is_admin and not is_portfolio_write:
         return JSONResponse({"detail": "Usuário tem acesso só de leitura."}, status_code=403)
 
     return await call_next(request)

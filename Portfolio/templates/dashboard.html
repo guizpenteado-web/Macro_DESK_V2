@@ -251,6 +251,12 @@
   .aloc-root .sub-total .p{ font-size: 10px; color: var(--text-faint); }
   .aloc-root .asset-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap: 6px; }
   .aloc-root .asset{ display:flex; align-items:center; gap: 8px; background: var(--panel-2); border: 1px solid var(--line-soft); border-radius: 7px; padding: 7px 8px; }
+  /* Contorno por regime: verde = ativo se beneficia do regime macro
+     selecionado (categoria_heatmap com score >=1 no Asset Playbook), vermelho
+     = e ferido (score <=-1). Sem categoria mapeada ou score 0 fica neutro
+     (borda padrao) — melhor sem contorno do que com sinal errado. */
+  .aloc-root .asset.regime-benef{ border-color: var(--atk); box-shadow: 0 0 0 1px var(--atk-line); }
+  .aloc-root .asset.regime-hurt{ border-color: var(--def); box-shadow: 0 0 0 1px var(--def-line); }
   .aloc-root .asset-main{ flex: 1 1 auto; min-width: 0; display:flex; flex-direction:column; gap: 1px; }
   .aloc-root .asset-name{ font-size: 13px; font-weight: 600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .aloc-root .asset-tag{ font-size: 11px; color: var(--text-faint); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -433,17 +439,13 @@
 <nav class="tabnav" id="tabnav">
   <button class="tabbtn active" data-tab="overview"><span class="idx">01</span> Visão Geral</button>
   <button class="tabbtn" data-tab="assets"><span class="idx">02</span> Ativos</button>
-  <button class="tabbtn" data-tab="contract"><span class="idx">03</span> Contrato &amp; Taxas</button>
-  <button class="tabbtn" data-tab="profile"><span class="idx">04</span> Perfil do Cliente</button>
-  <button class="tabbtn" data-tab="strategy"><span class="idx">05</span> Diagnóstico &amp; Estratégia</button>
-  <button class="tabbtn" data-tab="performance"><span class="idx">06</span> Performance</button>
-  <button class="tabbtn" data-tab="history"><span class="idx">07</span> Histórico</button>
-  <button class="tabbtn" data-tab="committee"><span class="idx">08</span> Comitê de Investimentos</button>
-  <button class="tabbtn" data-tab="tese"><span class="idx">09</span> Tese</button>
-  <button class="tabbtn" data-tab="helios"><span class="idx">10</span> HELIOS</button>
-  <button class="tabbtn" data-tab="aloc"><span class="idx">11</span> ALOC</button>
-  <button class="tabbtn" data-tab="analise-tecnica"><span class="idx">12</span> Análise Técnica</button>
-  <button class="tabbtn" data-tab="notes"><span class="idx">13</span> Anotações</button>
+  <button class="tabbtn" data-tab="strategy"><span class="idx">03</span> Diagnóstico &amp; Estratégia</button>
+  <button class="tabbtn" data-tab="committee"><span class="idx">04</span> Comitê de Investimentos</button>
+  <button class="tabbtn" data-tab="tese"><span class="idx">05</span> Tese</button>
+  <button class="tabbtn" data-tab="helios"><span class="idx">06</span> HELIOS</button>
+  <button class="tabbtn" data-tab="aloc"><span class="idx">07</span> Alocação</button>
+  <button class="tabbtn" data-tab="analise-tecnica"><span class="idx">08</span> Análise Técnica</button>
+  <button class="tabbtn" data-tab="notes"><span class="idx">09</span> Anotações</button>
 </nav>
 
 <main>
@@ -487,21 +489,7 @@
     </div>
   </section>
 
-  <!-- ================= TAB 03 — CONTRACT ================= -->
-  <section class="tabpanel" id="tab-contract">
-    <div class="section-head"><h2>ACORDOS CONTRATUAIS</h2><div class="gold-rule"></div><div class="sub">Estruturas de remuneração e regras de cálculo</div></div>
-    <div class="warn-strip"><span>⚠</span><span><b>Aba ainda não preenchida.</b> Estrutura pronta — assim que as condições contratuais reais deste cliente forem informadas (taxa de administração, patrimônio de referência, regras de cálculo), esta aba passa a exibi-las.</span></div>
-    <div class="card stub-card"><div class="asset-name" style="color:var(--gold-light); font-size:17px;">Sem dados cadastrados ainda</div></div>
-  </section>
-
-  <!-- ================= TAB 04 — PROFILE ================= -->
-  <section class="tabpanel" id="tab-profile">
-    <div class="section-head"><h2>PERFIL E OBJETIVOS DO CLIENTE</h2><div class="gold-rule"></div></div>
-    <div class="warn-strip"><span>⚠</span><span><b>Aba ainda não preenchida.</b> Necessidades de liquidez, patrimônio adicional e preferências de gestão do {{ client.display_name }} entram aqui assim que informadas.</span></div>
-    <div class="card stub-card"><div class="asset-name" style="color:var(--gold-light); font-size:17px;">Sem dados cadastrados ainda</div></div>
-  </section>
-
-  <!-- ================= TAB 05 — DIAGNOSIS & STRATEGY ================= -->
+  <!-- ================= TAB 03 — DIAGNOSIS & STRATEGY ================= -->
   <section class="tabpanel" id="tab-strategy">
     <div id="strategyPlaceholder">
       <div class="section-head"><h2>DIAGNÓSTICO DA CARTEIRA ATUAL</h2><div class="gold-rule"></div></div>
@@ -511,21 +499,7 @@
     <div id="strategyContent" style="display:none;"></div>
   </section>
 
-  <!-- ================= TAB 06 — PERFORMANCE ================= -->
-  <section class="tabpanel" id="tab-performance">
-    <div class="section-head"><h2>PERFORMANCE MENSAL E ANUAL</h2><div class="gold-rule"></div></div>
-    <div class="warn-strip"><span>⚠</span><span><b>Aba ainda não preenchida.</b> Carteira recém-cadastrada, sem histórico de performance ainda. Assim que houver retornos reais, o gráfico Carteira vs. CDI vs. Ibovespa é montado aqui.</span></div>
-    <div class="card stub-card"><div class="asset-name" style="color:var(--gold-light); font-size:17px;">Sem dados cadastrados ainda</div></div>
-  </section>
-
-  <!-- ================= TAB 07 — HISTORY ================= -->
-  <section class="tabpanel" id="tab-history">
-    <div class="section-head"><h2>HISTÓRICO MÊS A MÊS E ANO A ANO</h2><div class="gold-rule"></div><div class="sub">Perf. mês · YTD · 12 meses · desde o início</div></div>
-    <div class="warn-strip"><span>⚠</span><span><b>Aba ainda não preenchida.</b> Mesma ressalva da aba Performance — sem histórico ainda para esta carteira.</span></div>
-    <div class="card stub-card"><div class="asset-name" style="color:var(--gold-light); font-size:17px;">Sem dados cadastrados ainda</div></div>
-  </section>
-
-  <!-- ================= TAB 08 — COMMITTEE ================= -->
+  <!-- ================= TAB 04 — COMMITTEE ================= -->
   <section class="tabpanel" id="tab-committee">
     <div id="committeePlaceholder">
       <div class="section-head"><h2>COMITÊ DE INVESTIMENTOS</h2><div class="gold-rule"></div></div>
@@ -587,7 +561,7 @@
     </div>
   </section>
 
-  <!-- ================= TAB 09 — TESE ================= -->
+  <!-- ================= TAB 05 — TESE ================= -->
   <section class="tabpanel" id="tab-tese">
     <div id="tesePlaceholder">
       <div class="section-head"><h2>TESE — PARECER CIO</h2><div class="gold-rule"></div></div>
@@ -597,7 +571,7 @@
     <div id="teseContent" style="display:none;"></div>
   </section>
 
-  <!-- ================= TAB 10 — HELIOS ================= -->
+  <!-- ================= TAB 06 — HELIOS ================= -->
   <section class="tabpanel" id="tab-helios" {% if has_helios %}style="padding:0;"{% endif %}>
     {% if has_helios %}
     <div class="section-head"><h2>PROJECT HELIOS — INSTITUTIONAL PORTFOLIO INTELLIGENCE SYSTEM</h2><div class="gold-rule"></div><div class="sub">Sistema operacional de decisão em 12 módulos · V1 arquitetura estática</div></div>
@@ -615,19 +589,18 @@
     {% endif %}
   </section>
 
-  <!-- ================= TAB 11 — ALOC ================= -->
+  <!-- ================= TAB 07 — ALOC ================= -->
   <section class="tabpanel" id="tab-aloc">
   <div class="aloc-root">
   <div class="aloc-app" id="alocApp">
     <div class="hero">
       <div class="hero-head">
         <div class="eyebrow">// framework de alocação aplicado à carteira</div>
-        <h1 class="hero-title">DEFESA <span class="x">×</span> ATAQUE</h1>
       </div>
 
       <div class="hero-grid">
         <div class="posture-card">
-          <div class="posture-labels"><span class="def">DEFESA</span><span class="atk">ATAQUE</span></div>
+          <div class="posture-labels"><span class="def">DEFENSIVA</span><span class="atk">OFENSIVA</span></div>
           <div class="posture-bar"><div class="posture-marker" id="postureMarker" style="left:50%"></div></div>
           <div class="posture-read" id="postureRead">sem posições lançadas ainda</div>
         </div>
@@ -703,7 +676,7 @@
   </div>
   </section>
 
-  <!-- ================= TAB 12 — ANÁLISE TÉCNICA ================= -->
+  <!-- ================= TAB 08 — ANÁLISE TÉCNICA ================= -->
   <section class="tabpanel" id="tab-analise-tecnica">
     <div class="section-head"><h2>ANÁLISE TÉCNICA — GALERIA DE GRÁFICOS</h2><div class="gold-rule"></div><div class="sub">Upload de prints/gráficos para consulta rápida — salvos neste navegador</div></div>
 
@@ -727,7 +700,7 @@
     <div class="disclaimer-strip">As imagens são salvas automaticamente neste navegador (localStorage), vinculadas a este login. Elas não são sincronizadas entre dispositivos nem enviadas a nenhum servidor — se você abrir este dashboard em outro computador ou navegador, as imagens não aparecerão lá. Imagens grandes são redimensionadas automaticamente para economizar espaço.</div>
   </section>
 
-  <!-- ================= TAB 13 — ANOTAÇÕES ================= -->
+  <!-- ================= TAB 09 — ANOTAÇÕES ================= -->
   <section class="tabpanel" id="tab-notes">
     <div class="section-head"><h2>ANOTAÇÕES</h2><div class="gold-rule"></div><div class="sub">Espaço livre para próximos passos, lembretes e pontos em aberto com o cliente</div></div>
     <div class="card notes-card">
@@ -858,6 +831,16 @@ tickClock(); setInterval(tickClock, 1000);
   }
   function fmtScore(n){ return n > 0 ? "+"+n : String(n); }
 
+  // Score do Asset Playbook (-2..+2) pro regime atualmente selecionado,
+  // pela categoria_heatmap do ativo. null se o ativo nao tem categoria
+  // mapeada (ex.: renda fixa pos-fixada brasileira, sem analogo na lista).
+  function regimeScoreForAsset(a){
+    if(!a.categoria_heatmap) return null;
+    var idx = REGIME_COL[state.regime];
+    var row = HEATMAP_DATA.filter(function(h){ return h.name === a.categoria_heatmap; })[0];
+    return row ? row.scores[idx] : null;
+  }
+
   // ---------- generic (non client-specific) instrument info for the asset detail modal ----------
   var GENERIC_DETAILS = {
     "tesouro selic": { tipo:"Título público federal pós-fixado (LFT)", indexador:"100% da taxa Selic diária", emissor:"Tesouro Nacional", garantia:"Garantia do Governo Federal — considerado o ativo de menor risco de crédito do país", liquidez:"Alta — recompra diária pelo Tesouro Direto (D+1)", tributacao:"IR regressivo sobre o rendimento (22,5% a 15% conforme prazo) + IOF regressivo se resgatado em até 30 dias · sem come-cotas" },
@@ -963,13 +946,15 @@ tickClock(); setInterval(tickClock, 1000);
     if(total === 0){
       read.textContent = "sem posições lançadas ainda";
     } else {
-      read.innerHTML = '<b class="atk-c">'+fmtPct(atkPct)+' ATAQUE</b> · <b class="def-c">'+fmtPct(100-atkPct)+' DEFESA</b>';
+      read.innerHTML = '<b class="atk-c">'+fmtPct(atkPct)+' OFENSIVA</b> · <b class="def-c">'+fmtPct(100-atkPct)+' DEFENSIVA</b>';
     }
   }
 
   function assetRow(a, total){
+    var score = regimeScoreForAsset(a);
+    var regimeClass = score >= 1 ? ' regime-benef' : (score <= -1 ? ' regime-hurt' : '');
     return '' +
-      '<li class="asset" data-id="'+a.id+'">' +
+      '<li class="asset'+regimeClass+'" data-id="'+a.id+'" title="'+(score!=null?('Asset Playbook · '+state.regime+': '+fmtScore(score)):'')+'">' +
         '<div class="asset-main">' +
           '<span class="asset-name">'+esc(a.name)+'</span>' +
           (a.tag ? '<span class="asset-tag">'+esc(a.tag)+'</span>' : '') +
@@ -1201,8 +1186,11 @@ tickClock(); setInterval(tickClock, 1000);
     }).join("") || '';
 
     function cardHTML(a, p, badgeColor){
-      var r = assetResult(a);
-      var pctBadge = r ? '<span class="asset-pct '+(r.rentab>=0?'pos':'neg')+'">'+fmtRentab(r.rentab)+'</span>' : '<span class="asset-pct">'+fmtPct(p)+'</span>';
+      // Card da aba Ativos nao mostra rentabilidade (pedido do usuario,
+      // 29/jul/2026) — so peso na carteira, igual ja era pros ativos sem
+      // dado de mercado. Rentabilidade continua no modal de detalhes e na
+      // tabela de referencia.
+      var pctBadge = '<span class="asset-pct">'+fmtPct(p)+'</span>';
       return '<div class="card asset-card" data-action="open-asset-modal" data-id="'+a.id+'">' +
         '<div class="asset-top"><span class="badge" style="'+(badgeColor?('border-color:'+badgeColor+'; color:'+badgeColor+';'):'')+'">'+esc(a.ticker || (a.name||'').slice(0,6).toUpperCase())+'</span>'+pctBadge+'</div>' +
         '<div class="asset-name">'+esc(a.name)+'</div>' +
@@ -1497,7 +1485,7 @@ tickClock(); setInterval(tickClock, 1000);
       renderMatrix();
     } else if(action === "select-regime"){
       state.regime = el.getAttribute("data-regime");
-      persist(); renderRegime();
+      persist(); renderRegime(); renderMatrix();
     } else if(action === "open-playbook"){
       document.getElementById("playbookOverlay").removeAttribute("hidden");
     } else if(action === "close-playbook"){
@@ -1562,7 +1550,7 @@ tickClock(); setInterval(tickClock, 1000);
   });
 
   document.getElementById("regimeSelect").addEventListener("change", function(e){
-    state.regime = e.target.value; persist(); renderRegime();
+    state.regime = e.target.value; persist(); renderRegime(); renderMatrix();
   });
 
   document.getElementById("resetBtn").addEventListener("click", function(){

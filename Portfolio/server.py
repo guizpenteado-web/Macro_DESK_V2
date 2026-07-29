@@ -88,7 +88,7 @@ def init_db():
 def make_asset(
     group, sub, name, tag, value,
     ticker=None, qtd=None, cotacao=None, preco_medio=None, tipo=None, desc=None,
-    excluir_do_total=False, moeda=None,
+    excluir_do_total=False, moeda=None, categoria_heatmap=None,
 ):
     """ticker/qtd/cotacao/preco_medio sao opcionais — so ativos com posicao em
     bolsa (ticker+qtd) participam do refresh diario via Yahoo Finance (ver
@@ -99,11 +99,18 @@ def make_asset(
     nao entra em compute_summary nem na matriz ALOC. moeda="USD" pra contas
     internacionais: cotacao/preco_medio ficam na moeda nativa (o JS calcula
     resultado/rentabilidade nessa moeda), mas "value" e sempre BRL convertido
-    — e o unico jeito de somar corretamente no patrimonio/matriz ALOC."""
+    — e o unico jeito de somar corretamente no patrimonio/matriz ALOC.
+    categoria_heatmap mapeia o ativo pra uma das 24 categorias do Asset
+    Playbook (HEATMAP_DATA no template) — precisa bater exatamente com um
+    "name" de la (ex.: "Growth", "Oil", "Bitcoin", "Brazil"). So usar quando
+    o ativo realmente se comporta como aquela categoria; ativo sem analogo
+    razoavel (a maioria da renda fixa pos-fixada brasileira, por exemplo)
+    fica None de proposito — melhor sem contorno do que com sinal errado."""
     return {
         "id": str(uuid.uuid4()), "group": group, "sub": sub, "name": name, "tag": tag, "value": float(value),
         "ticker": ticker, "qtd": qtd, "cotacao": cotacao, "preco_medio": preco_medio,
         "tipo": tipo, "desc": desc, "excluir_do_total": bool(excluir_do_total), "moeda": moeda,
+        "categoria_heatmap": categoria_heatmap,
     }
 
 
@@ -379,6 +386,7 @@ def api_save_portfolio():
                 "desc": _opt_str(a.get("desc"), 600),
                 "excluir_do_total": bool(a.get("excluir_do_total")),
                 "moeda": _opt_str(a.get("moeda"), 8),
+                "categoria_heatmap": _opt_str(a.get("categoria_heatmap"), 40),
             }
         )
 
