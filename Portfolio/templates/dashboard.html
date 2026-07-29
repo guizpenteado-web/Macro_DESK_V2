@@ -341,6 +341,71 @@
   .at-lightbox-close{position:absolute; top:20px; right:26px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.06); border:1px solid var(--line); color:var(--text); cursor:pointer; font-size:18px;}
   .at-lightbox-close:hover{border-color:var(--gold); color:var(--gold-light);}
 
+  /* ---- ANOTAÇÕES (localStorage) ---- */
+  .notes-card{padding:0;}
+  .notes-toolbar{display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid var(--line); flex-wrap:wrap; gap:10px;}
+  .notes-status{font-size:12.5px; color:var(--text-dim); display:flex; align-items:center; gap:6px;}
+  .notes-status .dot-saved{width:6px; height:6px; border-radius:50%; background:var(--pos); flex-shrink:0;}
+  .notes-clear-btn{background:none; border:1px solid var(--line); color:var(--text-mid); border-radius:5px; padding:6px 12px; cursor:pointer; font-family:'Inter'; font-size:12.5px; font-weight:600;}
+  .notes-clear-btn:hover{border-color:var(--neg); color:var(--neg);}
+  .notes-textarea{width:100%; min-height:460px; background:transparent; border:none; outline:none; padding:20px 22px; color:var(--text); font-family:'Inter', sans-serif; font-size:14.5px; line-height:1.7; resize:vertical; box-sizing:border-box;}
+  .notes-textarea::placeholder{color:var(--text-dim);}
+
+  /* ---- COMMITTEE tab (Comitê de Investimentos) ---- */
+  .macro-kpi .value{font-size:22px;}
+  .strength-card{border-left:3px solid var(--pos); background:rgba(51,230,160,0.05);}
+  .prio{display:inline-flex; align-items:center; padding:3px 9px; border-radius:3px; font-size:12px; letter-spacing:0.6px; text-transform:uppercase; font-weight:700;}
+  .prio-alta{background:rgba(255,84,112,0.15); color:var(--neg); border:1px solid rgba(255,84,112,0.4);}
+  .prio-media{background:rgba(212,175,55,0.15); color:var(--gold-light); border:1px solid rgba(212,175,55,0.4);}
+  .reco-card{border-left:3px solid var(--gold);}
+  .reco-head{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px;}
+  .reco-title{font-weight:700; font-size:16.5px; color:var(--text);}
+  .reco-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  @media(max-width:980px){.reco-grid{grid-template-columns:1fr;}}
+  .reco-block{background:rgba(255,255,255,0.025); border:1px solid var(--line); border-radius:7px; padding:11px 13px;}
+  .reco-block .k{display:block; font-size:12px; text-transform:uppercase; letter-spacing:0.8px; color:var(--gold); margin-bottom:5px; font-weight:700;}
+  .reco-block p{font-size:14.5px; color:var(--text-mid); line-height:1.55; margin:0;}
+  .check-list{list-style:none; display:flex; flex-direction:column; gap:10px;}
+  .check-list li{font-size:15px; color:var(--text-mid); display:flex; gap:10px; align-items:flex-start;}
+  .check-list li::before{content:"☐"; color:var(--cyan); font-size:16px; margin-top:-1px;}
+  .info-strip{
+    display:flex; gap:10px; align-items:center; background:rgba(46,230,214,0.06);
+    border:1px solid rgba(46,230,214,0.3); border-radius:8px; padding:12px 16px;
+    margin-bottom:18px; font-size:14.5px; color:var(--text-mid);
+  }
+
+  /* ---- TESE (parecer CIO / Investment Committee) ---- */
+  .tese-intro{font-size:15px; color:var(--text-mid); line-height:1.8; margin-bottom:22px; padding-bottom:18px; border-bottom:1px solid var(--line);}
+  .tese-lead{background:linear-gradient(135deg, rgba(212,175,55,0.10), rgba(46,230,214,0.03)); border:1px solid var(--gold-dim); border-left:4px solid var(--gold); border-radius:10px; padding:22px 26px; margin-bottom:26px;}
+  .tese-lead-label{font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:12px;}
+  .tese-lead p{font-size:17px; color:var(--text); line-height:1.7; font-style:italic;}
+  .tese-lead-note{font-size:14px; color:var(--text-mid); margin-top:12px; font-style:normal !important;}
+  .tese-section{margin-bottom:28px;}
+  .tese-section-title{font-family:'Inter'; font-weight:800; font-size:16px; letter-spacing:0.3px; color:var(--gold-light); margin-bottom:12px; display:flex; align-items:center; gap:10px;}
+  .tese-section-title .tag{font-family:'Share Tech Mono'; font-size:11px; color:var(--gold-dim); border:1px solid var(--gold-dim); border-radius:4px; padding:2px 7px;}
+  .tese-body{font-size:15px; color:var(--text-mid); line-height:1.85;}
+  .tese-body p{margin-bottom:12px;}
+  .tese-body b{color:var(--text);}
+  .tese-body i{color:var(--gold-light); font-style:italic;}
+  .tese-chips{display:flex; flex-wrap:wrap; gap:8px; margin:14px 0;}
+  .tese-chip{background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.3); color:var(--gold-light); font-family:'Share Tech Mono'; font-size:12.5px; padding:5px 12px; border-radius:20px;}
+  .tese-chip.neg{background:rgba(255,84,112,0.08); border-color:rgba(255,84,112,0.35); color:#ff8fa3;}
+  .tese-chip.pos{background:rgba(51,230,160,0.08); border-color:rgba(51,230,160,0.3); color:var(--pos);}
+  .tese-risk-card{background:rgba(255,255,255,0.02); border:1px solid var(--line); border-left:3px solid var(--neg); border-radius:10px; padding:20px 22px; margin-bottom:16px;}
+  .tese-risk-head{display:flex; align-items:center; gap:12px; margin-bottom:12px;}
+  .tese-risk-num{width:32px; height:32px; border-radius:50%; background:rgba(255,84,112,0.12); border:1px solid rgba(255,84,112,0.4); color:#ff8fa3; font-family:'Share Tech Mono'; font-weight:700; font-size:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .tese-risk-title{font-size:15.5px; font-weight:700; color:var(--text);}
+  .tese-pos-card{border-left:3px solid var(--pos); background:rgba(51,230,160,0.04);}
+  .tese-pos-card .tese-section-title{color:var(--pos);}
+  .tese-quote{border-left:3px solid var(--cyan); padding:14px 20px; margin:16px 0; background:rgba(46,230,214,0.05); font-style:italic; font-size:15.5px; color:var(--text); border-radius:0 8px 8px 0;}
+  .tese-pillars-table{width:100%; border-collapse:collapse; margin:16px 0;}
+  .tese-pillars-table th{background:var(--navy-800); color:var(--gold); font-size:12px; text-transform:uppercase; letter-spacing:0.5px; padding:11px 14px; text-align:left; border:1px solid var(--line);}
+  .tese-pillars-table td{padding:13px 14px; border:1px solid rgba(255,255,255,0.05); font-size:14px; color:var(--text-mid); vertical-align:top;}
+  .tese-pillars-table td:first-child{color:var(--gold-light); font-weight:700; white-space:nowrap;}
+  .tese-final{background:linear-gradient(135deg, rgba(212,175,55,0.10), rgba(212,175,55,0.02)); border:1px solid var(--gold-dim); border-radius:10px; padding:24px 26px; margin-top:24px;}
+  .tese-final-label{font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:12px;}
+  .tese-final p{font-size:15.5px; color:var(--text); line-height:1.85;}
+
   /* ---- placeholder de aba sem dado real ainda ---- */
   .stub-card{border-left:3px solid var(--gold-dim); background:rgba(255,255,255,0.02);}
 </style>
@@ -379,6 +444,7 @@
   <button class="tabbtn" data-tab="helios"><span class="idx">10</span> HELIOS</button>
   <button class="tabbtn" data-tab="aloc"><span class="idx">11</span> ALOC</button>
   <button class="tabbtn" data-tab="analise-tecnica"><span class="idx">12</span> Análise Técnica</button>
+  <button class="tabbtn" data-tab="notes"><span class="idx">13</span> Anotações</button>
 </nav>
 
 <main>
@@ -406,9 +472,20 @@
 
   <!-- ================= TAB 02 — ASSETS ================= -->
   <section class="tabpanel" id="tab-assets">
-    <div class="section-head"><h2>ATIVOS INDIVIDUAIS E FUNÇÕES ESTRATÉGICAS</h2><div class="gold-rule"></div></div>
+    <div class="section-head"><h2>ATIVOS INDIVIDUAIS E FUNÇÕES ESTRATÉGICAS</h2><div class="gold-rule"></div><div class="sub">Clique em um ativo para ver detalhes</div></div>
     <div class="stackbar" style="margin-bottom:20px;" id="assetStackbar"></div>
     <div class="grid grid-4" id="assetGrid"></div>
+
+    <div id="posTableWrap" style="display:none;">
+      <div class="section-head" style="margin-top:28px;"><h2 style="font-size:16px;">TABELA DE REFERÊNCIA — VALORES EXATOS</h2></div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Ticker</th><th>Classe</th><th>Qtd.</th><th>Cotação</th><th>Posição Atual</th><th>Preço Médio</th><th>Resultado</th><th>Rentab.</th><th>Peso</th></tr></thead>
+          <tbody id="posTable"></tbody>
+        </table>
+      </div>
+      <div class="disclaimer-strip" id="pricesUpdatedNote" style="display:none;"></div>
+    </div>
   </section>
 
   <!-- ================= TAB 03 — CONTRACT ================= -->
@@ -427,9 +504,12 @@
 
   <!-- ================= TAB 05 — DIAGNOSIS & STRATEGY ================= -->
   <section class="tabpanel" id="tab-strategy">
-    <div class="section-head"><h2>DIAGNÓSTICO DA CARTEIRA ATUAL</h2><div class="gold-rule"></div></div>
-    <div class="warn-strip"><span>⚠</span><span><b>Aba ainda não preenchida.</b> Diagnóstico e propostas estratégicas específicas para esta carteira entram aqui após a análise da mesa.</span></div>
-    <div class="card stub-card"><div class="asset-name" style="color:var(--gold-light); font-size:17px;">Sem dados cadastrados ainda</div></div>
+    <div id="strategyPlaceholder">
+      <div class="section-head"><h2>DIAGNÓSTICO DA CARTEIRA ATUAL</h2><div class="gold-rule"></div></div>
+      <div class="warn-strip"><span>⚠</span><span><b>Aba ainda não preenchida.</b> Diagnóstico e propostas estratégicas específicas para esta carteira entram aqui após a análise da mesa.</span></div>
+      <div class="card stub-card"><div class="asset-name" style="color:var(--gold-light); font-size:17px;">Sem dados cadastrados ainda</div></div>
+    </div>
+    <div id="strategyContent" style="display:none;"></div>
   </section>
 
   <!-- ================= TAB 06 — PERFORMANCE ================= -->
@@ -448,16 +528,74 @@
 
   <!-- ================= TAB 08 — COMMITTEE ================= -->
   <section class="tabpanel" id="tab-committee">
-    <div class="section-head"><h2>COMITÊ DE INVESTIMENTOS</h2><div class="gold-rule"></div></div>
-    <div class="warn-strip"><span>⚠</span><span><b>Aba ainda não preenchida.</b> Recomendações e pontos de validação com o cliente entram aqui após a primeira reunião de comitê sobre esta carteira.</span></div>
-    <div class="card stub-card"><div class="asset-name" style="color:var(--gold-light); font-size:17px;">Sem dados cadastrados ainda</div></div>
+    <div id="committeePlaceholder">
+      <div class="section-head"><h2>COMITÊ DE INVESTIMENTOS</h2><div class="gold-rule"></div></div>
+      <div class="warn-strip"><span>⚠</span><span><b>Aba ainda não preenchida.</b> Recomendações e pontos de validação com o cliente entram aqui após a primeira reunião de comitê sobre esta carteira.</span></div>
+      <div class="card stub-card"><div class="asset-name" style="color:var(--gold-light); font-size:17px;">Sem dados cadastrados ainda</div></div>
+    </div>
+    <div id="committeeContent" style="display:none;">
+      <div class="section-head"><h2>COMITÊ DE INVESTIMENTOS — ANÁLISE INSTITUCIONAL</h2><div class="gold-rule"></div><div class="sub">Avaliação técnica e independente da carteira atual</div></div>
+      <div class="warn-strip"><span>⚠</span><span><b>Este relatório é um material de trabalho interno</b>, gerado a partir dos dados da carteira do cliente e de dados macro públicos. Não constitui recomendação final e deve ser validado com o cliente antes de qualquer execução.</span></div>
+
+      <div class="section-head" id="macroKpisHead" style="margin-top:4px; display:none;"><h2 style="font-size:16px;">CENÁRIO MACROECONÔMICO</h2></div>
+      <div class="grid grid-4" id="macroKpis" style="margin-bottom:22px;"></div>
+
+      <div class="card" style="margin-bottom:22px;" id="diagExecCard">
+        <div class="asset-name" style="color:var(--gold-light); font-size:17px; margin-bottom:10px;">DIAGNÓSTICO EXECUTIVO</div>
+        <p style="font-size:15.5px; color:var(--text-mid); line-height:1.7;" id="diagExecText"></p>
+      </div>
+
+      <div class="grid grid-2" style="margin-bottom:24px;">
+        <div class="card strength-card">
+          <div class="asset-name" style="color:var(--pos); font-size:17px; margin-bottom:12px;">✓ PONTOS FORTES DA ALOCAÇÃO ATUAL</div>
+          <ul class="list-clean" id="strengthsList"></ul>
+        </div>
+        <div class="card point-card">
+          <div class="asset-name" style="color:var(--neg); font-size:17px; margin-bottom:12px;">⚠ RISCOS E FRAGILIDADES IDENTIFICADOS</div>
+          <ul class="list-clean" id="risksList"></ul>
+        </div>
+      </div>
+
+      <div class="section-head" id="diversifHead" style="display:none;"><h2 style="font-size:16px;">DIVERSIFICAÇÃO — GEOGRAFIA, MOEDA E FATORES DE RISCO</h2></div>
+      <div class="tablewrap" id="diversifWrap" style="margin-bottom:24px; display:none;">
+        <table>
+          <thead><tr><th>Dimensão</th><th>Exposição Atual</th><th>Lacuna Identificada</th></tr></thead>
+          <tbody id="diversifBody"></tbody>
+        </table>
+      </div>
+
+      <div class="section-head" id="recoHead" style="display:none;"><h2 style="font-size:16px;">SUGESTÕES DE AJUSTE</h2></div>
+      <div id="recoList" style="display:flex; flex-direction:column; gap:16px; margin-bottom:26px;"></div>
+
+      <div id="portfolioCompareWrap" style="display:none;">
+        <div class="section-head"><h2 style="font-size:16px;">PORTFÓLIO ATUAL vs. PORTFÓLIO SUGERIDO (ILUSTRATIVO)</h2></div>
+        <div class="warn-strip"><span>⚠</span><span>Alocação sugerida é <b>ilustrativa e preliminar</b> — sujeita a ajuste fino conforme perfil de risco formal e validação do cliente.</span></div>
+        <div class="card" style="margin-bottom:14px;">
+          <div class="canvas-box" style="height:340px;"><canvas id="portfolioCompareChart"></canvas></div>
+        </div>
+        <div class="tablewrap" style="margin-bottom:24px;">
+          <table>
+            <thead><tr><th>Categoria</th><th>Atual</th><th>Sugerido</th><th>Direção</th></tr></thead>
+            <tbody id="portfolioCompareBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="validationWrap" style="display:none;">
+        <div class="section-head"><h2 style="font-size:16px;">PONTOS QUE EXIGEM VALIDAÇÃO COM O CLIENTE</h2></div>
+        <div class="card"><ul class="check-list" id="validationList"></ul></div>
+      </div>
+    </div>
   </section>
 
   <!-- ================= TAB 09 — TESE ================= -->
   <section class="tabpanel" id="tab-tese">
-    <div class="section-head"><h2>TESE — PARECER CIO</h2><div class="gold-rule"></div></div>
-    <div class="warn-strip"><span>⚠</span><span><b>Aba ainda não preenchida.</b> Parecer do CIO/Comitê de Investimentos sobre esta carteira entra aqui quando disponível.</span></div>
-    <div class="card stub-card"><div class="asset-name" style="color:var(--gold-light); font-size:17px;">Sem dados cadastrados ainda</div></div>
+    <div id="tesePlaceholder">
+      <div class="section-head"><h2>TESE — PARECER CIO</h2><div class="gold-rule"></div></div>
+      <div class="warn-strip"><span>⚠</span><span><b>Aba ainda não preenchida.</b> Parecer do CIO/Comitê de Investimentos sobre esta carteira entra aqui quando disponível.</span></div>
+      <div class="card stub-card"><div class="asset-name" style="color:var(--gold-light); font-size:17px;">Sem dados cadastrados ainda</div></div>
+    </div>
+    <div id="teseContent" style="display:none;"></div>
   </section>
 
   <!-- ================= TAB 10 — HELIOS ================= -->
@@ -577,6 +715,19 @@
     <div class="at-empty" id="atEmpty">Nenhuma imagem enviada ainda. Faça upload de gráficos, prints de análise técnica, setups etc. para consultar aqui.</div>
 
     <div class="disclaimer-strip">As imagens são salvas automaticamente neste navegador (localStorage), vinculadas a este login. Elas não são sincronizadas entre dispositivos nem enviadas a nenhum servidor — se você abrir este dashboard em outro computador ou navegador, as imagens não aparecerão lá. Imagens grandes são redimensionadas automaticamente para economizar espaço.</div>
+  </section>
+
+  <!-- ================= TAB 13 — ANOTAÇÕES ================= -->
+  <section class="tabpanel" id="tab-notes">
+    <div class="section-head"><h2>ANOTAÇÕES</h2><div class="gold-rule"></div><div class="sub">Espaço livre para próximos passos, lembretes e pontos em aberto com o cliente</div></div>
+    <div class="card notes-card">
+      <div class="notes-toolbar">
+        <div class="notes-status" id="notesStatus"><span class="dot-saved"></span><span>Pronto</span></div>
+        <button class="notes-clear-btn" type="button" onclick="clearNotes()">Limpar anotações</button>
+      </div>
+      <textarea class="notes-textarea" id="notesArea" placeholder="Escreva aqui próximos passos, lembretes, pontos em aberto com o cliente..."></textarea>
+    </div>
+    <div class="disclaimer-strip">As anotações são salvas automaticamente neste navegador (localStorage), vinculadas a este login. Elas não são sincronizadas entre dispositivos nem enviadas a nenhum servidor.</div>
   </section>
 
 </main>
@@ -717,6 +868,7 @@ tickClock(); setInterval(tickClock, 1000);
 
   var state = window.__INITIAL_STATE__;
   var chartRef = null;
+  var committeeChartRef = null;
   var saveTimer = null;
 
   function fmtBRL(n){ return n.toLocaleString("pt-BR", { style:"currency", currency:"BRL" }); }
@@ -724,13 +876,13 @@ tickClock(); setInterval(tickClock, 1000);
   function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]; }); }
   function uid(){ return (crypto.randomUUID ? crypto.randomUUID() : "a" + Date.now() + Math.random().toString(16).slice(2)); }
 
-  function sumWhere(fn){ return state.assets.filter(fn).reduce(function(a,x){ return a + x.value; }, 0); }
+  function sumWhere(fn){ return state.assets.filter(function(a){ return !a.excluir_do_total && fn(a); }).reduce(function(a,x){ return a + x.value; }, 0); }
   function groupTotal(key){ return sumWhere(function(a){ return a.group === key; }); }
   function subTotal(key, sub){ return sumWhere(function(a){ return a.group === key && a.sub === sub; }); }
   function postureTotal(p){ return sumWhere(function(a){ return a.group.indexOf(p) === 0; }); }
   function geoTotal(g){ return sumWhere(function(a){ return a.group.slice(-g.length) === g && (a.group === "ATK-"+g || a.group === "DEF-"+g); }); }
   function subKindTotal(sub){ return sumWhere(function(a){ return a.sub === sub; }); }
-  function grandTotal(){ return state.assets.reduce(function(a,x){ return a + x.value; }, 0); }
+  function grandTotal(){ return state.assets.filter(function(x){ return !x.excluir_do_total; }).reduce(function(a,x){ return a + x.value; }, 0); }
   function pct(part, whole){ return whole > 0 ? (part/whole*100) : 0; }
 
   function persist(){
@@ -819,7 +971,7 @@ tickClock(); setInterval(tickClock, 1000);
   }
 
   function subSectionHTML(group, sub, total){
-    var items = state.assets.filter(function(a){ return a.group === group.key && a.sub === sub; });
+    var items = state.assets.filter(function(a){ return a.group === group.key && a.sub === sub && !a.excluir_do_total; });
     var subT = subTotal(group.key, sub);
     var formKey = group.key + ":" + sub;
     var isOpen = !!state.openForms[formKey];
@@ -929,18 +1081,46 @@ tickClock(); setInterval(tickClock, 1000);
 
   function renderOverview(){
     var total = grandTotal();
-    var sorted = state.assets.slice().sort(function(a,b){ return b.value - a.value; });
+    var visible = state.assets.filter(function(a){ return !a.excluir_do_total; });
+    var sorted = visible.slice().sort(function(a,b){ return b.value - a.value; });
 
     var kpis = '<div class="card kpi"><div class="label">Patrimônio Total</div><div class="value">'+fmtBRL(total)+'</div><div class="foot">Consolidado — carteira sob gestão</div></div>';
-    var topN = sorted.slice(0, 3);
-    topN.forEach(function(a){
-      kpis += '<div class="card kpi"><div class="label">'+esc(a.name)+'</div><div class="value">'+fmtPct(pct(a.value,total))+'</div><div class="foot">'+fmtBRL(a.value)+'</div></div>';
+
+    // se houver classificacao por tipo (Acao/BDR/Cripto/...), os pilares
+    // agrupam por tipo (visao institucional); senao, top-3 ativos individuais
+    var hasTipo = visible.some(function(a){ return a.tipo; });
+    var pillarGroups;
+    if(hasTipo){
+      var byTipo = {};
+      visible.forEach(function(a){
+        var k = a.tipo || (a.sub === 'RF' ? 'Renda Fixa' : 'Outros');
+        byTipo[k] = (byTipo[k] || 0) + a.value;
+      });
+      pillarGroups = Object.keys(byTipo).map(function(k){ return { name:k, value:byTipo[k] }; })
+        .sort(function(a,b){ return b.value - a.value; });
+    } else {
+      pillarGroups = sorted.map(function(a){ return { name:a.name, value:a.value }; });
+    }
+
+    var topN = pillarGroups.slice(0, 3);
+    topN.forEach(function(g){
+      kpis += '<div class="card kpi"><div class="label">'+esc(g.name)+'</div><div class="value">'+fmtPct(pct(g.value,total))+'</div><div class="foot">'+fmtBRL(g.value)+'</div></div>';
     });
+
+    // KPI de rentabilidade RV, so quando ha preco medio cadastrado em pelo menos um ativo
+    var rvComCusto = visible.filter(function(a){ return a.sub === 'RV' && a.preco_medio != null && a.qtd != null; });
+    if(rvComCusto.length){
+      var custoTotal = rvComCusto.reduce(function(s,a){ return s + a.qtd*a.preco_medio; }, 0);
+      var valorAtual = rvComCusto.reduce(function(s,a){ return s + a.value; }, 0);
+      var resultTotal = valorAtual - custoTotal;
+      var rentTotal = custoTotal ? (resultTotal/custoTotal*100) : 0;
+      kpis += '<div class="card kpi"><div class="label">Rentabilidade RV (posições)</div><div class="value" style="color:'+(rentTotal>=0?'var(--pos)':'var(--neg)')+';">'+fmtRentab(rentTotal)+'</div><div class="foot">Resultado '+fmtSigned(resultTotal,fmtBRL)+'</div></div>';
+    }
     document.getElementById("overviewKpis").innerHTML = kpis;
 
-    document.getElementById("pillarsBox").innerHTML = sorted.map(function(a,i){
-      var p = pct(a.value,total);
-      return '<div><div class="legend-row"><span class="dot" style="background:'+colorFor(i)+';"></span><b>'+esc(a.name)+'</b><span style="margin-left:auto;">'+fmtPct(p)+'</span></div>' +
+    document.getElementById("pillarsBox").innerHTML = pillarGroups.map(function(g,i){
+      var p = pct(g.value,total);
+      return '<div><div class="legend-row"><span class="dot" style="background:'+colorFor(i)+';"></span><b>'+esc(g.name)+'</b><span style="margin-left:auto;">'+fmtPct(p)+'</span></div>' +
         '<div class="barwrap" style="margin-top:6px;"><div class="barfill" style="width:'+p.toFixed(1)+'%; background:'+colorFor(i)+';"></div></div></div>';
     }).join("") || '<div class="empty-state">sem posições lançadas ainda</div>';
 
@@ -955,45 +1135,157 @@ tickClock(); setInterval(tickClock, 1000);
       chartRef = new Chart(ctx, {
         type:'doughnut',
         data:{
-          labels: sorted.map(function(a){ return a.name; }),
-          datasets:[{ data: sorted.map(function(a){ return a.value; }), backgroundColor: sorted.map(function(_,i){ return colorFor(i); }), borderColor:'#0a1128', borderWidth:2 }]
+          labels: pillarGroups.map(function(g){ return g.name; }),
+          datasets:[{ data: pillarGroups.map(function(g){ return g.value; }), backgroundColor: pillarGroups.map(function(_,i){ return colorFor(i); }), borderColor:'#0a1128', borderWidth:2 }]
         },
         options:{ plugins:{ legend:{ position:'bottom', labels:{ color:'#aab3cf', font:{ size:12.5 } } } }, cutout:'62%' }
       });
     }
   }
 
+  // ---------- posições em bolsa: resultado/rentabilidade calculados sempre a
+  // partir de qtd/cotacao/preco_medio (nunca persistidos, pra nunca ficarem
+  // dessincronizados do refresh diário de cotação) ----------
+  function hasMarketData(a){ return a.ticker && a.qtd != null && a.cotacao != null; }
+  function assetResult(a){
+    if(!hasMarketData(a) || a.preco_medio == null) return null;
+    var custo = a.qtd * a.preco_medio;
+    if(!custo) return null;
+    var result = a.value - custo;
+    return { result: result, rentab: (result / custo) * 100 };
+  }
+  function fmtSigned(v, fmt){ return (v >= 0 ? '' : '-') + fmt(Math.abs(v)); }
+  function fmtRentab(v){ return (v >= 0 ? '+' : '') + v.toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1}) + '%'; }
+
   // ---------- render: Ativos (tab 02) ----------
   function renderAssetsTab(){
-    var total = grandTotal();
-    var sorted = state.assets.slice().sort(function(a,b){ return b.value - a.value; });
+    var visible = state.assets.filter(function(a){ return !a.excluir_do_total; });
+    var total = visible.reduce(function(s,a){ return s + a.value; }, 0);
+    var sorted = visible.slice().sort(function(a,b){ return b.value - a.value; });
+    var excluded = state.assets.filter(function(a){ return a.excluir_do_total; });
+    var specials = state.special_positions || [];
 
     document.getElementById("assetStackbar").innerHTML = sorted.map(function(a,i){
-      var p = pct(a.value,total);
+      var p = total ? (a.value/total*100) : 0;
       return '<div class="stackseg" style="width:'+p.toFixed(1)+'%; background:'+colorFor(i)+';">'+(p>=6 ? fmtPct(p) : '')+'</div>';
     }).join("") || '';
 
-    document.getElementById("assetGrid").innerHTML = sorted.map(function(a){
-      var p = pct(a.value,total);
+    function cardHTML(a, p, badgeColor){
+      var r = assetResult(a);
+      var pctBadge = r ? '<span class="asset-pct '+(r.rentab>=0?'pos':'neg')+'">'+fmtRentab(r.rentab)+'</span>' : '<span class="asset-pct">'+fmtPct(p)+'</span>';
       return '<div class="card asset-card" data-action="open-asset-modal" data-id="'+a.id+'">' +
-        '<div class="asset-top"><span class="badge">'+esc((a.name||'').slice(0,6).toUpperCase())+'</span><span class="asset-pct">'+fmtPct(p)+'</span></div>' +
+        '<div class="asset-top"><span class="badge" style="'+(badgeColor?('border-color:'+badgeColor+'; color:'+badgeColor+';'):'')+'">'+esc(a.ticker || (a.name||'').slice(0,6).toUpperCase())+'</span>'+pctBadge+'</div>' +
+        '<div class="asset-name">'+esc(a.name)+'</div>' +
+        '<div class="asset-val">'+fmtBRL(a.value)+(hasMarketData(a) ? ' · peso '+p.toFixed(1)+'%' : '')+'</div>' +
+        '<div class="asset-desc">'+(a.desc ? esc(a.desc) : (a.tag ? esc(a.tag) : (a.sub === 'RF' ? 'Renda Fixa' : 'Renda Variável')))+'</div>' +
+        '<div class="asset-hint">Ver detalhes →</div>' +
+      '</div>';
+    }
+
+    var TIPO_COLOR = { "BDR":"var(--gold)", "Ação":"var(--navy-500)", "Cripto":"#f7931a", "Outro":"var(--cyan)" };
+
+    var html = sorted.map(function(a){
+      var p = total ? (a.value/total*100) : 0;
+      return cardHTML(a, p, a.tipo ? TIPO_COLOR[a.tipo] : null);
+    }).join("");
+
+    html += excluded.map(function(a){
+      return '<div class="card asset-card flagged" data-action="open-asset-modal" data-id="'+a.id+'">' +
+        '<div class="asset-top"><span class="badge" style="border-color:var(--text-dim); color:var(--text-dim);">'+esc(a.ticker || (a.name||'').slice(0,6).toUpperCase())+'</span><span class="asset-pct" style="color:var(--text-dim);">fora do total</span></div>' +
         '<div class="asset-name">'+esc(a.name)+'</div>' +
         '<div class="asset-val">'+fmtBRL(a.value)+'</div>' +
-        '<div class="asset-desc">'+(a.tag ? esc(a.tag) : (a.sub === 'RF' ? 'Renda Fixa' : 'Renda Variável'))+' · '+(a.group)+'</div>' +
-        '<div class="asset-hint">Ver composição →</div>' +
+        '<div class="asset-desc">'+(a.desc ? esc(a.desc) : 'Não somado no patrimônio oficial — ver observação no Comitê de Investimentos.')+'</div>' +
+        '<div class="asset-hint">Ver detalhes →</div>' +
       '</div>';
-    }).join("") || '<div class="empty-state">sem posições lançadas ainda</div>';
+    }).join("");
+
+    html += specials.map(function(sp){
+      var notional = Math.abs(sp.qtd) * sp.cotacao;
+      return '<div class="card asset-card flagged" data-action="open-special-modal" data-id="'+sp.id+'">' +
+        '<div class="asset-top"><span class="badge" style="border-color:var(--cyan); color:var(--cyan);">'+esc(sp.ticker)+'</span><span class="asset-pct" style="color:var(--cyan);">'+(sp.qtd<0?'SHORT':esc(sp.tipo||'').toUpperCase())+'</span></div>' +
+        '<div class="asset-name">'+esc(sp.nome)+'</div>' +
+        '<div class="asset-val" style="color:var(--cyan);">'+sp.qtd+' · exposição ≈ '+fmtBRL(notional)+'</div>' +
+        '<div class="asset-desc">'+esc(sp.desc||'')+'</div>' +
+        '<div class="asset-hint" style="color:var(--cyan);">Ver detalhes →</div>' +
+      '</div>';
+    }).join("");
+
+    document.getElementById("assetGrid").innerHTML = html || '<div class="empty-state">sem posições lançadas ainda</div>';
+
+    // tabela de referência — só aparece se pelo menos um ativo tem dado de mercado
+    var marketAssets = state.assets.filter(hasMarketData);
+    var posTableWrap = document.getElementById("posTableWrap");
+    if(marketAssets.length){
+      posTableWrap.style.display = "";
+      var rows = state.assets.filter(hasMarketData).map(function(a){
+        var p = total && !a.excluir_do_total ? (a.value/total*100) : null;
+        var r = assetResult(a);
+        return '<tr>' +
+          '<td style="color:var(--gold-light); font-weight:700;">'+esc(a.ticker)+'</td>' +
+          '<td>'+esc(a.tipo||'—')+'</td>' +
+          '<td>'+a.qtd.toLocaleString('pt-BR')+'</td>' +
+          '<td>'+fmtBRL(a.cotacao)+'</td>' +
+          '<td>'+fmtBRL(a.value)+'</td>' +
+          '<td>'+(a.preco_medio!=null ? fmtBRL(a.preco_medio) : '—')+'</td>' +
+          '<td class="'+(r?(r.result>=0?'pos':'neg'):'')+'">'+(r ? fmtSigned(r.result, fmtBRL) : '—')+'</td>' +
+          '<td class="'+(r?(r.rentab>=0?'pos':'neg'):'')+'">'+(r ? fmtRentab(r.rentab) : '—')+'</td>' +
+          '<td>'+(p!=null ? p.toFixed(1)+'%' : (a.excluir_do_total?'fora do total':'—'))+'</td>' +
+        '</tr>';
+      }).join("");
+      rows += specials.map(function(sp){
+        return '<tr>' +
+          '<td style="color:var(--cyan); font-weight:700;">'+esc(sp.ticker)+'</td>' +
+          '<td>Short</td>' +
+          '<td style="color:var(--cyan);">'+sp.qtd+'</td>' +
+          '<td>'+fmtBRL(sp.cotacao)+'</td>' +
+          '<td colspan="4" style="color:var(--text-dim);">Venda a descoberto — exposição notional ≈ '+fmtBRL(Math.abs(sp.qtd)*sp.cotacao)+' · resultado não calculável (sem preço médio de entrada)</td>' +
+          '<td>—</td>' +
+        '</tr>';
+      }).join("");
+      document.getElementById("posTable").innerHTML = rows;
+
+      var note = document.getElementById("pricesUpdatedNote");
+      if(state.prices_updated_at){
+        var d = new Date(state.prices_updated_at + "Z");
+        note.style.display = "";
+        note.textContent = "Cotações atualizadas automaticamente via Yahoo Finance em " + d.toLocaleDateString('pt-BR') + " " + d.toLocaleTimeString('pt-BR');
+      } else {
+        note.style.display = "none";
+      }
+    } else {
+      posTableWrap.style.display = "none";
+    }
   }
 
   function openAssetModal(id){
     var a = state.assets.find(function(x){ return x.id === id; });
     if(!a) return;
-    var total = grandTotal();
+    var total = state.assets.filter(function(x){ return !x.excluir_do_total; }).reduce(function(s,x){ return s+x.value; }, 0);
+
+    if(hasMarketData(a)){
+      var r = assetResult(a);
+      document.getElementById('modalBadge').innerText = a.ticker;
+      document.getElementById('modalTitle').innerText = a.name;
+      document.getElementById('assetModalBody').innerHTML =
+        '<div class="modal-row"><span class="k">Classe</span><span class="v">'+esc(a.tipo||'—')+'</span></div>' +
+        '<div class="modal-row"><span class="k">Quantidade</span><span class="v">'+a.qtd.toLocaleString('pt-BR')+'</span></div>' +
+        '<div class="modal-row"><span class="k">Cotação Atual</span><span class="v">'+fmtBRL(a.cotacao)+'</span></div>' +
+        '<div class="modal-row"><span class="k">Posição Atual</span><span class="v">'+fmtBRL(a.value)+'</span></div>' +
+        '<div class="modal-row"><span class="k">Preço Médio</span><span class="v">'+(a.preco_medio!=null?fmtBRL(a.preco_medio):'—')+'</span></div>' +
+        '<div class="modal-row"><span class="k">Resultado</span><span class="v '+(r?(r.result>=0?'pos':'neg'):'')+'">'+(r?fmtSigned(r.result,fmtBRL):'—')+'</span></div>' +
+        '<div class="modal-row"><span class="k">Rentabilidade</span><span class="v '+(r?(r.rentab>=0?'pos':'neg'):'')+'">'+(r?fmtRentab(r.rentab):'—')+'</span></div>' +
+        '<div class="modal-row"><span class="k">Peso na Carteira</span><span class="v">'+(a.excluir_do_total?'fora do total oficial':fmtPct(total?(a.value/total*100):0))+'</span></div>' +
+        (a.desc ? '<div class="modal-func"><b style="color:var(--gold-light);">Função na carteira:</b> '+esc(a.desc)+'</div>' : '') +
+        '<div class="disclaimer-strip" style="margin-top:16px;">Cotação e resultado recalculados a partir da última cotação disponível'+(state.prices_updated_at?' (Yahoo Finance)':'')+'; preço médio conforme extrato original do cliente.</div>';
+      document.getElementById('assetModal').classList.add('open');
+      return;
+    }
+
     var d = detailFor(a);
     document.getElementById('modalBadge').innerText = (a.name||'').slice(0,6).toUpperCase();
     document.getElementById('modalTitle').innerText = a.name;
     document.getElementById('assetModalBody').innerHTML =
-      '<div class="modal-row"><span class="k">Alocação na Carteira</span><span class="v">'+fmtPct(pct(a.value,total))+' · '+fmtBRL(a.value)+'</span></div>' +
+      '<div class="modal-row"><span class="k">Alocação na Carteira</span><span class="v">'+fmtPct(total?(a.value/total*100):0)+' · '+fmtBRL(a.value)+'</span></div>' +
       '<div class="modal-row"><span class="k">Tipo de Produto</span><span class="v">'+esc(d.tipo)+'</span></div>' +
       '<div class="modal-row"><span class="k">Indexador</span><span class="v">'+esc(d.indexador)+'</span></div>' +
       '<div class="modal-row"><span class="k">Emissor / Gestor</span><span class="v">'+esc(d.emissor)+'</span></div>' +
@@ -1003,11 +1295,148 @@ tickClock(); setInterval(tickClock, 1000);
       '<div class="disclaimer-strip" style="margin-top:16px;">Características gerais e públicas desta categoria de ativo. Para dados exatos (corretora, custódia, cotação em tempo real), consulte o extrato mais recente.</div>';
     document.getElementById('assetModal').classList.add('open');
   }
+
+  function openSpecialModal(id){
+    var sp = (state.special_positions||[]).find(function(x){ return x.id === id; });
+    if(!sp) return;
+    var notional = Math.abs(sp.qtd) * sp.cotacao;
+    document.getElementById('modalBadge').innerText = sp.ticker;
+    document.getElementById('modalTitle').innerText = sp.nome + ' — Posição Vendida (Short)';
+    document.getElementById('assetModalBody').innerHTML =
+      '<div class="modal-row"><span class="k">Quantidade</span><span class="v" style="color:var(--cyan);">'+sp.qtd+' (venda a descoberto)</span></div>' +
+      '<div class="modal-row"><span class="k">Cotação Atual</span><span class="v">'+fmtBRL(sp.cotacao)+'</span></div>' +
+      '<div class="modal-row"><span class="k">Exposição Notional (venda)</span><span class="v">'+fmtBRL(notional)+'</span></div>' +
+      '<div class="modal-row"><span class="k">Resultado / Rentabilidade</span><span class="v" style="color:var(--text-dim);">Não calculável (preço médio de entrada não informado)</span></div>' +
+      (sp.desc ? '<div class="modal-func"><b style="color:var(--gold-light);">Função na carteira:</b> '+esc(sp.desc)+'</div>' : '');
+    document.getElementById('assetModal').classList.add('open');
+  }
+
   function closeAssetModal(){ document.getElementById('assetModal').classList.remove('open'); }
   window.closeAssetModal = closeAssetModal;
   document.getElementById('assetModal').addEventListener('click', function(e){
     if(e.target.id === 'assetModal') closeAssetModal();
   });
+
+  // ---------- render: Comitê de Investimentos (tab 08) — conteudo redigido
+  // pelo assessor, guardado em state.pages.committee; nunca editavel pela UI ----------
+  function renderCommittee(){
+    var committee = (state.pages || {}).committee;
+    var placeholder = document.getElementById('committeePlaceholder');
+    var content = document.getElementById('committeeContent');
+    if(!committee){
+      placeholder.style.display = '';
+      content.style.display = 'none';
+      return;
+    }
+    placeholder.style.display = 'none';
+    content.style.display = '';
+
+    if(committee.macro_kpis && committee.macro_kpis.length){
+      document.getElementById('macroKpisHead').style.display = '';
+      document.getElementById('macroKpis').innerHTML = committee.macro_kpis.map(function(m){
+        return '<div class="card kpi macro-kpi"><div class="label">'+esc(m.label)+'</div><div class="value">'+esc(m.value)+'</div><div class="foot">'+esc(m.foot||'')+'</div></div>';
+      }).join('');
+    }
+
+    var diagCard = document.getElementById('diagExecCard');
+    if(committee.diagnostico_executivo){
+      diagCard.style.display = '';
+      document.getElementById('diagExecText').innerHTML = committee.diagnostico_executivo;
+    } else {
+      diagCard.style.display = 'none';
+    }
+
+    document.getElementById('strengthsList').innerHTML = (committee.strengths || []).map(function(s){ return '<li>'+s+'</li>'; }).join('');
+    document.getElementById('risksList').innerHTML = (committee.risks || []).map(function(r){ return '<li>'+r+'</li>'; }).join('');
+
+    if(committee.diversif && committee.diversif.length){
+      document.getElementById('diversifHead').style.display = '';
+      document.getElementById('diversifWrap').style.display = '';
+      document.getElementById('diversifBody').innerHTML = committee.diversif.map(function(d){
+        return '<tr><td style="color:var(--text); font-weight:600;">'+esc(d.dim)+'</td><td>'+esc(d.atual)+'</td><td style="color:var(--gold-light);">'+esc(d.gap)+'</td></tr>';
+      }).join('');
+    }
+
+    if(committee.recomendacoes && committee.recomendacoes.length){
+      document.getElementById('recoHead').style.display = '';
+      document.getElementById('recoList').innerHTML = committee.recomendacoes.map(function(r){
+        return '<div class="card reco-card"><div class="reco-head"><span class="reco-title">'+esc(r.titulo)+'</span>' +
+          '<span class="prio '+(r.prio==='alta'?'prio-alta':'prio-media')+'">Prioridade '+(r.prio==='alta'?'Alta':'Média')+'</span></div>' +
+          '<div class="reco-grid">' +
+            '<div class="reco-block"><span class="k">Racional</span><p>'+esc(r.racional)+'</p></div>' +
+            '<div class="reco-block"><span class="k">Benefícios Esperados</span><p>'+esc(r.beneficios)+'</p></div>' +
+            '<div class="reco-block"><span class="k">Riscos &amp; Trade-offs</span><p>'+esc(r.riscos)+'</p></div>' +
+            '<div class="reco-block"><span class="k">Cenários</span><p>'+esc(r.cenarios)+'</p></div>' +
+          '</div></div>';
+      }).join('');
+    }
+
+    if(committee.portfolio_compare && committee.portfolio_compare.length){
+      document.getElementById('portfolioCompareWrap').style.display = '';
+      var pc = committee.portfolio_compare;
+      if(committeeChartRef){ committeeChartRef.destroy(); }
+      var cctx = document.getElementById('portfolioCompareChart');
+      if(cctx && window.Chart){
+        committeeChartRef = new Chart(cctx, {
+          type:'bar',
+          data:{
+            labels: pc.map(function(p){ return p.cat; }),
+            datasets:[
+              {label:'Atual', data:pc.map(function(p){ return p.atual; }), backgroundColor:'rgba(170,179,207,0.55)'},
+              {label:'Sugerido', data:pc.map(function(p){ return p.sugerido; }), backgroundColor:'#d4af37'}
+            ]
+          },
+          options:{
+            indexAxis:'y',
+            scales:{
+              x:{ ticks:{ color:'#6c7699', callback:function(v){ return v+'%'; } }, grid:{ color:'rgba(255,255,255,0.05)' } },
+              y:{ ticks:{ color:'#aab3cf', font:{size:12.5} }, grid:{ display:false } }
+            },
+            plugins:{ legend:{ labels:{ color:'#aab3cf' } } }
+          }
+        });
+      }
+      document.getElementById('portfolioCompareBody').innerHTML = pc.map(function(p){
+        var diff = p.sugerido - p.atual;
+        var arrow = diff > 0.05 ? '▲ Aumenta' : (diff < -0.05 ? '▼ Reduz' : '● Mantém');
+        var arrowColor = diff > 0.05 ? 'var(--cyan)' : (diff < -0.05 ? 'var(--gold-light)' : 'var(--text-dim)');
+        return '<tr><td style="color:var(--text);">'+esc(p.cat)+'</td><td>'+p.atual.toFixed(2)+'%</td><td style="color:var(--gold-light);">'+p.sugerido.toFixed(2)+'%</td><td style="color:'+arrowColor+';">'+arrow+'</td></tr>';
+      }).join('');
+    }
+
+    if(committee.validation_points && committee.validation_points.length){
+      document.getElementById('validationWrap').style.display = '';
+      document.getElementById('validationList').innerHTML = committee.validation_points.map(function(v){ return '<li>'+esc(v)+'</li>'; }).join('');
+    }
+  }
+
+  // ---------- render: Tese e Diagnóstico & Estratégia (tabs 05/09) — HTML
+  // bruto redigido pelo assessor, guardado em state.pages ----------
+  function renderTeseStrategy(){
+    var pages = state.pages || {};
+
+    var tesePlaceholder = document.getElementById('tesePlaceholder');
+    var teseContent = document.getElementById('teseContent');
+    if(pages.tese_html){
+      tesePlaceholder.style.display = 'none';
+      teseContent.style.display = '';
+      teseContent.innerHTML = pages.tese_html;
+    } else {
+      tesePlaceholder.style.display = '';
+      teseContent.style.display = 'none';
+    }
+
+    var stratPlaceholder = document.getElementById('strategyPlaceholder');
+    var stratContent = document.getElementById('strategyContent');
+    if(pages.strategy_html){
+      stratPlaceholder.style.display = 'none';
+      stratContent.style.display = '';
+      stratContent.innerHTML = pages.strategy_html;
+    } else {
+      stratPlaceholder.style.display = '';
+      stratContent.style.display = 'none';
+    }
+  }
 
   function renderAll(){
     renderRegime();
@@ -1112,7 +1541,9 @@ tickClock(); setInterval(tickClock, 1000);
 
   document.getElementById("assetGrid").addEventListener("click", function(e){
     var el = e.target.closest('[data-action="open-asset-modal"]');
-    if(el) openAssetModal(el.getAttribute("data-id"));
+    if(el){ openAssetModal(el.getAttribute("data-id")); return; }
+    var sel = e.target.closest('[data-action="open-special-modal"]');
+    if(sel) openSpecialModal(sel.getAttribute("data-id"));
   });
 
   document.getElementById("playbookModal").addEventListener("click", function(e){ e.stopPropagation(); });
@@ -1126,6 +1557,8 @@ tickClock(); setInterval(tickClock, 1000);
 
   state.openForms = {};
   renderAll();
+  renderCommittee();
+  renderTeseStrategy();
 })();
 </script>
 
@@ -1259,6 +1692,32 @@ if(atDropzone){
   });
 }
 atRender();
+</script>
+
+<script>
+/* ============ ANOTAÇÕES (localStorage, por login) ============ */
+const NOTES_KEY = 'notas_' + {{ client.username|tojson }};
+const notesArea = document.getElementById('notesArea');
+const notesStatus = document.getElementById('notesStatus');
+if(notesArea){
+  notesArea.value = localStorage.getItem(NOTES_KEY) || '';
+  let notesSaveTimeout;
+  notesArea.addEventListener('input', ()=>{
+    notesStatus.innerHTML = '<span class="dot-saved" style="background:var(--gold-light);"></span><span>Salvando...</span>';
+    clearTimeout(notesSaveTimeout);
+    notesSaveTimeout = setTimeout(()=>{
+      localStorage.setItem(NOTES_KEY, notesArea.value);
+      notesStatus.innerHTML = '<span class="dot-saved"></span><span>Salvo neste navegador</span>';
+    }, 500);
+  });
+}
+function clearNotes(){
+  if(confirm('Apagar todas as anotações? Esta ação não pode ser desfeita.')){
+    localStorage.removeItem(NOTES_KEY);
+    if(notesArea) notesArea.value = '';
+    notesStatus.innerHTML = '<span class="dot-saved"></span><span>Pronto</span>';
+  }
+}
 </script>
 
 </body>

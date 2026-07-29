@@ -1,1 +1,3 @@
 flask
+yfinance
+apscheduler

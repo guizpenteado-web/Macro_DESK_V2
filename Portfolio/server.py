@@ -84,12 +84,45 @@ def init_db():
     db.close()
 
 
-def make_asset(group, sub, name, tag, value):
-    return {"id": str(uuid.uuid4()), "group": group, "sub": sub, "name": name, "tag": tag, "value": float(value)}
+def make_asset(
+    group, sub, name, tag, value,
+    ticker=None, qtd=None, cotacao=None, preco_medio=None, tipo=None, desc=None,
+    excluir_do_total=False,
+):
+    """ticker/qtd/cotacao/preco_medio sao opcionais — so ativos com posicao em
+    bolsa (ticker+qtd) participam do refresh diario via Yahoo Finance (ver
+    refresh_prices_from_yahoo). Ativos sem ticker (Tesouro Selic, caixa etc.)
+    mantem "value" 100% manual, igual antes. excluir_do_total serve pra casos
+    reais de inconsistencia de dados do cliente (ex.: posicao que a planilha
+    original nao soma no patrimonio oficial) — aparece no card do ativo mas
+    nao entra em compute_summary nem na matriz ALOC."""
+    return {
+        "id": str(uuid.uuid4()), "group": group, "sub": sub, "name": name, "tag": tag, "value": float(value),
+        "ticker": ticker, "qtd": qtd, "cotacao": cotacao, "preco_medio": preco_medio,
+        "tipo": tipo, "desc": desc, "excluir_do_total": bool(excluir_do_total),
+    }
 
 
-def seed_client(username, password, display_name, initials, assets, hub_username=None):
-    """Idempotent: does nothing if the username already exists."""
+def make_special_position(ticker, nome, qtd, cotacao, desc, tipo="short"):
+    """Posicoes fora do modelo normal de ativo (ex.: venda a descoberto sem
+    preco medio de entrada conhecido) — aparecem na aba Ativos mas nunca
+    entram na matriz ALOC nem no Patrimonio Total."""
+    return {
+        "id": str(uuid.uuid4()), "ticker": ticker, "nome": nome, "tipo": tipo,
+        "qtd": qtd, "cotacao": cotacao, "desc": desc,
+    }
+
+
+def seed_client(
+    username, password, display_name, initials, assets, hub_username=None,
+    special_positions=None, pages=None,
+):
+    """Idempotent: does nothing if the username already exists. `pages` guarda
+    conteudo redigido por assessor (nao editavel pela UI de add/remove ativo):
+    diagnostico_executivo, macro_kpis, strengths, risks, diversif,
+    recomendacoes, portfolio_compare, validation_points, strategy_html,
+    tese_html — cada chave e opcional, aba correspondente vira placeholder
+    se ausente."""
     db = sqlite3.connect(DB_PATH)
     db.row_factory = sqlite3.Row
     existing = db.execute("SELECT id FROM clients WHERE username=?", (username,)).fetchone()
@@ -100,7 +133,13 @@ def seed_client(username, password, display_name, initials, assets, hub_username
             (username, generate_password_hash(password), display_name, initials, now, hub_username),
         )
         client_id = cur.lastrowid
-        state = {"assets": assets, "targets": dict(DEFAULT_TARGETS), "regime": DEFAULT_REGIME}
+        state = {
+            "assets": assets,
+            "targets": dict(DEFAULT_TARGETS),
+            "regime": DEFAULT_REGIME,
+            "special_positions": special_positions or [],
+            "pages": pages or {},
+        }
         db.execute(
             "INSERT INTO portfolios (client_id, state_json, updated_at) VALUES (?,?,?)",
             (client_id, json.dumps(state), now),
@@ -120,6 +159,7 @@ def fmt_pct(value):
 
 
 def compute_summary(assets):
+    assets = [a for a in assets if not a.get("excluir_do_total")]
     total = sum(a["value"] for a in assets)
 
     def sum_where(pred):
@@ -240,6 +280,9 @@ def dashboard():
         return redirect(url_for("login", next=request.path))
     portfolio = db.execute("SELECT * FROM portfolios WHERE client_id=?", (client["id"],)).fetchone()
     state = json.loads(portfolio["state_json"])
+    # Compat com carteiras criadas antes de special_positions/pages existirem.
+    state.setdefault("special_positions", [])
+    state.setdefault("pages", {})
     summary = compute_summary(state["assets"])
     return render_template(
         "dashboard.html",
@@ -269,6 +312,15 @@ def api_save_portfolio():
     if not isinstance(raw_assets, list) or len(raw_assets) > 500:
         return jsonify({"error": "assets inválido"}), 400
 
+    def _opt_float(v):
+        try:
+            return None if v is None else float(v)
+        except (TypeError, ValueError):
+            return None
+
+    def _opt_str(v, maxlen=120):
+        return None if v is None else str(v)[:maxlen]
+
     clean_assets = []
     for a in raw_assets:
         if not isinstance(a, dict):
@@ -289,6 +341,17 @@ def api_save_portfolio():
                 "name": str(a.get("name", ""))[:80],
                 "tag": str(a.get("tag") or "")[:80],
                 "value": round(value, 2),
+                # Campos de posicao em bolsa (opcionais) — preservados no
+                # round-trip pra nao perder ticker/qtd ao editar valor manual
+                # de outro ativo na mesma chamada (o front sempre manda o
+                # array inteiro de volta, nao so o ativo alterado).
+                "ticker": _opt_str(a.get("ticker"), 20),
+                "qtd": _opt_float(a.get("qtd")),
+                "cotacao": _opt_float(a.get("cotacao")),
+                "preco_medio": _opt_float(a.get("preco_medio")),
+                "tipo": _opt_str(a.get("tipo"), 40),
+                "desc": _opt_str(a.get("desc"), 600),
+                "excluir_do_total": bool(a.get("excluir_do_total")),
             }
         )
 
@@ -306,13 +369,109 @@ def api_save_portfolio():
     if not isinstance(regime, str) or not regime:
         regime = DEFAULT_REGIME
 
-    state = {"assets": clean_assets, "targets": targets, "regime": regime}
+    # special_positions e pages sao conteudo redigido pelo assessor, nao
+    # editavel pela UI de add/remove ativo — preserva o que ja esta salvo em
+    # vez de aceitar do payload (o front nem manda essas chaves de volta).
+    current = db.execute("SELECT state_json FROM portfolios WHERE client_id=?", (client["id"],)).fetchone()
+    current_state = json.loads(current["state_json"]) if current else {}
+
+    state = {
+        "assets": clean_assets,
+        "targets": targets,
+        "regime": regime,
+        "special_positions": current_state.get("special_positions", []),
+        "pages": current_state.get("pages", {}),
+    }
     db.execute(
         "UPDATE portfolios SET state_json=?, updated_at=? WHERE client_id=?",
         (json.dumps(state), datetime.datetime.utcnow().isoformat(), client["id"]),
     )
     db.commit()
     return jsonify({"ok": True, "summary": compute_summary(clean_assets)})
+
+
+def refresh_prices_from_yahoo():
+    """Roda apos o fechamento da B3: busca a cotacao de fechamento mais
+    recente via Yahoo Finance pra todo ativo com ticker+qtd cadastrado, e
+    recalcula "value" (qtd * cotacao). Resultado/rentabilidade sao sempre
+    calculados no JS a partir de qtd/cotacao/preco_medio no momento da
+    renderizacao (nao ficam persistidos, pra nao correrem o risco de ficar
+    dessincronizados da cotacao). Ativos sem ticker (Tesouro Selic, caixa
+    etc.) ficam intocados — "value" continua 100% manual pra esses."""
+    import yfinance as yf
+
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    clients = db.execute("SELECT id FROM clients").fetchall()
+
+    states = {}
+    tickers = set()
+    for c in clients:
+        row = db.execute("SELECT state_json FROM portfolios WHERE client_id=?", (c["id"],)).fetchone()
+        if not row:
+            continue
+        state = json.loads(row["state_json"])
+        states[c["id"]] = state
+        for a in state.get("assets", []):
+            if a.get("ticker") and a.get("qtd") is not None:
+                tickers.add(a["ticker"])
+        for sp in state.get("special_positions", []):
+            if sp.get("ticker"):
+                tickers.add(sp["ticker"])
+
+    if not tickers:
+        db.close()
+        return {"updated_clients": 0, "quotes": 0}
+
+    def yahoo_symbol(tk):
+        # Convencao B3: ticker termina em digito (PETR4, INBR32, QBTC11...).
+        # Tickers americanos (MSFT, AAPL) sao so letras — nao levam ".SA".
+        return tk + ".SA" if tk[-1].isdigit() else tk
+
+    quotes = {}
+    for tk in tickers:
+        try:
+            hist = yf.Ticker(yahoo_symbol(tk)).history(period="5d")
+            closes = hist["Close"].dropna()
+            if len(closes):
+                quotes[tk] = float(closes.iloc[-1])
+        except Exception:
+            continue
+
+    now = datetime.datetime.utcnow().isoformat()
+    updated_clients = 0
+    for client_id, state in states.items():
+        changed = False
+        for a in state.get("assets", []):
+            tk = a.get("ticker")
+            if tk and a.get("qtd") is not None and tk in quotes:
+                a["cotacao"] = quotes[tk]
+                a["value"] = round(a["qtd"] * quotes[tk], 2)
+                changed = True
+        for sp in state.get("special_positions", []):
+            tk = sp.get("ticker")
+            if tk and tk in quotes:
+                sp["cotacao"] = quotes[tk]
+                changed = True
+        if changed:
+            state["prices_updated_at"] = now
+            db.execute(
+                "UPDATE portfolios SET state_json=?, updated_at=? WHERE client_id=?",
+                (json.dumps(state), now, client_id),
+            )
+            updated_clients += 1
+
+    db.commit()
+    db.close()
+    return {"updated_clients": updated_clients, "quotes": len(quotes)}
+
+
+@app.cli.command("refresh-prices")
+def refresh_prices_cmd():
+    """Dispara manualmente o refresh de cotacoes via Yahoo Finance.
+    Uso: flask --app server refresh-prices"""
+    result = refresh_prices_from_yahoo()
+    print(f"OK: {result['updated_clients']} cliente(s) atualizado(s), {result['quotes']} cotação(ões) buscada(s).")
 
 
 @app.cli.command("add-client")
@@ -373,4 +532,22 @@ if __name__ == "__main__":
     # debug=True liga o debugger interativo do Werkzeug (RCE se exposto) —
     # default seguro é desligado; ligar so localmente via PORTFOLIO_DEBUG=1.
     debug = os.environ.get("PORTFOLIO_DEBUG", "0") == "1"
+
+    # Guard do reloader: em debug, Werkzeug reinicia o processo e roda este
+    # bloco de novo — sem o guard o scheduler seria registrado 2x. B3 fecha
+    # 18:00 BRT; 18:35 da folga pro fechamento assentar antes de buscar.
+    if not debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        try:
+            from apscheduler.schedulers.background import BackgroundScheduler
+
+            sched = BackgroundScheduler(timezone="America/Sao_Paulo")
+            sched.add_job(
+                refresh_prices_from_yahoo, "cron",
+                day_of_week="mon-fri", hour=18, minute=35, id="portfolio_eod_prices",
+            )
+            sched.start()
+            print("  Scheduler configurado: cotações via Yahoo Finance seg-sex 18:35 BRT")
+        except Exception as e:
+            print(f"  APScheduler não disponível: {e}")
+
     app.run(host="127.0.0.1", port=port, debug=debug)
