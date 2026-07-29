@@ -6,13 +6,14 @@ import sqlite3
 import uuid
 from functools import wraps
 
-from flask import Flask, g, jsonify, redirect, render_template, request, session, url_for
+from flask import Flask, abort, g, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 DB_PATH = os.path.join(DATA_DIR, "portal.db")
 SECRET_KEY_PATH = os.path.join(DATA_DIR, "secret_key.txt")
+HELIOS_DIR = os.path.join(DATA_DIR, "helios")
 
 VALID_GROUPS = {"ATK-BR", "DEF-BR", "ATK-USA", "DEF-USA"}
 VALID_SUBS = {"RF", "RV"}
@@ -287,13 +288,35 @@ def dashboard():
     state.setdefault("special_positions", [])
     state.setdefault("pages", {})
     summary = compute_summary(state["assets"])
+    has_helios = os.path.exists(_helios_path(client["username"]))
     return render_template(
         "dashboard.html",
         client=client,
         state=state,
         summary=summary,
         embedded=via_hub,
+        has_helios=has_helios,
     )
+
+
+def _helios_path(username):
+    # username vem sempre do proprio registro do cliente (session/hub_username
+    # ja resolvidos), nunca de input livre — sem risco de path traversal.
+    return os.path.join(HELIOS_DIR, f"{username}.html")
+
+
+@app.route("/helios-embed")
+def helios_embed():
+    db = get_db()
+    client, _via_hub = resolve_client(db)
+    if client is None:
+        abort(404)
+    path = _helios_path(client["username"])
+    if not os.path.exists(path):
+        abort(404)
+    with open(path, encoding="utf-8") as f:
+        html = f.read()
+    return html
 
 
 @app.route("/api/portfolio", methods=["POST"])

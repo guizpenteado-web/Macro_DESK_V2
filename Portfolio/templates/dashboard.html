@@ -598,10 +598,21 @@
   </section>
 
   <!-- ================= TAB 10 — HELIOS ================= -->
-  <section class="tabpanel" id="tab-helios">
+  <section class="tabpanel" id="tab-helios" {% if has_helios %}style="padding:0;"{% endif %}>
+    {% if has_helios %}
+    <div class="section-head"><h2>PROJECT HELIOS — INSTITUTIONAL PORTFOLIO INTELLIGENCE SYSTEM</h2><div class="gold-rule"></div><div class="sub">Sistema operacional de decisão em 12 módulos · V1 arquitetura estática</div></div>
+    <div class="info-strip">
+      <span>ℹ</span>
+      <span>O HELIOS é carregado abaixo como sistema independente (arquivo próprio, embutido nesta aba) para preservar sua arquitetura de 12 módulos sem conflitar com o design do Terminal. Use a barra lateral do HELIOS para navegar entre os módulos. Se preferir tela cheia, <a href="/helios-embed" target="_blank" style="color:var(--cyan);">abra em nova aba</a>.</span>
+    </div>
+    <div style="border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; height:calc(100vh - 120px); min-height:700px;">
+      <iframe src="/helios-embed" title="Project Helios" style="width:100%; height:100%; border:none; display:block;"></iframe>
+    </div>
+    {% else %}
     <div class="section-head"><h2>PROJECT HELIOS</h2><div class="gold-rule"></div><div class="sub">Sistema institucional de inteligência de carteira</div></div>
     <div class="warn-strip"><span>⚠</span><span><b>Não aplicável a esta carteira ainda.</b> O HELIOS é um sistema à parte, montado sob medida por cliente — ainda não foi gerado para {{ client.display_name }}.</span></div>
     <div class="card stub-card"><div class="asset-name" style="color:var(--gold-light); font-size:17px;">Sem dados cadastrados ainda</div></div>
+    {% endif %}
   </section>
 
   <!-- ================= TAB 11 — ALOC ================= -->
