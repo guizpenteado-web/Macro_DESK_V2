@@ -226,12 +226,32 @@ def _hub_username():
     return request.headers.get("X-Hub-Username", "").strip()
 
 
+def _hub_role():
+    # Mesma garantia do _hub_username(): o Hub remove qualquer "X-Hub-Role"
+    # que o cliente tenha mandado antes de injetar o valor real (ver
+    # _IDENTITY_HEADERS em unified_server.py) — nao e forjavel pelo browser.
+    return request.headers.get("X-Hub-Role", "").strip()
+
+
 def resolve_client(db):
-    """Retorna (client_row_ou_None, veio_do_hub: bool)."""
+    """Retorna (client_row_ou_None, veio_do_hub: bool).
+
+    Admin do Hub sem carteira propria vinculada pode "visualizar como"
+    qualquer cliente cadastrado (selecionado em /admin/select/<username>,
+    guardado na sessao) — ver admin_picker() e admin_select_client().
+    """
     hub_username = _hub_username()
     if hub_username:
         row = db.execute("SELECT * FROM clients WHERE hub_username=?", (hub_username,)).fetchone()
-        return row, True
+        if row:
+            return row, True
+        if _hub_role() == "admin":
+            admin_view_as = session.get("admin_view_as")
+            if admin_view_as:
+                row2 = db.execute("SELECT * FROM clients WHERE username=?", (admin_view_as,)).fetchone()
+                if row2:
+                    return row2, True
+        return None, True
     if "client_id" in session:
         row = db.execute("SELECT * FROM clients WHERE id=?", (session["client_id"],)).fetchone()
         return row, False
@@ -286,6 +306,8 @@ def dashboard():
     db = get_db()
     client, via_hub = resolve_client(db)
     if client is None:
+        if via_hub and _hub_role() == "admin":
+            return _render_admin_picker(db)
         if via_hub:
             return _NO_PORTFOLIO_HTML.format(hub_username=_hub_username()), 404
         return redirect(url_for("login", next=request.path))
@@ -296,6 +318,7 @@ def dashboard():
     state.setdefault("pages", {})
     summary = compute_summary(state["assets"])
     has_helios = os.path.exists(_helios_path(client["username"]))
+    is_admin_view = via_hub and _hub_role() == "admin" and session.get("admin_view_as") == client["username"]
     return render_template(
         "dashboard.html",
         client=client,
@@ -303,7 +326,42 @@ def dashboard():
         summary=summary,
         embedded=via_hub,
         has_helios=has_helios,
+        is_admin_view=is_admin_view,
     )
+
+
+def _render_admin_picker(db):
+    rows = db.execute(
+        """
+        SELECT c.username, c.display_name, c.initials, p.updated_at
+        FROM clients c
+        LEFT JOIN portfolios p ON p.client_id = c.id
+        WHERE c.hub_username IS NULL OR c.hub_username != ?
+        ORDER BY c.display_name COLLATE NOCASE
+        """,
+        (_hub_username(),),
+    ).fetchall()
+    return render_template("admin_picker.html", clients=rows)
+
+
+@app.route("/admin/select/<username>")
+def admin_select_client(username):
+    if _hub_role() != "admin":
+        abort(403)
+    db = get_db()
+    row = db.execute("SELECT * FROM clients WHERE username=?", (username,)).fetchone()
+    if not row:
+        abort(404)
+    session["admin_view_as"] = username
+    return redirect(url_for("dashboard"))
+
+
+@app.route("/admin/switch")
+def admin_switch_client():
+    if _hub_role() != "admin":
+        abort(403)
+    session.pop("admin_view_as", None)
+    return redirect(url_for("dashboard"))
 
 
 def _helios_path(username):

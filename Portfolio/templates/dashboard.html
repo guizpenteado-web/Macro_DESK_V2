@@ -433,6 +433,9 @@
   <div class="top-ticker" id="tickerRow"></div>
   <div class="clock">
     <span><span class="live-dot"></span><span id="clockBox">—</span></span>
+    {% if is_admin_view %}
+    <a href="{{ url_for('admin_switch_client') }}" class="logout-btn" style="text-decoration:none;">Trocar Carteira</a>
+    {% endif %}
     {% if not embedded %}
     <form method="post" action="{{ url_for('logout') }}" style="margin:0;">
       <button type="submit" class="logout-btn">Sair</button>
