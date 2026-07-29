@@ -613,45 +613,46 @@
         </div>
       </div>
 
-      <div class="regime-card">
-        <div class="regime-head-row">
-          <div class="stat-label" style="margin:0;">Regime de mercado</div>
-          <button class="playbook-btn" type="button" data-action="open-playbook">Ver Asset Playbook completo →</button>
-        </div>
-        <div class="regime-cols">
-          <div class="regime-left">
-            <select class="regime-select" id="regimeSelect"></select>
-            <div class="regime-clock">
-              <div class="clock-quadrants" id="clockQuadrants"></div>
-              <div class="clock-rotation" title="Sentido clássico de rotação do ciclo">↻</div>
-            </div>
-            <div class="clock-caption">crescimento → · inflação ↑ · rotação clássica: horária</div>
-            <div class="regime-factors" id="regimeFactors"></div>
-            <p class="regime-desc" id="regimeDesc"></p>
+    </div>
+
+    <div class="summary" id="summaryGrid"></div>
+
+    <div class="matrix" id="matrixGrid"></div>
+
+    <div class="regime-card">
+      <div class="regime-head-row">
+        <div class="stat-label" style="margin:0;">Regime de mercado</div>
+        <button class="playbook-btn" type="button" data-action="open-playbook">Ver Asset Playbook completo →</button>
+      </div>
+      <div class="regime-cols">
+        <div class="regime-left">
+          <select class="regime-select" id="regimeSelect"></select>
+          <div class="regime-clock">
+            <div class="clock-quadrants" id="clockQuadrants"></div>
+            <div class="clock-rotation" title="Sentido clássico de rotação do ciclo">↻</div>
           </div>
-          <div class="regime-right">
-            <div class="impact-grid">
-              <div>
-                <div class="impact-title benef">↑ Se beneficiam</div>
-                <ul class="impact-list benef" id="regimeBenef"></ul>
-              </div>
-              <div>
-                <div class="impact-title hurt">↓ São feridos</div>
-                <ul class="impact-list hurt" id="regimeHurt"></ul>
-              </div>
-              <div>
-                <div class="impact-title neutral">→ Neutros</div>
-                <ul class="impact-list neutral" id="regimeNeutral"></ul>
-              </div>
+          <div class="clock-caption">crescimento → · inflação ↑ · rotação clássica: horária</div>
+          <div class="regime-factors" id="regimeFactors"></div>
+          <p class="regime-desc" id="regimeDesc"></p>
+        </div>
+        <div class="regime-right">
+          <div class="impact-grid">
+            <div>
+              <div class="impact-title benef">↑ Se beneficiam</div>
+              <ul class="impact-list benef" id="regimeBenef"></ul>
+            </div>
+            <div>
+              <div class="impact-title hurt">↓ São feridos</div>
+              <ul class="impact-list hurt" id="regimeHurt"></ul>
+            </div>
+            <div>
+              <div class="impact-title neutral">→ Neutros</div>
+              <ul class="impact-list neutral" id="regimeNeutral"></ul>
             </div>
           </div>
         </div>
       </div>
     </div>
-
-    <div class="matrix" id="matrixGrid"></div>
-
-    <div class="summary" id="summaryGrid"></div>
 
     <div class="footer-row">
       <span class="stat-hint" id="saveHint"></span>
