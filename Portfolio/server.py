@@ -87,7 +87,7 @@ def init_db():
 def make_asset(
     group, sub, name, tag, value,
     ticker=None, qtd=None, cotacao=None, preco_medio=None, tipo=None, desc=None,
-    excluir_do_total=False,
+    excluir_do_total=False, moeda=None,
 ):
     """ticker/qtd/cotacao/preco_medio sao opcionais — so ativos com posicao em
     bolsa (ticker+qtd) participam do refresh diario via Yahoo Finance (ver
@@ -95,11 +95,14 @@ def make_asset(
     mantem "value" 100% manual, igual antes. excluir_do_total serve pra casos
     reais de inconsistencia de dados do cliente (ex.: posicao que a planilha
     original nao soma no patrimonio oficial) — aparece no card do ativo mas
-    nao entra em compute_summary nem na matriz ALOC."""
+    nao entra em compute_summary nem na matriz ALOC. moeda="USD" pra contas
+    internacionais: cotacao/preco_medio ficam na moeda nativa (o JS calcula
+    resultado/rentabilidade nessa moeda), mas "value" e sempre BRL convertido
+    — e o unico jeito de somar corretamente no patrimonio/matriz ALOC."""
     return {
         "id": str(uuid.uuid4()), "group": group, "sub": sub, "name": name, "tag": tag, "value": float(value),
         "ticker": ticker, "qtd": qtd, "cotacao": cotacao, "preco_medio": preco_medio,
-        "tipo": tipo, "desc": desc, "excluir_do_total": bool(excluir_do_total),
+        "tipo": tipo, "desc": desc, "excluir_do_total": bool(excluir_do_total), "moeda": moeda,
     }
 
 
@@ -352,6 +355,7 @@ def api_save_portfolio():
                 "tipo": _opt_str(a.get("tipo"), 40),
                 "desc": _opt_str(a.get("desc"), 600),
                 "excluir_do_total": bool(a.get("excluir_do_total")),
+                "moeda": _opt_str(a.get("moeda"), 8),
             }
         )
 
@@ -438,6 +442,23 @@ def refresh_prices_from_yahoo():
         except Exception:
             continue
 
+    # So busca USDBRL se algum ativo com moeda="USD" realmente precisar —
+    # cotacao/preco_medio desses ficam na moeda nativa (USD), so "value"
+    # (usado em todo total/matriz ALOC) precisa do cambio pra virar BRL.
+    needs_usdbrl = any(
+        a.get("moeda") == "USD" and a.get("ticker") and a.get("qtd") is not None
+        for state in states.values() for a in state.get("assets", [])
+    )
+    usdbrl = None
+    if needs_usdbrl:
+        try:
+            hist = yf.Ticker("BRL=X").history(period="5d")
+            closes = hist["Close"].dropna()
+            if len(closes):
+                usdbrl = float(closes.iloc[-1])
+        except Exception:
+            usdbrl = None
+
     now = datetime.datetime.utcnow().isoformat()
     updated_clients = 0
     for client_id, state in states.items():
@@ -446,8 +467,15 @@ def refresh_prices_from_yahoo():
             tk = a.get("ticker")
             if tk and a.get("qtd") is not None and tk in quotes:
                 a["cotacao"] = quotes[tk]
-                a["value"] = round(a["qtd"] * quotes[tk], 2)
-                changed = True
+                if a.get("moeda") == "USD":
+                    if usdbrl is not None:
+                        a["value"] = round(a["qtd"] * quotes[tk] * usdbrl, 2)
+                        changed = True
+                    # sem taxa de cambio disponivel: mantem cotacao nova mas
+                    # nao mexe em "value" (evita salvar total errado)
+                else:
+                    a["value"] = round(a["qtd"] * quotes[tk], 2)
+                    changed = True
         for sp in state.get("special_positions", []):
             tk = sp.get("ticker")
             if tk and tk in quotes:

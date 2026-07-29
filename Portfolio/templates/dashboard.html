@@ -1107,10 +1107,17 @@ tickClock(); setInterval(tickClock, 1000);
       kpis += '<div class="card kpi"><div class="label">'+esc(g.name)+'</div><div class="value">'+fmtPct(pct(g.value,total))+'</div><div class="foot">'+fmtBRL(g.value)+'</div></div>';
     });
 
-    // KPI de rentabilidade RV, so quando ha preco medio cadastrado em pelo menos um ativo
+    // KPI de rentabilidade RV, so quando ha preco medio cadastrado em pelo menos um ativo.
+    // Custo tem que virar BRL antes de somar — ativo moeda="USD" tem qtd/preco_medio
+    // na moeda nativa, e "value" ja e o BRL convertido; nao dava pra somar
+    // qtd*preco_medio direto (misturava USD com BRL, rentabilidade saia sem sentido).
     var rvComCusto = visible.filter(function(a){ return a.sub === 'RV' && a.preco_medio != null && a.qtd != null; });
     if(rvComCusto.length){
-      var custoTotal = rvComCusto.reduce(function(s,a){ return s + a.qtd*a.preco_medio; }, 0);
+      var custoTotal = rvComCusto.reduce(function(s,a){
+        var custoNativo = a.qtd * a.preco_medio;
+        if(a.moeda === 'USD' && a.cotacao){ custoNativo = custoNativo * (a.value / (a.qtd * a.cotacao)); }
+        return s + custoNativo;
+      }, 0);
       var valorAtual = rvComCusto.reduce(function(s,a){ return s + a.value; }, 0);
       var resultTotal = valorAtual - custoTotal;
       var rentTotal = custoTotal ? (resultTotal/custoTotal*100) : 0;
@@ -1168,12 +1175,20 @@ tickClock(); setInterval(tickClock, 1000);
   // partir de qtd/cotacao/preco_medio (nunca persistidos, pra nunca ficarem
   // dessincronizados do refresh diário de cotação) ----------
   function hasMarketData(a){ return a.ticker && a.qtd != null && a.cotacao != null; }
+  function fmtUSD(n){ return n.toLocaleString("en-US", { style:"currency", currency:"USD" }); }
+  // moeda="USD": cotacao/preco_medio ficam na moeda nativa da conta
+  // internacional — resultado/rentabilidade sao calculados nessa mesma
+  // moeda (a % nao muda com cambio; o R$ so entra pra somar no total via
+  // "value", que ja vem convertido do servidor).
+  function nativeFmt(a){ return a.moeda === 'USD' ? fmtUSD : fmtBRL; }
+  function nativeValue(a){ return a.moeda === 'USD' ? (a.qtd * a.cotacao) : a.value; }
   function assetResult(a){
     if(!hasMarketData(a) || a.preco_medio == null) return null;
     var custo = a.qtd * a.preco_medio;
     if(!custo) return null;
-    var result = a.value - custo;
-    return { result: result, rentab: (result / custo) * 100 };
+    var atual = nativeValue(a);
+    var result = atual - custo;
+    return { result: result, rentab: (result / custo) * 100, fmt: nativeFmt(a) };
   }
   function fmtSigned(v, fmt){ return (v >= 0 ? '' : '-') + fmt(Math.abs(v)); }
   function fmtRentab(v){ return (v >= 0 ? '+' : '') + v.toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1}) + '%'; }
@@ -1241,14 +1256,15 @@ tickClock(); setInterval(tickClock, 1000);
       var rows = state.assets.filter(hasMarketData).map(function(a){
         var p = total && !a.excluir_do_total ? (a.value/total*100) : null;
         var r = assetResult(a);
+        var fmt = nativeFmt(a);
         return '<tr>' +
-          '<td style="color:var(--gold-light); font-weight:700;">'+esc(a.ticker)+'</td>' +
+          '<td style="color:var(--gold-light); font-weight:700;">'+esc(a.ticker)+(a.moeda==='USD'?' <span style="color:var(--text-dim); font-size:11px;">(US$)</span>':'')+'</td>' +
           '<td>'+esc(a.tipo||'—')+'</td>' +
           '<td>'+a.qtd.toLocaleString('pt-BR')+'</td>' +
-          '<td>'+fmtBRL(a.cotacao)+'</td>' +
-          '<td>'+fmtBRL(a.value)+'</td>' +
-          '<td>'+(a.preco_medio!=null ? fmtBRL(a.preco_medio) : '—')+'</td>' +
-          '<td class="'+(r?(r.result>=0?'pos':'neg'):'')+'">'+(r ? fmtSigned(r.result, fmtBRL) : '—')+'</td>' +
+          '<td>'+fmt(a.cotacao)+'</td>' +
+          '<td>'+fmt(nativeValue(a))+'</td>' +
+          '<td>'+(a.preco_medio!=null ? fmt(a.preco_medio) : '—')+'</td>' +
+          '<td class="'+(r?(r.result>=0?'pos':'neg'):'')+'">'+(r ? fmtSigned(r.result, fmt) : '—')+'</td>' +
           '<td class="'+(r?(r.rentab>=0?'pos':'neg'):'')+'">'+(r ? fmtRentab(r.rentab) : '—')+'</td>' +
           '<td>'+(p!=null ? p.toFixed(1)+'%' : (a.excluir_do_total?'fora do total':'—'))+'</td>' +
         '</tr>';
@@ -1285,19 +1301,21 @@ tickClock(); setInterval(tickClock, 1000);
 
     if(hasMarketData(a)){
       var r = assetResult(a);
+      var fmt = nativeFmt(a);
       document.getElementById('modalBadge').innerText = a.ticker;
       document.getElementById('modalTitle').innerText = a.name;
       document.getElementById('assetModalBody').innerHTML =
         '<div class="modal-row"><span class="k">Classe</span><span class="v">'+esc(a.tipo||'—')+'</span></div>' +
+        (a.moeda==='USD' ? '<div class="modal-row"><span class="k">Conta</span><span class="v">Internacional (USD)</span></div>' : '') +
         '<div class="modal-row"><span class="k">Quantidade</span><span class="v">'+a.qtd.toLocaleString('pt-BR')+'</span></div>' +
-        '<div class="modal-row"><span class="k">Cotação Atual</span><span class="v">'+fmtBRL(a.cotacao)+'</span></div>' +
-        '<div class="modal-row"><span class="k">Posição Atual</span><span class="v">'+fmtBRL(a.value)+'</span></div>' +
-        '<div class="modal-row"><span class="k">Preço Médio</span><span class="v">'+(a.preco_medio!=null?fmtBRL(a.preco_medio):'—')+'</span></div>' +
-        '<div class="modal-row"><span class="k">Resultado</span><span class="v '+(r?(r.result>=0?'pos':'neg'):'')+'">'+(r?fmtSigned(r.result,fmtBRL):'—')+'</span></div>' +
+        '<div class="modal-row"><span class="k">Cotação Atual</span><span class="v">'+fmt(a.cotacao)+'</span></div>' +
+        '<div class="modal-row"><span class="k">Posição Atual</span><span class="v">'+fmt(nativeValue(a))+(a.moeda==='USD'?' <span class="num" style="color:var(--text-dim); font-size:12px;">('+fmtBRL(a.value)+')</span>':'')+'</span></div>' +
+        '<div class="modal-row"><span class="k">Preço Médio</span><span class="v">'+(a.preco_medio!=null?fmt(a.preco_medio):'—')+'</span></div>' +
+        '<div class="modal-row"><span class="k">Resultado</span><span class="v '+(r?(r.result>=0?'pos':'neg'):'')+'">'+(r?fmtSigned(r.result,fmt):'—')+'</span></div>' +
         '<div class="modal-row"><span class="k">Rentabilidade</span><span class="v '+(r?(r.rentab>=0?'pos':'neg'):'')+'">'+(r?fmtRentab(r.rentab):'—')+'</span></div>' +
         '<div class="modal-row"><span class="k">Peso na Carteira</span><span class="v">'+(a.excluir_do_total?'fora do total oficial':fmtPct(total?(a.value/total*100):0))+'</span></div>' +
         (a.desc ? '<div class="modal-func"><b style="color:var(--gold-light);">Função na carteira:</b> '+esc(a.desc)+'</div>' : '') +
-        '<div class="disclaimer-strip" style="margin-top:16px;">Cotação e resultado recalculados a partir da última cotação disponível'+(state.prices_updated_at?' (Yahoo Finance)':'')+'; preço médio conforme extrato original do cliente.</div>';
+        '<div class="disclaimer-strip" style="margin-top:16px;">Cotação e resultado recalculados a partir da última cotação disponível'+(state.prices_updated_at?' (Yahoo Finance)':'')+'; preço médio conforme extrato original do cliente.'+(a.moeda==='USD'?' Valor em R$ convertido pela cotação USD/BRL do momento da última atualização.':'')+'</div>';
       document.getElementById('assetModal').classList.add('open');
       return;
     }
