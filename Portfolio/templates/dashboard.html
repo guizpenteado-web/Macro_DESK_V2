@@ -1061,6 +1061,13 @@ tickClock(); setInterval(tickClock, 1000);
   }
 
   function renderSummary(){
+    // preserva foco e posicao do cursor do campo "alvo X" sendo editado:
+    // o innerHTML abaixo recria o <input> do zero a cada digitacao, o que
+    // sem isso derruba o foco e trava a digitacao de numeros com 2+ digitos.
+    var active = document.activeElement;
+    var activeId = (active && active.tagName === "INPUT") ? active.id : null;
+    var selPos = activeId ? active.selectionStart : null;
+
     var total = grandTotal();
     var atk = postureTotal("ATK"), def = postureTotal("DEF");
     var br = geoTotal("BR"), usa = geoTotal("USA");
@@ -1076,19 +1083,28 @@ tickClock(); setInterval(tickClock, 1000);
     html += '<div class="sum-card"><div class="sum-title">Ataque × Defesa</div>' +
       '<div class="sum-row"><div class="sum-side a"><div class="name">Ataque</div><div class="pct num">'+fmtPct(atkPct)+'</div></div>' +
       '<div class="sum-side d"><div class="name">Defesa</div><div class="pct num">'+fmtPct(defPct)+'</div></div></div>' +
-      '<div class="target-row">alvo ataque <input type="number" min="0" max="100" step="1" id="targetAtk" value="'+tAtk+'"> % · defesa '+tDef+'%</div>' +
+      '<div class="target-row">alvo ataque <input type="text" inputmode="numeric" pattern="[0-9]*" id="targetAtk" value="'+tAtk+'"> % · defesa '+tDef+'%</div>' +
       deltaChip(atkPct, tAtk, "Ataque") + '</div>';
     html += '<div class="sum-card"><div class="sum-title">Brasil × EUA</div>' +
       '<div class="sum-row"><div class="sum-side n"><div class="name">Brasil</div><div class="pct num">'+fmtPct(brPct)+'</div></div>' +
       '<div class="sum-side n"><div class="name">EUA</div><div class="pct num">'+fmtPct(usaPct)+'</div></div></div>' +
-      '<div class="target-row">alvo Brasil <input type="number" min="0" max="100" step="1" id="targetBr" value="'+tBr+'"> % · EUA '+tUsa+'%</div>' +
+      '<div class="target-row">alvo Brasil <input type="text" inputmode="numeric" pattern="[0-9]*" id="targetBr" value="'+tBr+'"> % · EUA '+tUsa+'%</div>' +
       deltaChip(brPct, tBr, "Brasil") + '</div>';
     html += '<div class="sum-card"><div class="sum-title">Renda Fixa × Variável</div>' +
       '<div class="sum-row"><div class="sum-side n"><div class="name">Renda Fixa</div><div class="pct num">'+fmtPct(rfPct)+'</div></div>' +
       '<div class="sum-side n"><div class="name">Renda Variável</div><div class="pct num">'+fmtPct(rvPct)+'</div></div></div>' +
-      '<div class="target-row">alvo Renda Fixa <input type="number" min="0" max="100" step="1" id="targetRf" value="'+tRf+'"> % · Renda Variável '+tRv+'%</div>' +
+      '<div class="target-row">alvo Renda Fixa <input type="text" inputmode="numeric" pattern="[0-9]*" id="targetRf" value="'+tRf+'"> % · Renda Variável '+tRv+'%</div>' +
       deltaChip(rfPct, tRf, "Renda Fixa") + '</div>';
     document.getElementById("summaryGrid").innerHTML = html;
+
+    if(activeId){
+      var el = document.getElementById(activeId);
+      if(el){
+        el.focus();
+        var pos = Math.min(selPos, el.value.length);
+        try { el.setSelectionRange(pos, pos); } catch(e){}
+      }
+    }
   }
 
   // ---------- render: Visão Geral (tab 01) ----------
