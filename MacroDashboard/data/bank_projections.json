@@ -1,6 +1,6 @@
 {
   "_instrucoes": "Atualizar manualmente quando os bancos revisarem targets. Verificar fontes listadas abaixo.",
-  "last_updated": "2026-07-28",
+  "last_updated": "2026-07-29",
 
   "macro_snapshot": {
     "fed_rate": {
@@ -370,47 +370,47 @@
   ],
 
   "commodity_targets": {
-    "_nota": "Atualizado Jul/2026 via hierarquia TIER-1→TIER-2→TIER-3. TIER-1: jpmorgan.com/insights (pag. individuais por commodity), kitco.com (BofA/GS), investing.com (Citi). TIER-3: zawya.com (MS oil), Reuters, CNBC.",
-    "_precos_referencia": "Gold ~$4,093/oz (26/jul) | Silver ~$58.38/oz (27/jul) | Cobre COMEX ~$6.17/lb (sem atualização nova desde meados de jul) | WTI ~$83-84/bbl (27/jul, Brent ~$91/bbl) — VIRADA IMPORTANTE: EUA e Irã anunciaram TRÉGUA no fim de semana de 24-26/jul (Trump suspendeu a campanha de bombardeios após alerta de assessores sobre escassez de alvos viáveis e risco de esgotamento de munições; Irã sinalizou disposição de suspender ataques também), encerrando 13 noites consecutivas de escalada. Petróleo caiu 6-9% em 27/jul, revertendo boa parte da alta acumulada de ~45% que vinha desde a mínima de $70,14 (03/jul). Os targets de Goldman Sachs ($116, 24/jul) e Morgan Stanley ($86, 24/jul) abaixo foram revisados ANTES da trégua, na expectativa de disrupção contínua do Estreito de Hormuz — com a trégua, esses cenários bull ficam mais distantes no curto prazo, mas analistas alertam que não é acordo formal/verificável e a volatilidade deve persistir. Citi ($66, bear) e JPMorgan ($76, bear) seguem mais alinhados com o cenário pós-trégua.",
+    "_nota": "Atualizado 29/jul/2026 via hierarquia TIER-1→TIER-2→TIER-3. TIER-1: jpmorgan.com/insights (fetch direto das páginas gold-prices e oil-prices, 29/jul). TIER-2: Kitco (spot + research BofA/GS), TradingEconomics/EIA (WTI), Westmetall (LME copper). TIER-3 (confirmação): Reuters/TradingView, Mining Weekly, Rigzone/Bloomberg, BNN Bloomberg, goldsilver.com. Todos os targets abaixo verificados individualmente nesta atualização — nenhum copiado sem checar.",
+    "_precos_referencia": "Ouro $4.015,50/oz (Kitco, 29/jul) | Prata $56,94/oz (Kitco, 29/jul) | WTI $79,28/bbl (fechamento 28/jul, EIA Cushing + TradingEconomics) | Cobre COMEX $6,28/lb / LME $13.643,50/ton (Westmetall, 28/jul). NOTA WTI: semana muito volátil — ataques Houthi a petroleiros sauditas (23/jul) levaram WTI a >$92 intraday, mas uma trégua no fim de semana (24-26/jul) reverteu boa parte da alta; 29/jul intraday ainda oscilando ($77,81-$82,42). Spot usado aqui é o fechamento oficial de 28/jul, mais estável que a leitura intraday.",
     "ouro": {
       "unit": "USD/oz",
-      "preco_atual": 4052,
+      "preco_atual": 4015.50,
       "bank_targets": [
-        {"bank": "Goldman Sachs", "target": 4900, "view": "BULL",    "rationale": "Cortou de $5.400→$4.900 (20/jun/26). Fade de ETF flows asiáticos + remoção de cortes do Fed em 2026. Suporte: BCs emergentes comprando +1.000 ton/ano. Kitco 30/jun/26.", "date": "2026-06"},
-        {"bank": "JP Morgan",     "target": 4500, "view": "BULL",    "rationale": "Cortou de $6.000→$4.500 (03/jul/26) — corte de 25%. Q3/26: $4.300 | Q4/26: $4.500. Demanda mais fraca que o esperado em setores-chave. Mantém viés bullish de longo prazo (compras de BCs + demanda física seguem sustentando alta para 2027). jpmorgan.com (pág. oficial gold-prices).", "date": "2026-07"},
-        {"bank": "BofA",          "target": 6000, "view": "BULL",    "rationale": "12-month target $6.000, média 2026 $5.093. Dívida EUA >$39 tri + BCs diversificando reservas. Incerteza de política EUA sustenta demanda por reserva de valor. Kitco 01/mai/26.", "date": "2026-05"},
-        {"bank": "Morgan Stanley","target": 5200, "view": "BULL",    "rationale": "Cortou de $5.700→$5.200 para 2H26. Queda de ~25% do ATH muda o tom. Recupera conforme BCs e ETFs retomam compras e Fed eventualmente corta. morganstanley.com midyear.", "date": "2026-06"},
-        {"bank": "Citi",          "target": 4000, "view": "NEUTRAL", "rationale": "Target 0-3 meses cortado de $4.300→$4.000 (jun/26). Fed hawkish + inflação persistente. Target para fim de 2026 não publicado publicamente. Múltiplos veículos TIER-3.", "date": "2026-06"}
+        {"bank": "Goldman Sachs", "target": 4900, "view": "BULL",    "rationale": "Cortou de $5.400→$4.900 (20/jun/26). Fade de ETF flows asiáticos + remoção de cortes do Fed em 2026. Suporte: BCs emergentes comprando +1.000 ton/ano. Reconfirmado 29/jul — sem revisão desde jun/26.", "date": "2026-06"},
+        {"bank": "JP Morgan",     "target": 6000, "view": "BULL",    "rationale": "Q4/26: $6.000/oz | média 2026: $5.243 | média 2027: $6.263. Compras de bancos centrais + demanda física estrutural. Verificado direto em jpmorgan.com/insights/global-research/commodities/gold-prices (fetch 29/jul, página atualizada 09/jun/26). ALTA relevante vs. ciclo anterior — confirmar se cliente já viu esse número.", "date": "2026-06-09"},
+        {"bank": "BofA",          "target": 4360, "view": "BULL",    "rationale": "Cortou média 2026 em 14% para $4.360/oz (08/jul/26) citando Fed mais hawkish. Banco reafirma que vê $5.000/oz 'ao alcance' quando o ciclo de aperto do Fed terminar — corte é tático, não mudança de tese. Substitui o antigo target rolante de 12 meses de $6.000 (01/mai/26, superado por esta revisão). BNN Bloomberg + goldsilver.com, 08/jul/26.", "date": "2026-07-08"},
+        {"bank": "Morgan Stanley","target": 5200, "view": "BULL",    "rationale": "Cortou de $5.700→$5.200 para 2H26 (22/jun/26). Queda de ~25% do ATH muda o tom — recuperação depende de BCs/ETFs retomarem compras. Reconfirmado 29/jul, sem revisão nova.", "date": "2026-06-22"},
+        {"bank": "Citi",          "target": 4000, "view": "NEUTRAL", "rationale": "Target 0-3 meses cortado de $4.300→$4.000 (09/jun/26). Target 6-12 meses mantido em $4.500 (não usado aqui por não ser 'fim de 2026'). Fed hawkish + inflação persistente. Reconfirmado 29/jul, sem revisão nova.", "date": "2026-06-09"}
       ]
     },
     "prata": {
       "unit": "USD/oz",
-      "preco_atual": 58.40,
+      "preco_atual": 56.94,
       "bank_targets": [
-        {"bank": "JP Morgan",     "target": 85, "view": "BULL", "rationale": "Q4/26: $85/oz | Q1: $84 | Q2: $75 | Q3: $80. Média anual 2026: $81 (+102% vs 2025 avg $40). Demanda solar + déficit físico. Ratio Au/Ag >60:1. jpmorgan.com (pág. oficial silver-prices).", "date": "2026-Q1"},
-        {"bank": "BofA",          "target": 86, "view": "BULL", "rationale": "Média 2026: $85.93/oz (+15% vs est. anterior de $75). Demanda solar e EV sustentam déficit estrutural de oferta. Near-term fraqueza esperada, outlook bullish. Kitco 01/mai/26.", "date": "2026-05"},
-        {"bank": "Goldman Sachs", "target": 90, "view": "BULL", "rationale": "Média 2026: $85-100/oz. Déficit estrutural de oferta. Transição energética (solar, EV). Ratio Au/Ag historicamente elevado abre espaço de catch-up vs ouro. Mai/26.", "date": "2026-05"}
+        {"bank": "JP Morgan",     "target": 85, "view": "BULL", "rationale": "Q4/26: $85/oz | Q1: $84 | Q2: $75 | Q3: $80. Média anual 2026: $81 (+102% vs 2025 avg $40). Demanda solar + déficit físico. Confirmado por 2 buscas independentes em 29/jul — sem revisão desde fev/26.", "date": "2026-02"},
+        {"bank": "BofA",          "target": 86, "view": "BULL", "rationale": "Média 2026: $85,93/oz (+15% vs est. anterior de $75). Demanda solar e EV sustentam déficit estrutural de oferta. Reconfirmado 29/jul, sem revisão nova desde 01/mai/26.", "date": "2026-05-01"},
+        {"bank": "Goldman Sachs", "target": 90, "view": "BULL", "rationale": "Média 2026 estimada em $85-100/oz por múltiplas fontes TIER-3 (sem página oficial goldmansachs.com localizada com número específico — tratar com cautela extra). Déficit estrutural de oferta, transição energética. Reconfirmado 29/jul.", "date": "2026-05"}
       ]
     },
     "petroleo_wti": {
       "unit": "USD/barril",
-      "preco_atual": 83.8,
+      "preco_atual": 79.28,
       "bank_targets": [
-        {"bank": "Goldman Sachs", "target": 116, "view": "BULL", "rationale": "REVISADO 23-24/jul: banco sinaliza Brent podendo voltar a superar $120/bbl (~WTI $116) no Q4/26 se o Estreito de Hormuz continuar interrompido — reescalada do conflito EUA-Irã invalidou o corte de jun/26 (que previa Brent $80/WTI $76 pós-acordo de paz). TheStreet/Yahoo Finance.", "date": "2026-07-24"},
-        {"bank": "Morgan Stanley","target": 86, "view": "BULL", "rationale": "REVISADO 23-24/jul: Q3/26 elevado para Brent $90 (~WTI $86), de $75 (~$71) em jun/26. Q4/26 mantido em Brent $80 (~WTI $76) — banco vê a alta como concentrada no Q3 enquanto durar a disrupção de Hormuz. IndexBox/CNBC.", "date": "2026-07-24"},
-        {"bank": "Citi",          "target": 66, "view": "BEAR",    "rationale": "Q4/26 Brent $70 → WTI ~$66 (cortou após deal EUA-Irã). OPEC+ retoma produção com reabertura do Hormuz. Excesso de oferta estrutural retorna. TheStreet/Investing.com.", "date": "2026-07"},
-        {"bank": "JP Morgan",     "target": 76, "view": "BEAR",    "rationale": "Q3/26 Brent $86 (WTI ~$82) | Q4/26 Brent $80 (WTI ~$76), saindo o ano a ~$78 Brent. Revisão de jun/26 após normalização do Estreito de Ormuz e retomada OPEC+. Demanda global fraca pressionada por high-for-longer Fed. Investing.com/TheStreet.", "date": "2026-06"}
+        {"bank": "Goldman Sachs", "target": 76, "view": "NEUTRAL", "rationale": "CORRIGIDO 29/jul: caso-base reafirmado em 23/jul é Brent $80/WTI $76 pro Q4/26 (tanker traffic no Estreito de Hormuz normalizando até fim de jul) — o cenário bull de WTI $116 mostrado antes era um risco condicional a Hormuz seguir bloqueado, que NÃO se confirmou (trégua 24-26/jul, petróleo caiu 6-9% em 27/jul). BOE Report, 23/jul/26.", "date": "2026-07-23"},
+        {"bank": "JP Morgan",     "target": 76, "view": "NEUTRAL", "rationale": "Brent Q3/26 $86 | Q4/26 $80 | saída-2026 $78 (sem WTI próprio publicado — conversão aprox. via spread de ~$4 usado pelo próprio Goldman). Verificado direto em jpmorgan.com/insights/global-research/commodities/oil-prices (fetch 29/jul, página atualizada 16/jul/26 — já reflete o período pós-pico Houthi). Corte por demanda mais fraca (EVs na China).", "date": "2026-07-16"},
+        {"bank": "Morgan Stanley","target": 71, "view": "BEAR",    "rationale": "Brent $75 Q3 e Q4/26 (cortado de $90/$80), tese de excesso de oferta ('oil glut') pra 2027. WTI aproximado via spread ~$4. Fonte mais recente localizada é 30/jun/26 — não achei revisão pós-pico Houthi (23-27/jul); pode estar defasado, vale checar de novo em breve.", "date": "2026-06-30"},
+        {"bank": "Citi",          "target": 66, "view": "BEAR",    "rationale": "Brent Q3/26 $75 | Q4/26 $70 → WTI ~$66 via spread. OPEC+ retomando produção, normalização do Hormuz. Última confirmação meados de jun/26 — sem revisão pós-pico Houthi encontrada.", "date": "2026-06"}
       ]
     },
     "cobre": {
       "unit": "USD/lb (COMEX)",
-      "preco_atual": 6.17,
+      "preco_atual": 6.28,
       "bank_targets": [
-        {"bank": "Citi",          "target": 6.80, "view": "BULL",    "rationale": "Virou bullish (01/jun/26): LME $15.000/ton (~$6.80/lb) em 1 ano. Near-term jul/26: $14.500/ton. Tese: tarifas EUA + déficit de mina (scrap e produção underperform) + China restocking. Investing.com/CNBC.", "date": "2026-06"},
-        {"bank": "Goldman Sachs", "target": 6.23, "view": "NEUTRAL", "rationale": "Year-end LME $13.735/ton (~$6.23/lb, jun/26). Oferta mais apertada (Grasberg + Kamoa-Kakula). Déficit ex-EUA 640K ton. Tarifas EUA (30/jun) podem levar COMEX >$14k/ton. TradingView/Reuters.", "date": "2026-06"},
-        {"bank": "JP Morgan",     "target": 5.67, "view": "BEAR",    "rationale": "Q4/26: LME $12.500/ton (~$5.67/lb) | Q3: $13.000 | Q2: $13.500. Alta do petróleo reduz PIB global (-0.16% p/ cada 10%), cortando demanda por cobre. COMEX com prêmio vs LME por tarifas. jpmorgan.com (oficial).", "date": "2026-06"},
-        {"bank": "BofA",          "target": 5.13, "view": "BEAR",    "rationale": "Média 2026: LME $11.313/ton (~$5.13/lb). Forecast de abr/26, anterior ao rali de +27% do cobre. 2027 revisado para $13.501/ton. Revisão mid-2026 pendente de publicação.", "date": "2026-04"},
-        {"bank": "Morgan Stanley","target": 4.83, "view": "BEAR",    "rationale": "Base case dez/25: LME $10.650/ton (~$4.83/lb) | Bull case: $12.780/ton. Estimativa anterior ao rali de +27%. Déficit projetado de 590K ton em 2026 (22-year low). Revisão mid-year pendente.", "date": "2025-12"}
+        {"bank": "Citi",          "target": 6.80, "view": "BULL",    "rationale": "LME $15.000/ton (~$6.80/lb) pro fim de 2026 — reconfirmado em Mining Weekly de 28/jul/26 (dado mais fresco de toda a pesquisa), banco mantém 'supply under much greater pressure'. Near-term (0-3m): $14.500/ton.", "date": "2026-07-28"},
+        {"bank": "Goldman Sachs", "target": 6.23, "view": "NEUTRAL", "rationale": "Year-end LME $13.735/ton (~$6.23/lb, elevado de $12.465 em 01/jun/26). Oferta mais apertada (Grasberg + Kamoa-Kakula). Reconfirmado 29/jul, sem revisão nova.", "date": "2026-06-01"},
+        {"bank": "JP Morgan",     "target": 5.67, "view": "BEAR",    "rationale": "Q4/26: LME $12.500/ton (~$5.67/lb) | Q3: $13.000 | Q2: $13.500. Alta do petróleo reduz PIB global, cortando demanda por cobre. Verificado direto em jpmorgan.com (oficial), reconfirmado 29/jul — página de abr/26 sem atualização mais nova.", "date": "2026-04-24"},
+        {"bank": "BofA",          "target": 5.13, "view": "BEAR",    "rationale": "Média 2026: LME $11.313/ton (~$5.13/lb). Forecast de set/2025 — ~10 meses sem revisão encontrada apesar de busca dedicada em 29/jul. TRATAR COMO DEFASADO — 2027 já revisado para $13.501/ton, sugerindo que o número de 2026 também deve estar desatualizado.", "date": "2025-09"},
+        {"bank": "Morgan Stanley","target": 4.83, "view": "BEAR",    "rationale": "Base case dez/2025: LME $10.650/ton (~$4.83/lb) | Bull case: $12.780/ton. ~8 meses sem revisão encontrada apesar de busca dedicada em 29/jul. TRATAR COMO DEFASADO.", "date": "2025-12-08"}
       ]
     }
   },
