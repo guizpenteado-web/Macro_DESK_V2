@@ -1117,22 +1117,6 @@ tickClock(); setInterval(tickClock, 1000);
       kpis += '<div class="card kpi"><div class="label">'+esc(g.name)+'</div><div class="value">'+fmtPct(pct(g.value,total))+'</div><div class="foot">'+fmtBRL(g.value)+'</div></div>';
     });
 
-    // KPI de rentabilidade RV, so quando ha preco medio cadastrado em pelo menos um ativo.
-    // Custo tem que virar BRL antes de somar — ativo moeda="USD" tem qtd/preco_medio
-    // na moeda nativa, e "value" ja e o BRL convertido; nao dava pra somar
-    // qtd*preco_medio direto (misturava USD com BRL, rentabilidade saia sem sentido).
-    var rvComCusto = visible.filter(function(a){ return a.sub === 'RV' && a.preco_medio != null && a.qtd != null; });
-    if(rvComCusto.length){
-      var custoTotal = rvComCusto.reduce(function(s,a){
-        var custoNativo = a.qtd * a.preco_medio;
-        if(a.moeda === 'USD' && a.cotacao){ custoNativo = custoNativo * (a.value / (a.qtd * a.cotacao)); }
-        return s + custoNativo;
-      }, 0);
-      var valorAtual = rvComCusto.reduce(function(s,a){ return s + a.value; }, 0);
-      var resultTotal = valorAtual - custoTotal;
-      var rentTotal = custoTotal ? (resultTotal/custoTotal*100) : 0;
-      kpis += '<div class="card kpi"><div class="label">Rentabilidade RV (posições)</div><div class="value" style="color:'+(rentTotal>=0?'var(--pos)':'var(--neg)')+';">'+fmtRentab(rentTotal)+'</div><div class="foot">Resultado '+fmtSigned(resultTotal,fmtBRL)+'</div></div>';
-    }
     document.getElementById("overviewKpis").innerHTML = kpis;
 
     document.getElementById("pillarsBox").innerHTML = pillarGroups.map(function(g,i){
