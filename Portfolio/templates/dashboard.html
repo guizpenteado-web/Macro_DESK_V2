@@ -701,10 +701,10 @@
       <button class="at-clear-btn" onclick="atClearAll()">Limpar tudo</button>
     </div>
 
-    <div class="at-dropzone" id="atDropzone">
+    <div class="at-dropzone" id="atDropzone" tabindex="0">
       <div class="at-dropzone-inner">
         <span class="at-dropzone-icon">📊</span>
-        <span>Arraste imagens aqui ou clique em "+ Adicionar imagens"</span>
+        <span>Arraste imagens aqui, clique em "+ Adicionar imagens" ou cole um print com <b>Ctrl+V</b> (⌘+V no Mac)</span>
       </div>
     </div>
 
@@ -1752,6 +1752,31 @@ if(atDropzone){
     atHandleFiles(e.dataTransfer.files);
   });
 }
+
+// Colar (Ctrl+V) um print copiado direto pra aba Análise Técnica — só age
+// quando essa aba está ativa, pra não capturar paste em textareas/inputs
+// de outras abas (ex.: Anotações). Funciona colando em qualquer lugar da
+// página, não só dentro da dropzone (foco não é obrigatório).
+document.addEventListener('paste', (e) => {
+  const painel = document.getElementById('tab-analise-tecnica');
+  if(!painel || !painel.classList.contains('active')) return;
+  const active = document.activeElement;
+  if(active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+  const items = (e.clipboardData || window.clipboardData)?.items;
+  if(!items) return;
+  const files = [];
+  for(const item of items){
+    if(item.kind === 'file' && item.type.startsWith('image/')){
+      const file = item.getAsFile();
+      if(file) files.push(file);
+    }
+  }
+  if(files.length){
+    e.preventDefault();
+    atHandleFiles(files);
+  }
+});
+
 atRender();
 </script>
 
