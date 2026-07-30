@@ -516,7 +516,16 @@ def refresh_prices_from_yahoo():
         db.close()
         return {"updated_clients": 0, "quotes": 0}
 
+    # Criptomoedas mantidas como posicao direta (nao via ETF B3 tipo QBTC11)
+    # usam o simbolo cru ("BTC") no cadastro do ativo — sem esse mapeamento,
+    # yf.Ticker("BTC") resolve pra um instrumento OTC nao relacionado
+    # (~US$28, contra ~US$65k do Bitcoin real): bug real encontrado em
+    # 30/jul/2026 na carteira do Jeferson, subestimando o patrimonio dele.
+    CRYPTO_TICKERS = {"BTC", "ETH", "SOL", "XRP", "DOGE", "ADA", "BNB", "LTC"}
+
     def yahoo_symbol(tk):
+        if tk in CRYPTO_TICKERS:
+            return tk + "-USD"
         # Convencao B3: ticker termina em digito (PETR4, INBR32, QBTC11...).
         # Tickers americanos (MSFT, AAPL) sao so letras — nao levam ".SA".
         return tk + ".SA" if tk[-1].isdigit() else tk
