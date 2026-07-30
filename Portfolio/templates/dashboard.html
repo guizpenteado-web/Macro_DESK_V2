@@ -328,6 +328,9 @@
   .aloc-root .heatmap-note{ font-size: 11px; color: var(--text-faint); margin: 10px 0 0; }
 
   /* ---- ANÁLISE TÉCNICA (galeria de imagens via localStorage) ---- */
+  .at-section-block{margin-bottom:34px; padding-bottom:6px; border-bottom:1px solid var(--line);}
+  .at-section-block:last-child{border-bottom:none;}
+  .at-section-title{font-family:'Inter', sans-serif; font-weight:700; font-size:16px; color:var(--gold-light); letter-spacing:0.3px; margin-bottom:14px;}
   .at-toolbar{display:flex; align-items:center; gap:14px; margin-bottom:16px; flex-wrap:wrap;}
   .at-upload-btn{background:rgba(212,175,55,0.1); border:1px solid var(--gold-dim); color:var(--gold-light); border-radius:6px; padding:9px 16px; cursor:pointer; font-family:'Inter'; font-size:14px; font-weight:600; transition:background .15s ease, border-color .15s ease;}
   .at-upload-btn:hover{background:rgba(212,175,55,0.18); border-color:var(--gold);}
@@ -692,24 +695,61 @@
 
   <!-- ================= TAB 08 — ANÁLISE TÉCNICA ================= -->
   <section class="tabpanel" id="tab-analise-tecnica">
-    <div class="section-head"><h2>ANÁLISE TÉCNICA — GALERIA DE GRÁFICOS</h2><div class="gold-rule"></div><div class="sub">Upload de prints/gráficos para consulta rápida — salvos neste navegador</div></div>
+    <div class="section-head"><h2>ANÁLISE TÉCNICA — GALERIA DE GRÁFICOS</h2><div class="gold-rule"></div><div class="sub">Upload de prints/gráficos para consulta rápida — salvos neste navegador, em 3 galerias separadas</div></div>
 
-    <div class="at-toolbar">
-      <label class="at-upload-btn" for="atFileInput">+ Adicionar imagens</label>
-      <input type="file" id="atFileInput" accept="image/*" multiple style="display:none;">
-      <span class="at-count" id="atCount">0 imagens</span>
-      <button class="at-clear-btn" onclick="atClearAll()">Limpar tudo</button>
-    </div>
-
-    <div class="at-dropzone" id="atDropzone" tabindex="0">
-      <div class="at-dropzone-inner">
-        <span class="at-dropzone-icon">📊</span>
-        <span>Arraste imagens aqui, clique em "+ Adicionar imagens" ou cole um print com <b>Ctrl+V</b> (⌘+V no Mac)</span>
+    <div class="at-section-block">
+      <div class="at-section-title">🎯 Operações que vou fazer</div>
+      <div class="at-toolbar">
+        <label class="at-upload-btn" for="atFileInput_planned">+ Adicionar imagens</label>
+        <input type="file" id="atFileInput_planned" accept="image/*" multiple style="display:none;">
+        <span class="at-count" id="atCount_planned">0 imagens</span>
+        <button class="at-clear-btn" onclick="atClearAll('planned')">Limpar tudo</button>
       </div>
+      <div class="at-dropzone" id="atDropzone_planned" tabindex="0">
+        <div class="at-dropzone-inner">
+          <span class="at-dropzone-icon">📊</span>
+          <span>Arraste imagens aqui, clique em "+ Adicionar imagens" ou clique aqui e cole um print com <b>Ctrl+V</b> (⌘+V no Mac)</span>
+        </div>
+      </div>
+      <div class="at-grid" id="atGrid_planned"></div>
+      <div class="at-empty" id="atEmpty_planned">Nenhuma imagem ainda. Salve aqui os setups/gráficos das operações que você pretende fazer.</div>
     </div>
 
-    <div class="at-grid" id="atGrid"></div>
-    <div class="at-empty" id="atEmpty">Nenhuma imagem enviada ainda. Faça upload de gráficos, prints de análise técnica, setups etc. para consultar aqui.</div>
+    <div class="at-section-block">
+      <div class="at-section-title">✅ Operações feitas</div>
+      <div class="at-toolbar">
+        <label class="at-upload-btn" for="atFileInput_done">+ Adicionar imagens</label>
+        <input type="file" id="atFileInput_done" accept="image/*" multiple style="display:none;">
+        <span class="at-count" id="atCount_done">0 imagens</span>
+        <button class="at-clear-btn" onclick="atClearAll('done')">Limpar tudo</button>
+      </div>
+      <div class="at-dropzone" id="atDropzone_done" tabindex="0">
+        <div class="at-dropzone-inner">
+          <span class="at-dropzone-icon">📊</span>
+          <span>Arraste imagens aqui, clique em "+ Adicionar imagens" ou clique aqui e cole um print com <b>Ctrl+V</b> (⌘+V no Mac)</span>
+        </div>
+      </div>
+      <div class="at-grid" id="atGrid_done"></div>
+      <div class="at-empty" id="atEmpty_done">Nenhuma imagem ainda. Salve aqui os gráficos das operações já executadas.</div>
+    </div>
+
+    <div class="at-section-block">
+      <div class="at-section-title">👁 Watchlist</div>
+      <div class="at-toolbar">
+        <label class="at-upload-btn" for="atFileInput_watchlist">+ Adicionar imagens</label>
+        <input type="file" id="atFileInput_watchlist" accept="image/*" multiple style="display:none;">
+        <span class="at-count" id="atCount_watchlist">0 imagens</span>
+        <button class="at-clear-btn" onclick="atClearAll('watchlist')">Limpar tudo</button>
+      </div>
+      <div class="at-dropzone" id="atDropzone_watchlist" tabindex="0">
+        <div class="at-dropzone-inner">
+          <span class="at-dropzone-icon">📊</span>
+          <span>Arraste imagens aqui, clique em "+ Adicionar imagens" ou clique aqui e cole um print com <b>Ctrl+V</b> (⌘+V no Mac)</span>
+        </div>
+      </div>
+      <div class="at-grid" id="atGrid_watchlist"></div>
+      <div class="at-empty" id="atEmpty_watchlist">Nenhuma imagem ainda. Salve aqui os ativos que você está de olho, mas ainda não operou.</div>
+    </div>
 
     <div class="disclaimer-strip">As imagens são salvas automaticamente neste navegador (localStorage), vinculadas a este login. Elas não são sincronizadas entre dispositivos nem enviadas a nenhum servidor — se você abrir este dashboard em outro computador ou navegador, as imagens não aparecerão lá. Imagens grandes são redimensionadas automaticamente para economizar espaço.</div>
   </section>
@@ -1624,42 +1664,70 @@ tickClock(); setInterval(tickClock, 1000);
 </script>
 
 <script>
-/* ============ ANÁLISE TÉCNICA — upload de imagens (localStorage, por login) ============ */
-const AT_KEY = 'analise_tecnica_' + {{ client.username|tojson }};
+/* ============ ANÁLISE TÉCNICA — 3 galerias independentes (localStorage, por login) ============ */
+const AT_SECTIONS = ['planned', 'done', 'watchlist'];
 const AT_MAX_WIDTH = 1400;
-let atImages = [];
-try { atImages = JSON.parse(localStorage.getItem(AT_KEY) || '[]'); } catch(e){ atImages = []; }
+const atState = {};
+let atLightboxSection = null;
 
-function atSave(){
+function atKey(sec){ return 'analise_tecnica_' + sec + '_' + {{ client.username|tojson }}; }
+
+// Migracao unica: antes desta versao existia so 1 galeria (chave antiga
+// "analise_tecnica_<username>", sem sufixo de secao). Se ainda tiver dado
+// la e a galeria "done" (Operacoes feitas) estiver vazia, migra pra la
+// (mais neutro que "planned"/"watchlist") e apaga a chave antiga.
+(function atMigrateLegacy(){
+  const legacyKey = 'analise_tecnica_' + {{ client.username|tojson }};
+  const legacy = localStorage.getItem(legacyKey);
+  if(!legacy) return;
   try {
-    localStorage.setItem(AT_KEY, JSON.stringify(atImages));
+    const legacyImages = JSON.parse(legacy);
+    if(Array.isArray(legacyImages) && legacyImages.length){
+      const doneKey = atKey('done');
+      const current = JSON.parse(localStorage.getItem(doneKey) || '[]');
+      if(current.length === 0){
+        localStorage.setItem(doneKey, JSON.stringify(legacyImages));
+      }
+    }
+  } catch(e){ /* dado antigo corrompido — ignora, nao propaga erro */ }
+  localStorage.removeItem(legacyKey);
+})();
+
+AT_SECTIONS.forEach(sec => {
+  try { atState[sec] = JSON.parse(localStorage.getItem(atKey(sec)) || '[]'); } catch(e){ atState[sec] = []; }
+});
+
+function atSave(sec){
+  try {
+    localStorage.setItem(atKey(sec), JSON.stringify(atState[sec]));
   } catch(e){
     alert('Armazenamento cheio. Remova algumas imagens antes de adicionar novas (o navegador limita o espaço disponível por site).');
   }
 }
 
-function atRender(){
-  const grid = document.getElementById('atGrid');
-  const empty = document.getElementById('atEmpty');
-  const count = document.getElementById('atCount');
+function atRender(sec){
+  const grid = document.getElementById('atGrid_' + sec);
+  const empty = document.getElementById('atEmpty_' + sec);
+  const count = document.getElementById('atCount_' + sec);
   if(!grid) return;
-  count.textContent = atImages.length + (atImages.length === 1 ? ' imagem' : ' imagens');
-  if(atImages.length === 0){
+  const images = atState[sec];
+  count.textContent = images.length + (images.length === 1 ? ' imagem' : ' imagens');
+  if(images.length === 0){
     grid.innerHTML = '';
     empty.style.display = 'block';
     return;
   }
   empty.style.display = 'none';
-  grid.innerHTML = atImages.map(img => `
+  grid.innerHTML = images.map(img => `
     <div class="at-card">
-      <img src="${img.dataUrl}" onclick="atOpenLightbox('${img.id}')">
-      <input class="at-card-cap" value="${(img.caption||'').replace(/"/g,'&quot;')}" placeholder="Adicionar legenda..." oninput="atUpdateCaption('${img.id}', this.value)">
-      <button class="at-card-del" onclick="atDeleteImage('${img.id}')" title="Remover">✕</button>
+      <img src="${img.dataUrl}" onclick="atOpenLightbox('${sec}', '${img.id}')">
+      <input class="at-card-cap" value="${(img.caption||'').replace(/"/g,'&quot;')}" placeholder="Adicionar legenda..." oninput="atUpdateCaption('${sec}', '${img.id}', this.value)">
+      <button class="at-card-del" onclick="atDeleteImage('${sec}', '${img.id}')" title="Remover">✕</button>
     </div>
   `).join('');
 }
 
-function atResizeAndStore(file){
+function atResizeAndStore(sec, file){
   const reader = new FileReader();
   reader.onload = (e) => {
     const imgEl = new Image();
@@ -1674,49 +1742,51 @@ function atResizeAndStore(file){
       const ctx = canvas.getContext('2d');
       ctx.drawImage(imgEl, 0, 0, w, h);
       const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-      atImages.unshift({ id: 'at_' + Date.now() + '_' + Math.random().toString(36).slice(2,8), name: file.name, caption: '', dataUrl: dataUrl });
-      atSave();
-      atRender();
+      atState[sec].unshift({ id: 'at_' + Date.now() + '_' + Math.random().toString(36).slice(2,8), name: file.name, caption: '', dataUrl: dataUrl });
+      atSave(sec);
+      atRender(sec);
     };
     imgEl.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
 
-function atHandleFiles(fileList){
+function atHandleFiles(sec, fileList){
   Array.from(fileList).forEach(file => {
-    if(file.type.startsWith('image/')) atResizeAndStore(file);
+    if(file.type.startsWith('image/')) atResizeAndStore(sec, file);
   });
 }
 
-function atDeleteImage(id){
-  atImages = atImages.filter(img => img.id !== id);
-  atSave();
-  atRender();
+function atDeleteImage(sec, id){
+  atState[sec] = atState[sec].filter(img => img.id !== id);
+  atSave(sec);
+  atRender(sec);
 }
 
-function atUpdateCaption(id, value){
-  const img = atImages.find(im => im.id === id);
-  if(img){ img.caption = value; atSave(); }
+function atUpdateCaption(sec, id, value){
+  const img = atState[sec].find(im => im.id === id);
+  if(img){ img.caption = value; atSave(sec); }
 }
 
-function atClearAll(){
-  if(confirm('Remover todas as imagens da Análise Técnica? Esta ação não pode ser desfeita.')){
-    atImages = [];
-    atSave();
-    atRender();
+function atClearAll(sec){
+  if(confirm('Remover todas as imagens desta galeria? Esta ação não pode ser desfeita.')){
+    atState[sec] = [];
+    atSave(sec);
+    atRender(sec);
   }
 }
 
-function atOpenLightbox(id){
-  const img = atImages.find(im => im.id === id);
+function atOpenLightbox(sec, id){
+  const img = atState[sec].find(im => im.id === id);
   if(!img) return;
+  atLightboxSection = sec;
   document.getElementById('atLightboxImg').src = img.dataUrl;
   document.getElementById('atLightboxCaption').textContent = img.caption || img.name || '';
   document.getElementById('atLightbox').classList.add('open');
 }
 function atCloseLightbox(){
   document.getElementById('atLightbox').classList.remove('open');
+  atLightboxSection = null;
 }
 window.atClearAll = atClearAll;
 window.atDeleteImage = atDeleteImage;
@@ -1734,50 +1804,45 @@ document.addEventListener('keydown', (e) => {
   if(e.key === 'Escape') atCloseLightbox();
 });
 
-const atFileInput = document.getElementById('atFileInput');
-if(atFileInput){
-  atFileInput.addEventListener('change', (e) => {
-    atHandleFiles(e.target.files);
-    e.target.value = '';
-  });
-}
-const atDropzone = document.getElementById('atDropzone');
-if(atDropzone){
-  atDropzone.addEventListener('click', () => atFileInput.click());
-  atDropzone.addEventListener('dragover', (e) => { e.preventDefault(); atDropzone.classList.add('dragover'); });
-  atDropzone.addEventListener('dragleave', () => atDropzone.classList.remove('dragover'));
-  atDropzone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    atDropzone.classList.remove('dragover');
-    atHandleFiles(e.dataTransfer.files);
-  });
-}
-
-// Colar (Ctrl+V) um print copiado direto pra aba Análise Técnica — só age
-// quando essa aba está ativa, pra não capturar paste em textareas/inputs
-// de outras abas (ex.: Anotações). Funciona colando em qualquer lugar da
-// página, não só dentro da dropzone (foco não é obrigatório).
-document.addEventListener('paste', (e) => {
-  const painel = document.getElementById('tab-analise-tecnica');
-  if(!painel || !painel.classList.contains('active')) return;
-  const active = document.activeElement;
-  if(active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
-  const items = (e.clipboardData || window.clipboardData)?.items;
-  if(!items) return;
-  const files = [];
-  for(const item of items){
-    if(item.kind === 'file' && item.type.startsWith('image/')){
-      const file = item.getAsFile();
-      if(file) files.push(file);
-    }
+AT_SECTIONS.forEach(sec => {
+  const fileInput = document.getElementById('atFileInput_' + sec);
+  const dropzone = document.getElementById('atDropzone_' + sec);
+  if(fileInput){
+    fileInput.addEventListener('change', (e) => {
+      atHandleFiles(sec, e.target.files);
+      e.target.value = '';
+    });
   }
-  if(files.length){
-    e.preventDefault();
-    atHandleFiles(files);
+  if(dropzone){
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      atHandleFiles(sec, e.dataTransfer.files);
+    });
+    // Colar (Ctrl+V) um print direto nesta galeria — exige a dropzone
+    // focada (clique nela antes de colar), assim cada uma das 3 galerias
+    // recebe só o que foi colado especificamente ali.
+    dropzone.addEventListener('paste', (e) => {
+      const items = (e.clipboardData || window.clipboardData)?.items;
+      if(!items) return;
+      const files = [];
+      for(const item of items){
+        if(item.kind === 'file' && item.type.startsWith('image/')){
+          const file = item.getAsFile();
+          if(file) files.push(file);
+        }
+      }
+      if(files.length){
+        e.preventDefault();
+        atHandleFiles(sec, files);
+      }
+    });
   }
+  atRender(sec);
 });
-
-atRender();
 </script>
 
 <script>
