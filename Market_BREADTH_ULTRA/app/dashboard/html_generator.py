@@ -681,7 +681,7 @@ tr:hover td{{
   <button class="tab-btn active" onclick="showTab('sma',this)">Medias Moveis</button>
   <button class="tab-btn tab-rsi" onclick="showTab('rsi',this)">RSI Breadth</button>
   <button class="tab-btn tab-idx" onclick="showTab('idx',this)">Amplitude por Indices</button>
-  <a class="tab-btn tab-gamma" href="../gamma/" target="_blank" rel="noopener" title="Abre o Gamma Screener em nova aba">&#9889; Gamma Screener</a>
+  <button class="tab-btn tab-gamma" onclick="showTab('gamma',this)">&#9889; Gamma Screener</button>
 </div>
 
 <!-- ═══════════════════════════════════════════════════ TAB SMA -->
@@ -826,6 +826,10 @@ tr:hover td{{
 
   <div class="cards" style="padding-top:4px" id="idx-cards"></div>
 
+</div>
+
+<div id="tab-gamma" class="tab-content">
+  <iframe id="gamma-iframe" src="" style="width:100%;height:calc(100vh - 210px);border:none;display:block;background:#0d1117"></iframe>
 </div>
 
 <div class="footer">IBOV Market Breadth &mdash; dados via Yahoo Finance / B3 &mdash; {now}</div>
@@ -1062,6 +1066,8 @@ function showTab(id, btn){{
       buildRsiChart();
     }} else if(id==="idx"){{
       buildIdxChart();
+    }} else if(id==="gamma"){{
+      document.getElementById("gamma-iframe").src = "../gamma/";
     }}
   }}
 }}
