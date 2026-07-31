@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Screener de Gamma Flip — B3</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+  /* Paleta igual a do Macro Desk Principal (unified_server.py do Hub):
+     fundo estilo GitHub-dark, azul #00BFFF como accent principal (mesmo
+     tom usado em IBOV Calls/SmartMoneyBR), dourado #c9a227 como segundo
+     accent (mesmo tom usado no Intermarket), verde/vermelho do ticker do
+     Hub pra positivo/negativo. */
+  /* Escuro sempre por padrao (o Hub nao tem modo claro, independente do
+     SO/navegador) -- so vira claro se alguem forcar data-theme="light". */
+  :root {
+    color-scheme: dark;
+    --page: #0d1117;
+    --surface: #161b22;
+    --text-primary: #e6edf3;
+    --text-secondary: #c9d1d9;
+    --text-muted: #8b949e;
+    --gridline: #21262d;
+    --baseline: #30363d;
+    --border: #21262d;
+    --good: #26a69a;
+    --critical: #ef5350;
+    --call: #00bfff;
+    --put: #c9a227;
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --page: #f6f8fa;
+    --surface: #ffffff;
+    --text-primary: #1f2328;
+    --text-secondary: #57606a;
+    --text-muted: #6e7781;
+    --gridline: #d0d7de;
+    --baseline: #afb8c1;
+    --border: #d0d7de;
+    --good: #0e8a6d;
+    --critical: #cf222e;
+    --call: #0969da;
+    --put: #9a7d0a;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--page);
+    color: var(--text-primary);
+    padding: 24px;
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+  header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px; }
+  h1 { font-size: 1.4rem; font-weight: 700; margin: 0; }
+  .subtitle { color: var(--text-secondary); font-size: 0.85rem; margin-top: 4px; }
+  .updated { color: var(--text-muted); font-size: 0.78rem; }
+
+  .refresh-btn {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-primary);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .refresh-btn:hover { border-color: var(--text-muted); }
+  .refresh-btn:disabled { opacity: 0.5; cursor: default; }
+
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; }
+  .badge {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    background: var(--surface);
+  }
+  .badge.good { color: var(--good); border-color: var(--good); }
+  .badge.critical { color: var(--critical); border-color: var(--critical); }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .card h2 { font-size: 0.95rem; font-weight: 600; margin: 0 0 2px 0; }
+  .card .desc { color: var(--text-secondary); font-size: 0.78rem; margin: 0 0 12px 0; }
+
+  .toggle-group { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .toggle-btn {
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+  .toggle-btn.active { background: var(--call); border-color: var(--call); color: #fff; }
+
+  .metrics-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .metric { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .metric .label { font-size: 0.72rem; color: var(--text-muted); }
+  .metric .value { font-size: 1.25rem; font-weight: 700; margin-top: 2px; }
+  .metric .sub { font-size: 0.72rem; color: var(--text-secondary); margin-top: 2px; }
+
+  .plot { width: 100%; }
+
+  .table-toggle { font-size: 0.75rem; color: var(--text-secondary); cursor: pointer; text-decoration: underline; margin-top: 8px; display: inline-block; }
+  table.data-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; margin-top: 10px; display: none; }
+  table.data-table.show { display: table; }
+  table.data-table th, table.data-table td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--gridline); font-variant-numeric: tabular-nums; }
+  table.data-table th:first-child, table.data-table td:first-child { text-align: left; }
+
+  .disclaimer {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    border-top: 1px solid var(--gridline);
+    padding-top: 12px;
+    line-height: 1.5;
+  }
+
+  .error-box { color: var(--critical); font-size: 0.85rem; }
+
+  .card-header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .info-wrap { position: relative; flex-shrink: 0; }
+  .info-btn {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    cursor: help;
+    padding: 0;
+  }
+  .info-btn:hover { border-color: var(--call); color: var(--call); }
+  .info-tooltip {
+    display: none;
+    position: absolute;
+    top: 26px; right: 0;
+    width: 320px;
+    max-width: min(320px, 80vw);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 0.76rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    text-align: left;
+    z-index: 50;
+  }
+  .info-wrap:hover .info-tooltip { display: block; }
+  .info-tooltip strong { color: var(--text-primary); display: block; margin-top: 10px; font-size: 0.8rem; }
+  .info-tooltip strong:first-child { margin-top: 0; }
+
+  .back-link { font-size: 0.85rem; color: var(--text-secondary); cursor: pointer; text-decoration: underline; }
+
+  table.screener-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  table.screener-table th { text-align: right; padding: 8px 10px; color: var(--text-muted); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; border-bottom: 1px solid var(--gridline); }
+  table.screener-table td { text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--gridline); font-variant-numeric: tabular-nums; }
+  table.screener-table th:first-child, table.screener-table td:first-child { text-align: left; }
+  table.screener-table tbody tr { cursor: pointer; }
+  table.screener-table tbody tr:hover { background: var(--page); }
+  .ticker-name { display: block; font-size: 0.72rem; color: var(--text-muted); font-variant-numeric: normal; }
+  .regime-pill { font-size: 0.72rem; padding: 3px 8px; border-radius: 999px; border: 1px solid; }
+  .regime-pill.good { color: var(--good); border-color: var(--good); }
+  .regime-pill.critical { color: var(--critical); border-color: var(--critical); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="screenerView">
+    <header>
+      <div>
+        <h1>Screener de Gamma Flip — B3</h1>
+        <div class="subtitle">Open Interest oficial da B3 · os 60 ativos com opções mais líquidos, ranqueados por OI total</div>
+      </div>
+      <div style="text-align:right">
+        <button class="refresh-btn" id="screenerRefreshBtn">Atualizar</button>
+        <div class="updated" id="screenerUpdatedAt"></div>
+      </div>
+    </header>
+    <div class="badges" id="screenerBadges" style="margin: 10px 0"></div>
+    <div class="card">
+      <div style="overflow-x:auto">
+        <table class="screener-table" id="screenerTable">
+          <thead>
+            <tr>
+              <th>Ativo</th>
+              <th>Spot</th>
+              <th>Gamma Flip</th>
+              <th>Distância</th>
+              <th>Regime</th>
+              <th>GEX líquido</th>
+            </tr>
+          </thead>
+          <tbody id="screenerBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="detailView" style="display:none">
+  <span class="back-link" id="backToScreener">← Screener (30 ativos)</span>
+
+  <header>
+    <div>
+      <h1 id="detailTitle">BOVA11 — Cockpit de GEX / Gamma Flip</h1>
+      <div class="subtitle" id="subtitle">Dados reais de opções da B3</div>
+    </div>
+    <div style="text-align:right">
+      <button class="refresh-btn" id="refreshBtn">Atualizar</button>
+      <div class="updated" id="updatedAt"></div>
+    </div>
+  </header>
+
+  <div class="badges" id="badges"></div>
+
+  <div class="metrics-row" id="metrics"></div>
+
+  <div class="card">
+    <div class="card-header-row">
+      <div>
+        <h2>Cockpit de GEX</h2>
+        <p class="desc">Alterne entre GEX líquido, CALL x PUT, posicionamento por strike e GEX cumulativo sem sair do mesmo recorte.</p>
+      </div>
+      <div class="info-wrap">
+        <button class="info-btn" type="button" aria-label="O que cada modo mostra">?</button>
+        <div class="info-tooltip">
+          <strong>GEX líquido</strong>
+          Eixo: R$. Exposição de gamma ponderada — call contribui positivo, put negativo, somados num valor só por strike. Decide o regime (positivo/negativo) e de onde saem o Gamma Flip e os Call Wall/Put Wall.
+          <strong>CALL x PUT</strong>
+          Eixo: também R$, mas sem somar — call e put lado a lado, sem cancelar um com o outro. Use quando um strike chamar atenção no GEX líquido e você quiser saber se é call ou put que domina ali.
+          <strong>NET Open Interest</strong>
+          Eixo: contratos (OI real, sem peso de gamma). Mostra o desequilíbrio bruto de posicionamento — revela OI concentrado longe do spot que hoje não pesa no gamma, mas pode passar a pesar se o preço se aproximar.
+          <strong>Fluxo sugerido</strong>
+          GEX líquido pro regime geral → CALL x PUT pra ver a origem de um pico → NET Open Interest pra saber se é uma posição grande de verdade ou só efeito de proximidade do gamma.
+        </div>
+      </div>
+    </div>
+    <div class="toggle-group" id="toggleGroup">
+      <button class="toggle-btn active" data-mode="net">GEX líquido</button>
+      <button class="toggle-btn" data-mode="callput">CALL x PUT</button>
+      <button class="toggle-btn" data-mode="volume" id="weightModeBtn">NET Open Interest</button>
+      <button class="toggle-btn" data-mode="cumulative">GEX cumulativo</button>
+    </div>
+    <div id="cockpitChart" class="plot" style="height:420px"></div>
+    <span class="table-toggle" data-target="cockpitTable">ver tabela</span>
+    <table class="data-table" id="cockpitTable"></table>
+  </div>
+
+  <div class="card">
+    <div class="card-header-row">
+      <div>
+        <h2>Perfil do GEX — Gamma Exposure</h2>
+        <p class="desc">Cenário com Open Interest, volatilidade implícita e prazo constantes, simulado em ±30% do spot. Mostra o preço em que a exposição líquida de gamma muda de sinal.</p>
+      </div>
+      <div class="info-wrap">
+        <button class="info-btn" type="button" aria-label="Gamma Flip x Zero Gamma">?</button>
+        <div class="info-tooltip">
+          <strong>Gamma Flip</strong>
+          É uma simulação de preço: recalcula o gamma de toda a cadeia (mesmo OI, mesma volatilidade de hoje) pra vários preços hipotéticos dentro de ±30% do spot. O nível onde a soma total muda de sinal é o Gamma Flip — responde "quanto o preço precisa se mover pra mudar de regime".
+          <strong>Zero Gamma (por strike)</strong>
+          É diferente: não simula preço nenhum. Pega o GEX de hoje calculado no spot atual (fixo) pra cada strike, soma acumulado do menor pro maior strike, e vê onde essa soma cruza zero. É uma estatística sobre como o book de hoje está distribuído pelos strikes, não um preço-alvo.
+          <strong>Por que dão números diferentes</strong>
+          Um varre preços simulados recalculando gamma; o outro soma valores fixos percorrendo strikes. Não há motivo pra baterem — principalmente com OI real distribuído de forma irregular. Use o Gamma Flip como o nível que importa; trate o Zero Gamma por strike como contexto.
+        </div>
+      </div>
+    </div>
+    <div id="profileChart" class="plot" style="height:380px"></div>
+    <span class="table-toggle" data-target="profileTable">ver tabela</span>
+    <table class="data-table" id="profileTable"></table>
+  </div>
+
+  <div class="disclaimer" id="disclaimer"></div>
+
+  </div>
+
+</div>
+
+<script>
+const fmtBRL = (v) => {
+  const abs = Math.abs(v);
+  const sign = v < 0 ? '-' : '';
+  if (abs >= 1e9) return `${sign}R$ ${(abs/1e9).toFixed(2)} bi`;
+  if (abs >= 1e6) return `${sign}R$ ${(abs/1e6).toFixed(2)} mi`;
+  if (abs >= 1e3) return `${sign}R$ ${(abs/1e3).toFixed(1)} mil`;
+  return `${sign}R$ ${abs.toFixed(0)}`;
+};
+const fmtPrice = (v) => v == null ? '—' : `R$ ${v.toFixed(2)}`;
+
+function isDark() {
+  const t = document.documentElement.getAttribute('data-theme');
+  if (t === 'dark') return true;
+  if (t === 'light') return false;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+let currentData = null;
+let currentMode = 'net';
+let currentTicker = 'BOVA11';
+let currentRoot = 'BOVA';
+
+function showScreener() {
+  document.getElementById('screenerView').style.display = '';
+  document.getElementById('detailView').style.display = 'none';
+}
+
+function showDetail(ticker, root) {
+  currentTicker = ticker;
+  currentRoot = root;
+  document.getElementById('detailTitle').textContent = `${ticker} — Cockpit de GEX / Gamma Flip`;
+  document.getElementById('screenerView').style.display = 'none';
+  document.getElementById('detailView').style.display = '';
+  fetchData(false);
+}
+
+async function fetchData(force) {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+  btn.textContent = 'Atualizando...';
+  try {
+    const params = new URLSearchParams({ ticker: currentTicker, root: currentRoot });
+    if (force) params.set('force', '1');
+    const r = await fetch(`api/gex?${params}`);
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+    currentData = data;
+    render();
+  } catch (e) {
+    document.getElementById('badges').innerHTML = `<div class="error-box">Erro ao buscar dados: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Atualizar';
+  }
+}
+
+function fmtPct(v) {
+  return v == null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
+}
+
+async function fetchScreener(force) {
+  const btn = document.getElementById('screenerRefreshBtn');
+  btn.disabled = true;
+  btn.textContent = 'Atualizando...';
+  try {
+    const r = await fetch(`api/screener${force ? '?force=1' : ''}`);
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+    renderScreener(data);
+  } catch (e) {
+    document.getElementById('screenerBadges').innerHTML = `<div class="error-box">Erro ao buscar dados: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Atualizar';
+  }
+}
+
+function renderScreener(data) {
+  document.getElementById('screenerUpdatedAt').textContent = `Atualizado ${new Date(data.updated_at).toLocaleString('pt-BR')}`;
+  document.getElementById('screenerBadges').innerHTML = `
+    <span class="badge">OI referente a ${new Date(data.oi_reference_date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+    ${data.fetch_error ? `<span class="badge critical">dado em cache (falha ao atualizar: ${data.fetch_error})</span>` : ''}
+  `;
+
+  const body = document.getElementById('screenerBody');
+  body.innerHTML = data.rows.map(r => {
+    if (r.error) {
+      return `<tr><td>${r.ticker}<span class="ticker-name">${r.name || ''}</span></td><td colspan="5" class="error-box">erro: ${r.error}</td></tr>`;
+    }
+    const good = r.gex_net_total >= 0;
+    return `
+      <tr data-ticker="${r.ticker}" data-root="${r.root}">
+        <td>${r.ticker}<span class="ticker-name">${r.name}</span></td>
+        <td>${fmtPrice(r.spot)}</td>
+        <td>${fmtPrice(r.gamma_flip)}</td>
+        <td>${fmtPct(r.distance_pct)}</td>
+        <td><span class="regime-pill ${good ? 'good' : 'critical'}">${good ? 'Positivo' : 'Negativo'}</span></td>
+        <td>${fmtBRL(r.gex_net_total)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  body.querySelectorAll('tr[data-ticker]').forEach(tr => {
+    tr.addEventListener('click', () => showDetail(tr.dataset.ticker, tr.dataset.root));
+  });
+}
+
+function render() {
+  const d = currentData;
+  document.getElementById('updatedAt').textContent = `Atualizado ${new Date(d.updated_at).toLocaleString('pt-BR')}`;
+  document.getElementById('subtitle').textContent = `Dados reais de opções da B3 · fonte: ${d.source_label}`;
+  document.getElementById('weightModeBtn').textContent = `NET ${d.weight_label}`;
+
+  const regimeGood = d.gex_net_total >= 0;
+  document.getElementById('badges').innerHTML = `
+    <span class="badge ${regimeGood ? 'good' : 'critical'}">${regimeGood ? 'GEX positivo — estabiliza' : 'GEX negativo — amplifica vol'}</span>
+    <span class="badge">±30% do spot</span>
+    <span class="badge">${d.n_legs} séries com ${d.weight_label.toLowerCase()} > 0</span>
+    ${d.oi_reference_date ? `<span class="badge">OI referente a ${new Date(d.oi_reference_date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>` : ''}
+    ${d.fetch_error ? `<span class="badge critical">dado em cache (falha ao atualizar: ${d.fetch_error})</span>` : ''}
+  `;
+
+  const metrics = [
+    [`Spot ${d.symbol}`, fmtPrice(d.spot), null],
+    ['Gamma Flip', fmtPrice(d.gamma_flip), d.gamma_flip != null ? `${((d.gamma_flip/d.spot-1)*100).toFixed(1)}%` : null],
+    ['Zero Gamma (por strike)', fmtPrice(d.zero_gamma_strike), d.zero_gamma_strike != null ? `${((d.zero_gamma_strike/d.spot-1)*100).toFixed(1)}%` : null],
+    ['Call Wall', fmtPrice(d.call_wall), d.call_wall != null ? `${((d.call_wall/d.spot-1)*100).toFixed(1)}%` : null],
+    ['Put Wall', fmtPrice(d.put_wall), d.put_wall != null ? `${((d.put_wall/d.spot-1)*100).toFixed(1)}%` : null],
+    ['GEX líquido total', fmtBRL(d.gex_net_total), null],
+    [`IV atual (${d.symbol})`, `${d.iv_current.toFixed(1)}%`, null],
+  ];
+  document.getElementById('metrics').innerHTML = metrics.map(([label, value, sub]) => `
+    <div class="metric">
+      <div class="label">${label}</div>
+      <div class="value">${value}</div>
+      ${sub ? `<div class="sub">${sub}</div>` : ''}
+    </div>
+  `).join('');
+
+  document.getElementById('disclaimer').innerHTML = d.methodology_note;
+
+  renderCockpit();
+  renderProfile();
+}
+
+function plotlyLayoutBase(extra) {
+  const dark = isDark();
+  return Object.assign({
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    font: { family: 'system-ui, -apple-system, "Segoe UI", sans-serif', color: cssVar('--text-secondary'), size: 12 },
+    margin: { l: 60, r: 20, t: 75, b: 40 },
+    xaxis: { gridcolor: cssVar('--gridline'), zerolinecolor: cssVar('--baseline'), linecolor: cssVar('--baseline') },
+    yaxis: { gridcolor: cssVar('--gridline'), zerolinecolor: cssVar('--baseline'), linecolor: cssVar('--baseline') },
+    legend: { orientation: 'h', y: 1.28 },
+    hovermode: 'x unified',
+  }, extra || {});
+}
+
+// Strikes reais tem espacamento irregular (as vezes R$0,01, as vezes R$0,20
+// no mesmo ativo). Eixo numerico faz o Plotly calcular uma largura de barra
+// unica que fica larga demais nos strikes mais proximos, sobrepondo barras
+// vizinhas ate ficarem ilegiveis (misturam verde+vermelho = preto). Eixo
+// categorico da espacamento igual pra cada strike, sem sobreposicao nunca.
+function categoryIndexFor(value, sortedValues) {
+  if (value == null || sortedValues.length === 0) return null;
+  if (value <= sortedValues[0]) return 0;
+  if (value >= sortedValues[sortedValues.length - 1]) return sortedValues.length - 1;
+  for (let i = 0; i < sortedValues.length - 1; i++) {
+    if (value >= sortedValues[i] && value <= sortedValues[i + 1]) {
+      const span = sortedValues[i + 1] - sortedValues[i];
+      return span === 0 ? i : i + (value - sortedValues[i]) / span;
+    }
+  }
+  return sortedValues.length - 1;
+}
+
+function renderCockpit() {
+  const d = currentData;
+  const rows = d.by_strike;
+  const strikeValues = rows.map(r => r.strike);
+  const strikes = strikeValues.map(s => s.toFixed(2));
+  const call = cssVar('--call'), put = cssVar('--put'), good = cssVar('--good'), critical = cssVar('--critical');
+
+  let traces = [];
+  let tableCols, tableRows;
+
+  if (currentMode === 'net') {
+    const pos = rows.map(r => r.gex_net > 0 ? r.gex_net : 0);
+    const neg = rows.map(r => r.gex_net < 0 ? r.gex_net : 0);
+    traces = [
+      { x: strikes, y: pos, type: 'bar', name: 'GEX positivo (estabiliza)', marker: { color: good }, hovertemplate: 'Strike R$ %{x}<br>%{y:,.0f}<extra></extra>' },
+      { x: strikes, y: neg, type: 'bar', name: 'GEX negativo (amplifica)', marker: { color: critical }, hovertemplate: 'Strike R$ %{x}<br>%{y:,.0f}<extra></extra>' },
+    ];
+    tableCols = ['Strike', 'GEX líquido'];
+    tableRows = rows.map(r => [fmtPrice(r.strike), fmtBRL(r.gex_net)]);
+  } else if (currentMode === 'callput') {
+    traces = [
+      { x: strikes, y: rows.map(r => r.gex_call), type: 'bar', name: 'GEX Call', marker: { color: call } },
+      { x: strikes, y: rows.map(r => -r.gex_put), type: 'bar', name: 'GEX Put', marker: { color: put } },
+    ];
+    tableCols = ['Strike', 'GEX Call', 'GEX Put'];
+    tableRows = rows.map(r => [fmtPrice(r.strike), fmtBRL(r.gex_call), fmtBRL(r.gex_put)]);
+  } else if (currentMode === 'volume') {
+    const label = d.weight_label;
+    const netW = rows.map(r => r.weight_call - r.weight_put);
+    const pos = netW.map(v => v > 0 ? v : 0);
+    const neg = netW.map(v => v < 0 ? v : 0);
+    traces = [
+      { x: strikes, y: pos, type: 'bar', name: 'Net Call > Put', marker: { color: good }, hovertemplate: 'Strike R$ %{x}<br>%{y:,.0f}<extra></extra>' },
+      { x: strikes, y: neg, type: 'bar', name: 'Net Put > Call', marker: { color: critical }, hovertemplate: 'Strike R$ %{x}<br>%{y:,.0f}<extra></extra>' },
+    ];
+    tableCols = ['Strike', `Net ${label} (Call − Put)`];
+    tableRows = rows.map((r, i) => [fmtPrice(r.strike), netW[i]]);
+  } else if (currentMode === 'cumulative') {
+    let cum = 0;
+    const cumVals = rows.map(r => (cum += r.gex_net));
+    traces = [
+      { x: strikes, y: cumVals, type: 'scatter', mode: 'lines', name: 'GEX cumulativo', line: { color: call, width: 2 }, fill: 'tozeroy', fillcolor: hexToRgba(call, 0.10) },
+    ];
+    tableCols = ['Strike', 'GEX cumulativo'];
+    tableRows = rows.map((r, i) => [fmtPrice(r.strike), fmtBRL(cumVals[i])]);
+  }
+
+  const shapes = buildVlines([
+    { x: categoryIndexFor(d.spot, strikeValues), label: `Spot R$ ${d.spot.toFixed(2)}`, color: cssVar('--text-primary') },
+    { x: categoryIndexFor(d.zero_gamma_strike, strikeValues), label: `Zero Gamma R$ ${d.zero_gamma_strike?.toFixed(2)}`, color: call },
+  ], true);
+
+  const layout = plotlyLayoutBase({
+    barmode: currentMode === 'net' || currentMode === 'callput' || currentMode === 'volume' ? 'relative' : undefined,
+    bargap: 0.25,
+    xaxis: { title: 'Strike (R$)', type: 'category', tickmode: 'auto', nticks: 15, gridcolor: cssVar('--gridline'), zerolinecolor: cssVar('--baseline'), linecolor: cssVar('--baseline') },
+    yaxis: { title: currentMode === 'volume' ? `Net ${d.weight_label} (contratos)` : 'GEX (R$)', gridcolor: cssVar('--gridline'), zerolinecolor: cssVar('--baseline'), linecolor: cssVar('--baseline') },
+    shapes: shapes.map(s => s.shape),
+    annotations: shapes.map(s => s.annotation),
+  });
+
+  Plotly.react('cockpitChart', traces, layout, { displayModeBar: false, responsive: true });
+
+  const table = document.getElementById('cockpitTable');
+  table.innerHTML = `<thead><tr>${tableCols.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${
+    tableRows.map(r => `<tr>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')
+  }</tbody>`;
+}
+
+function renderProfile() {
+  const d = currentData;
+  const p = d.profile;
+  const good = cssVar('--good'), critical = cssVar('--critical');
+
+  const traces = [
+    { x: p.spots, y: p.pos, type: 'scatter', mode: 'lines', name: 'GEX positivo', line: { color: good, width: 2 }, fill: 'tozeroy', fillcolor: hexToRgba(good, 0.12) },
+    { x: p.spots, y: p.neg, type: 'scatter', mode: 'lines', name: 'GEX negativo', line: { color: critical, width: 2 }, fill: 'tozeroy', fillcolor: hexToRgba(critical, 0.12) },
+    { x: p.spots, y: p.net, type: 'scatter', mode: 'lines', name: 'GEX líquido', line: { color: cssVar('--text-primary'), width: 1, dash: 'dot' } },
+  ];
+
+  const shapes = buildVlines([
+    { x: d.spot, color: cssVar('--text-primary'), label: 'Spot' },
+    { x: d.gamma_flip, color: cssVar('--call'), label: 'Gamma Flip' },
+  ]);
+
+  const layout = plotlyLayoutBase({
+    xaxis: { title: `Preço simulado de ${d.symbol} (R$)`, gridcolor: cssVar('--gridline'), zerolinecolor: cssVar('--baseline'), linecolor: cssVar('--baseline') },
+    yaxis: { title: 'GEX (R$)', gridcolor: cssVar('--gridline'), zerolinecolor: cssVar('--baseline'), linecolor: cssVar('--baseline') },
+    shapes: shapes.map(s => s.shape),
+    annotations: shapes.map(s => s.annotation),
+  });
+
+  Plotly.react('profileChart', traces, layout, { displayModeBar: false, responsive: true });
+
+  const table = document.getElementById('profileTable');
+  table.innerHTML = `<thead><tr><th>Spot simulado</th><th>GEX líquido</th></tr></thead><tbody>${
+    p.spots.filter((_, i) => i % 6 === 0).map((s, idx) => {
+      const i = idx * 6;
+      return `<tr><td>${fmtPrice(s)}</td><td>${fmtBRL(p.net[i])}</td></tr>`;
+    }).join('')
+  }</tbody>`;
+}
+
+// Cada linha de referencia (Spot, Flip, Zero Gamma) fica numa altura fixa e
+// diferente das outras, pra rotulo nunca colidir mesmo quando os valores
+// (em x) estao muito proximos uns dos outros.
+const VLINE_Y_LEVELS = [1.16, 1.06, 0.96];
+
+function buildVlines(items, preLabeled) {
+  return items
+    .filter(it => it.x != null)
+    .map((it, i) => {
+      const y = VLINE_Y_LEVELS[i] ?? VLINE_Y_LEVELS[VLINE_Y_LEVELS.length - 1];
+      const text = preLabeled ? it.label : `${it.label} R$ ${it.x.toFixed(2)}`;
+      return {
+        shape: { type: 'line', x0: it.x, x1: it.x, y0: 0, y1: 1, yref: 'paper', line: { color: it.color, width: 2, dash: 'dash' } },
+        annotation: { x: it.x, y, yref: 'paper', text, showarrow: false, xanchor: 'left', font: { size: 10, color: it.color } },
+      };
+    });
+}
+
+function hexToRgba(hex, alpha) {
+  hex = hex.replace('#', '');
+  const r = parseInt(hex.substring(0,2), 16), g = parseInt(hex.substring(2,4), 16), b = parseInt(hex.substring(4,6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+document.getElementById('refreshBtn').addEventListener('click', () => fetchData(true));
+document.getElementById('screenerRefreshBtn').addEventListener('click', () => fetchScreener(true));
+document.getElementById('backToScreener').addEventListener('click', showScreener);
+document.getElementById('toggleGroup').addEventListener('click', (e) => {
+  const btn = e.target.closest('.toggle-btn');
+  if (!btn) return;
+  document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentMode = btn.dataset.mode;
+  renderCockpit();
+});
+document.querySelectorAll('.table-toggle').forEach(el => {
+  el.addEventListener('click', () => {
+    document.getElementById(el.dataset.target).classList.toggle('show');
+  });
+});
+
+showScreener();
+fetchScreener(false);
+</script>
+</body>
+</html>

@@ -36,5 +36,9 @@ auth/.session_secret
 # Arquivos de configuração local do Claude
 .claude/
 
+# Credenciais da API OpLab (GammaScreener) — nunca no git, provisionar por ambiente
+GammaScreener/.env
+.env
+
 # Imagens e binários pesados desnecessários
 docs/Tradingview_Fundos_Exemplo.bmp

@@ -12,6 +12,7 @@ Proxy reverso integrado: tudo passa pela porta 8000 (compativel com ngrok/Tailsc
    http://<host>:8000/rrg/         -> RRGCOMPLETO (Rotação Relativa) (proxy -> :8014)
    http://<host>:8000/smartmoney/  -> SmartMoneyBR (Next.js :3100 + FastAPI :8100 interno via rewrite)
   http://<host>:8000/macroregime/ -> Macro Cycle Intelligence Terminal (proxy -> :8015)
+  http://<host>:8000/gamma/       -> GammaScreener (Gamma Flip/GEX B3) (proxy -> :8017)
 """
 from __future__ import annotations
 import asyncio
@@ -74,6 +75,16 @@ WRANGLER_CMD = "wrangler.cmd" if sys.platform == "win32" else "wrangler"
 # proprio .venv (so Flask), mesmo padrao do IbovCalls/RRG/etc.
 PORTFOLIO_DIR = BASE / "Portfolio"
 
+# GammaScreener (screener de Gamma Flip/GEX real dos 30-60 ativos mais
+# liquidos da B3, via OI oficial da B3 + spot/IV da OpLab) — 31/jul/2026,
+# promovido de standalone (Downloads/TestCarlao/bova11_gamma_flip) pra modulo
+# de verdade do Hub. Nao tem botao proprio na nav do shell: e acessado via
+# botao "Gamma Screener" dentro da propria pagina do Market Breadth Ultra
+# (ver Market_BREADTH_ULTRA/app/dashboard/html_generator.py), que abre
+# /gamma/ em nova aba. Precisa de GammaScreener/.env com OPLAB_EMAIL/
+# OPLAB_PASSWORD (nunca commitado, ver .gitignore).
+GAMMA_DIR = BASE / "GammaScreener"
+
 sys.path.insert(0, str(BASE))
 
 
@@ -94,6 +105,7 @@ PYTHON_4 = _venv_python(IBOV_DIR)
 PYTHON_5 = _venv_python(RRG_DIR)
 PYTHON_SM_BACKEND = _venv_python(SM_DIR / "backend")
 PYTHON_PORTFOLIO = _venv_python(PORTFOLIO_DIR)
+PYTHON_GAMMA = _venv_python(GAMMA_DIR)
 NPM_CMD = "npm.cmd" if sys.platform == "win32" else "npm"  # SmartMoneyBR frontend (Next.js)
 
 PORT_SHELL       = 8000
@@ -106,6 +118,7 @@ PORT_SMARTMONEY_BACKEND = 8100  # so o Next (rewrite) fala com essa porta, Hub n
 PORT_SMARTMONEY  = 3100         # frontend — é o que o Hub proxeia em /smartmoney/
 PORT_MACROREGIME = 8015
 PORT_PORTFOLIO   = 8016
+PORT_GAMMA       = 8017
 
 _procs: list[subprocess.Popen] = []
 
@@ -215,6 +228,13 @@ def _start_subservers() -> None:
             "cmd":  [PYTHON_PORTFOLIO, "server.py"],
             "cwd":  str(PORTFOLIO_DIR),
             "env":  {**__import__("os").environ, "PORTFOLIO_PORT": str(PORT_PORTFOLIO)},
+        },
+        {
+            "name": "GammaScreener",
+            "port": PORT_GAMMA,
+            "cmd":  [PYTHON_GAMMA, "server.py"],
+            "cwd":  str(GAMMA_DIR),
+            "env":  {**__import__("os").environ, "PORT": str(PORT_GAMMA)},
         },
     ]
 
@@ -2029,6 +2049,18 @@ async def proxy_portfolio(request: Request, path: str = "") -> Response:
     return await _proxy(request, f"http://127.0.0.1:{PORT_PORTFOLIO}", "/portfolio")
 
 
+@app.api_route("/gamma", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+@app.api_route("/gamma/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+async def proxy_gamma(request: Request, path: str = "") -> Response:
+    # Flask simples (GammaScreener). index.html usa fetch relativo sem barra
+    # inicial ("api/gex", nao "/api/gex") de proposito — o rewrite generico
+    # do _proxy so pega fetch('/ e fetch("/ com aspas, nao string relativa
+    # nem crase (ver feedback_hub_proxy_fetch_rewrite.md), entao fetch
+    # relativo evita depender do rewrite pra funcionar tanto aqui quanto
+    # rodando standalone fora do Hub.
+    return await _proxy(request, f"http://127.0.0.1:{PORT_GAMMA}", "/gamma")
+
+
 @app.get("/biblioteca")
 @app.get("/biblioteca/{path:path}")
 async def biblioteca(path: str = "") -> Response:
@@ -2505,6 +2537,7 @@ if __name__ == "__main__":
     print(f"  Ibov Calls  -> http://localhost:{PORT_IBOV}")
     print(f"  SmartMoney  -> http://localhost:{PORT_SMARTMONEY}")
     print(f"  MacroRegime -> http://localhost:{PORT_MACROREGIME}")
+    print(f"  Gamma       -> http://localhost:{PORT_GAMMA}")
     print("  ==========================================")
     print()
 

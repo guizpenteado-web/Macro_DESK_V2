@@ -493,6 +493,8 @@ body{{
 .tab-btn.tab-idx{{color:#5a3a8a}}
 .tab-btn.tab-idx:hover{{color:#a87ef8}}
 .tab-btn.tab-idx.active{{color:#a87ef8;border-bottom-color:#7c3aed}}
+.tab-btn.tab-gamma{{color:#b8860b;text-decoration:none;display:inline-flex;align-items:center}}
+.tab-btn.tab-gamma:hover{{color:#f0b429}}
 .tab-content{{display:none}}
 .tab-content.active{{display:block}}
 /* ─── CARDS ─── */
@@ -679,6 +681,7 @@ tr:hover td{{
   <button class="tab-btn active" onclick="showTab('sma',this)">Medias Moveis</button>
   <button class="tab-btn tab-rsi" onclick="showTab('rsi',this)">RSI Breadth</button>
   <button class="tab-btn tab-idx" onclick="showTab('idx',this)">Amplitude por Indices</button>
+  <a class="tab-btn tab-gamma" href="../gamma/" target="_blank" rel="noopener" title="Abre o Gamma Screener em nova aba">&#9889; Gamma Screener</a>
 </div>
 
 <!-- ═══════════════════════════════════════════════════ TAB SMA -->
