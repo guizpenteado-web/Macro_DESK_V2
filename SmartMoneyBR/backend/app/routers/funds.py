@@ -1,3 +1,4 @@
+import time
 from datetime import date, timedelta
 from typing import Literal
 
@@ -17,6 +18,35 @@ RETURN_WINDOW_DAYS = 370  # ~12 meses + folga p/ cobrir fundos com divulgacao at
 SortField = Literal[
     "name", "net_asset_value", "n_shareholders", "financials_ref_date", "return_pct_12m", "return_pct_mtd", "return_pct_ytd"
 ]
+
+# Achado 31/jul/2026: mesmo com sort+limit empurrado pro SQL (fix de 16/jul),
+# a pagina Fundos voltou a ficar lenta (3,5-9s) porque o "has_equity" (quais
+# fundos tem ao menos 1 posicao de equity, o unico escopo do app) era
+# recalculado do zero A CADA REQUEST via DISTINCT sobre fund_holdings (~8
+# milhoes de linhas, crescendo ~1x/mes via ingestao CDA) — e o pior, essa
+# mesma distinct scan aparecia DUAS VEZES no plano (uma pro JOIN com
+# fund_quota, outra pro WHERE em funds), sem contar que estatisticas do
+# planner desatualizadas (autovacuum nao alcança o limiar de 10% num tempo
+# razoavel numa tabela desse tamanho) faziam o Postgres as vezes escolher um
+# plano catastrofico (nested loop materializado, 72 milhoes de comparacoes
+# descartadas, medido em producao). fund_holdings so muda quando o job de
+# CDA roda (1-2x/dia) — mesmo padrao de cache TTL em memoria ja usado em
+# performance.py pra top-performers/evolution, aqui pro conjunto de
+# fund_ids com equity: transforma 1-2 distinct scans completos por request
+# numa lookup em memoria pra quase todo mundo.
+_HAS_EQUITY_CACHE_TTL = 3600.0
+_has_equity_cache: dict[str, float | set[int] | None] = {"ts": 0.0, "ids": None}
+
+
+def _has_equity_fund_ids(db: Session) -> set[int]:
+    now = time.time()
+    cached = _has_equity_cache["ids"]
+    if cached is not None and now - _has_equity_cache["ts"] < _HAS_EQUITY_CACHE_TTL:
+        return cached
+    ids = set(db.execute(select(FundHolding.fund_id).distinct()).scalars().all())
+    _has_equity_cache["ids"] = ids
+    _has_equity_cache["ts"] = now
+    return ids
 
 
 def _latest_fund_holdings_date(db: Session, fund_id: int) -> date | None:
@@ -178,16 +208,20 @@ def search_funds(
     # stock, so listing them here just leads to a fund page with permanently
     # empty tables. Restrict search to funds that have at least one recorded
     # equity holding (ever), which is the only subset this app has data for.
-    # Achado 16/jul/2026 (usado pelo GlobalSearch a cada tecla digitada,
-    # debounce de 250ms): quando "search" vem preenchido, filtra o texto
-    # AQUI (contra Fund.name/cnpj) antes do DISTINCT em fund_holdings (8
-    # milhoes de linhas) — sem isso o DISTINCT sempre escaneava a tabela
-    # inteira, mesmo pra uma busca especifica que so bate em poucos fundos.
-    has_equity_q = select(FundHolding.fund_id).distinct()
+    # Achado 31/jul/2026: has_equity vem agora do cache de 1h (ver
+    # _has_equity_fund_ids acima) em vez de um DISTINCT sobre fund_holdings
+    # a cada request — quando "search" vem preenchido, so intersecta esse
+    # set em memoria com os fund_ids que batem no nome/CNPJ (query pequena e
+    # separada, sem tocar fund_holdings de novo).
+    has_equity_ids = _has_equity_fund_ids(db)
     if search:
-        matching_fund_ids = select(Fund.id).where(Fund.name.ilike(f"%{search}%") | Fund.cnpj.ilike(f"%{search}%"))
-        has_equity_q = has_equity_q.where(FundHolding.fund_id.in_(matching_fund_ids))
-    has_equity = has_equity_q.subquery()
+        matching_fund_ids = set(
+            db.execute(
+                select(Fund.id).where(Fund.name.ilike(f"%{search}%") | Fund.cnpj.ilike(f"%{search}%"))
+            ).scalars()
+        )
+        has_equity_ids = has_equity_ids & matching_fund_ids
+    has_equity_list = list(has_equity_ids)
 
     # Latest fund_quota row per fund (patrimonio/cotistas/data de divulgacao) —
     # joined in SQL so nav/cotistas/data filters can run as indexed WHERE
@@ -199,18 +233,19 @@ def search_funds(
     # sozinho. Filtrar antes do DISTINCT ON reduz a base de sort/dedup em ~6x.
     latest_quota_sq = (
         select(FundQuota)
-        .where(FundQuota.fund_id.in_(select(has_equity.c.fund_id)))
+        .where(FundQuota.fund_id.in_(has_equity_list))
         .distinct(FundQuota.fund_id)
         .order_by(FundQuota.fund_id, FundQuota.ref_date.desc())
         .subquery()
     )
     LatestQuota = aliased(FundQuota, latest_quota_sq)
 
-    stmt = (
-        select(Fund, LatestQuota)
-        .join(LatestQuota, LatestQuota.fund_id == Fund.id)
-        .where(Fund.id.in_(select(has_equity.c.fund_id)))
-    )
+    # Sem WHERE Fund.id IN (has_equity) aqui de proposito: o INNER JOIN acima
+    # com LatestQuota ja restringe a esse mesmo conjunto (LatestQuota so tem
+    # linhas pra fund_id em has_equity_list), entao repetir o filtro so
+    # adicionava trabalho identico sem mudar o resultado — achado 31/jul/2026
+    # ao notar que o plano computava o mesmo has_equity duas vezes.
+    stmt = select(Fund, LatestQuota).join(LatestQuota, LatestQuota.fund_id == Fund.id)
     if search:
         stmt = stmt.where(Fund.name.ilike(f"%{search}%") | Fund.cnpj.ilike(f"%{search}%"))
     if min_net_asset_value is not None:
