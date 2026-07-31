@@ -7,6 +7,7 @@ import logging
 from datetime import date
 
 from apscheduler.schedulers.background import BackgroundScheduler
+from sqlalchemy import text
 
 from app.database import SessionLocal
 from app.services.alert_engine import generate_all_alerts
@@ -38,6 +39,18 @@ def run_ingest_and_compute(yyyymm: str, force_download: bool = False) -> None:
     try:
         ingest_month(db, yyyymm, force_download=force_download)
         compute_movements(db, yyyymm_to_ref_date_end_of_month(yyyymm))
+        # Achado 31/jul/2026: fund_holdings so cresce por este job (ate ~1M
+        # linhas/mes), mas o limiar padrao do autovacuum (10% das linhas) leva
+        # tempo demais pra disparar num total de 8mi+, deixando as estatisticas
+        # do planner desatualizadas por semanas — causou um plano catastrofico
+        # (nested loop materializado, 72 milhoes de comparacoes descartadas)
+        # na pagina Fundos. ANALYZE explicito aqui (~0.2-0.6s, roda dentro da
+        # mesma transacao) garante estatisticas frescas logo apos a unica
+        # rotina que de fato muda esses dados, sem depender do timing do
+        # autovacuum.
+        db.execute(text("ANALYZE fund_holdings"))
+        db.execute(text("ANALYZE fund_quota"))
+        db.commit()
     except Exception:
         logger.exception("job cda %s falhou", yyyymm)
     finally:

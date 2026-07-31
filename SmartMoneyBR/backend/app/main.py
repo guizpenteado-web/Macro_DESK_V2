@@ -1,10 +1,13 @@
 import logging
+import threading
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.database import SessionLocal
 from app.routers import alerts, assets, buybacks, favorites, funds, insiders, market, performance, portfolio, rankings
 from app.services.scheduler_jobs import start_scheduler
 
@@ -14,10 +17,34 @@ logger = logging.getLogger(__name__)
 _scheduler = None
 
 
+def _warm_caches() -> None:
+    """O processo inteiro (Hub unificado, unified_server.py) reinicia com
+    frequencia (deploys de qualquer sub-app, nao so SmartMoneyBR) — cada
+    restart zera os caches TTL em memoria de top-performers/flow-evolution
+    (performance.py) e do set has_equity (funds.py), expondo o PRIMEIRO
+    usuario real depois de cada restart ao custo frio (9-16s Top20/Evolucao,
+    ~0,6s Fundos). Roda numa thread separada pra nao atrasar o healthcheck/
+    startup do app — se um usuario real bater no endpoint antes dessa thread
+    terminar, ele so cai no mesmo caminho frio de sempre (nao quebra nada)."""
+    t0 = time.time()
+    db = SessionLocal()
+    try:
+        funds._has_equity_fund_ids(db)
+        performance._top_performers_cache[(20, 20)] = (time.time(), performance._compute_top_performers(20, 20, db))
+        performance._flow_evolution_cache["data"] = performance._compute_flow_evolution(db)
+        performance._flow_evolution_cache["ts"] = time.time()
+        logger.info("cache warmup concluido em %.1fs", time.time() - t0)
+    except Exception:
+        logger.exception("cache warmup falhou (nao critico, endpoints ainda funcionam sob demanda)")
+    finally:
+        db.close()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _scheduler
     _scheduler = start_scheduler(settings.schedule_tz)
+    threading.Thread(target=_warm_caches, daemon=True).start()
     yield
     if _scheduler:
         _scheduler.shutdown(wait=False)
