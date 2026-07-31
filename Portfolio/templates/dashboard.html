@@ -338,7 +338,7 @@
   .at-clear-btn{background:none; border:1px solid var(--line); color:var(--text-mid); border-radius:5px; padding:8px 14px; cursor:pointer; font-family:'Inter'; font-size:13px; font-weight:600; margin-left:auto;}
   .at-clear-btn:hover{border-color:var(--neg); color:var(--neg);}
   .at-dropzone{border:2px dashed var(--line); border-radius:10px; padding:30px 20px; text-align:center; margin-bottom:22px; transition:border-color .15s ease, background .15s ease; cursor:pointer;}
-  .at-dropzone.dragover{border-color:var(--gold); background:rgba(212,175,55,0.05);}
+  .at-dropzone.dragover, .at-dropzone:focus{border-color:var(--gold); background:rgba(212,175,55,0.05); outline:none;}
   .at-dropzone-inner{display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--text-dim); font-size:14.5px;}
   .at-dropzone-icon{font-size:26px;}
   .at-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:18px; margin-bottom:8px;}
@@ -348,7 +348,8 @@
   .at-card-cap::placeholder{color:var(--text-dim);}
   .at-card-del{position:absolute; top:8px; right:8px; width:26px; height:26px; border-radius:50%; background:rgba(3,6,15,0.75); border:1px solid var(--line); color:var(--text-mid); cursor:pointer; font-size:13px; line-height:1; display:flex; align-items:center; justify-content:center;}
   .at-card-del:hover{border-color:var(--neg); color:var(--neg);}
-  .at-empty{display:none; text-align:center; color:var(--text-dim); font-size:14.5px; padding:30px; border:1px dashed var(--line); border-radius:10px; margin-bottom:8px;}
+  .at-empty{display:none; text-align:center; color:var(--text-dim); font-size:14.5px; padding:30px; border:1px dashed var(--line); border-radius:10px; margin-bottom:8px; cursor:pointer; transition:border-color .15s ease, background .15s ease;}
+  .at-empty:focus, .at-empty:hover{border-color:var(--gold); background:rgba(212,175,55,0.05); outline:none;}
   .at-lightbox-overlay{position:fixed; inset:0; background:rgba(3,6,15,0.92); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; z-index:600; padding:30px; flex-direction:column; gap:14px;}
   .at-lightbox-overlay.open{display:flex;}
   .at-lightbox-img{max-width:90vw; max-height:80vh; border-radius:6px; border:1px solid var(--gold-dim); box-shadow:0 20px 60px rgba(0,0,0,0.6);}
@@ -712,7 +713,7 @@
         </div>
       </div>
       <div class="at-grid" id="atGrid_planned"></div>
-      <div class="at-empty" id="atEmpty_planned">Nenhuma imagem ainda. Salve aqui os setups/gráficos das operações que você pretende fazer.</div>
+      <div class="at-empty" id="atEmpty_planned" tabindex="0">Nenhuma imagem ainda. Salve aqui os setups/gráficos das operações que você pretende fazer.<br>Clique aqui e cole um print com <b>Ctrl+V</b>.</div>
     </div>
 
     <div class="at-section-block">
@@ -730,7 +731,7 @@
         </div>
       </div>
       <div class="at-grid" id="atGrid_done"></div>
-      <div class="at-empty" id="atEmpty_done">Nenhuma imagem ainda. Salve aqui os gráficos das operações já executadas.</div>
+      <div class="at-empty" id="atEmpty_done" tabindex="0">Nenhuma imagem ainda. Salve aqui os gráficos das operações já executadas.<br>Clique aqui e cole um print com <b>Ctrl+V</b>.</div>
     </div>
 
     <div class="at-section-block">
@@ -748,7 +749,7 @@
         </div>
       </div>
       <div class="at-grid" id="atGrid_watchlist"></div>
-      <div class="at-empty" id="atEmpty_watchlist">Nenhuma imagem ainda. Salve aqui os ativos que você está de olho, mas ainda não operou.</div>
+      <div class="at-empty" id="atEmpty_watchlist" tabindex="0">Nenhuma imagem ainda. Salve aqui os ativos que você está de olho, mas ainda não operou.<br>Clique aqui e cole um print com <b>Ctrl+V</b>.</div>
     </div>
 
     <div class="disclaimer-strip">As imagens são salvas automaticamente neste navegador (localStorage), vinculadas a este login. Elas não são sincronizadas entre dispositivos nem enviadas a nenhum servidor — se você abrir este dashboard em outro computador ou navegador, as imagens não aparecerão lá. Imagens grandes são redimensionadas automaticamente para economizar espaço.</div>
@@ -1804,9 +1805,31 @@ document.addEventListener('keydown', (e) => {
   if(e.key === 'Escape') atCloseLightbox();
 });
 
+// Colar (Ctrl+V) um print direto numa galeria — exige o elemento (dropzone
+// OU o aviso "Nenhuma imagem ainda") focado antes de colar, assim cada uma
+// das 3 galerias recebe só o que foi colado especificamente nela.
+function atMakePasteHandler(sec){
+  return (e) => {
+    const items = (e.clipboardData || window.clipboardData)?.items;
+    if(!items) return;
+    const files = [];
+    for(const item of items){
+      if(item.kind === 'file' && item.type.startsWith('image/')){
+        const file = item.getAsFile();
+        if(file) files.push(file);
+      }
+    }
+    if(files.length){
+      e.preventDefault();
+      atHandleFiles(sec, files);
+    }
+  };
+}
+
 AT_SECTIONS.forEach(sec => {
   const fileInput = document.getElementById('atFileInput_' + sec);
   const dropzone = document.getElementById('atDropzone_' + sec);
+  const empty = document.getElementById('atEmpty_' + sec);
   if(fileInput){
     fileInput.addEventListener('change', (e) => {
       atHandleFiles(sec, e.target.files);
@@ -1822,24 +1845,13 @@ AT_SECTIONS.forEach(sec => {
       dropzone.classList.remove('dragover');
       atHandleFiles(sec, e.dataTransfer.files);
     });
-    // Colar (Ctrl+V) um print direto nesta galeria — exige a dropzone
-    // focada (clique nela antes de colar), assim cada uma das 3 galerias
-    // recebe só o que foi colado especificamente ali.
-    dropzone.addEventListener('paste', (e) => {
-      const items = (e.clipboardData || window.clipboardData)?.items;
-      if(!items) return;
-      const files = [];
-      for(const item of items){
-        if(item.kind === 'file' && item.type.startsWith('image/')){
-          const file = item.getAsFile();
-          if(file) files.push(file);
-        }
-      }
-      if(files.length){
-        e.preventDefault();
-        atHandleFiles(sec, files);
-      }
-    });
+    dropzone.addEventListener('paste', atMakePasteHandler(sec));
+  }
+  if(empty){
+    // clicar no aviso "Nenhuma imagem ainda" tambem seleciona esta galeria
+    // pra colar — mesmo comportamento da dropzone, so que a partir do
+    // texto que aparece quando a galeria esta vazia.
+    empty.addEventListener('paste', atMakePasteHandler(sec));
   }
   atRender(sec);
 });
