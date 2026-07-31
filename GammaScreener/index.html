@@ -133,16 +133,16 @@
   .info-btn {
     width: 20px; height: 20px;
     border-radius: 50%;
-    border: 1px solid var(--border);
+    border: 1px solid #d4af37;
     background: transparent;
-    color: var(--text-muted);
+    color: #d4af37;
     font-size: 0.72rem;
     line-height: 1;
     display: flex; align-items: center; justify-content: center;
     cursor: help;
     padding: 0;
   }
-  .info-btn:hover { border-color: var(--call); color: var(--call); }
+  .info-btn:hover { border-color: #f0c94a; color: #f0c94a; }
   .info-tooltip {
     display: none;
     position: absolute;
@@ -162,8 +162,6 @@
   .info-wrap:hover .info-tooltip { display: block; }
   .info-tooltip strong { color: var(--text-primary); display: block; margin-top: 10px; font-size: 0.8rem; }
   .info-tooltip strong:first-child { margin-top: 0; }
-
-  .back-link { font-size: 0.85rem; color: var(--text-secondary); cursor: pointer; text-decoration: underline; }
 
   table.screener-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
   table.screener-table th { text-align: right; padding: 8px 10px; color: var(--text-muted); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; border-bottom: 1px solid var(--gridline); }
@@ -212,12 +210,10 @@
   </div>
 
   <div id="detailView" style="display:none">
-  <span class="back-link" id="backToScreener">← Screener (30 ativos)</span>
 
   <header>
     <div>
       <h1 id="detailTitle">BOVA11 — Cockpit de GEX / Gamma Flip</h1>
-      <div class="subtitle" id="subtitle">Dados reais de opções da B3</div>
     </div>
     <div style="text-align:right">
       <button class="refresh-btn" id="refreshBtn">Atualizar</button>
@@ -230,11 +226,7 @@
   <div class="metrics-row" id="metrics"></div>
 
   <div class="card">
-    <div class="card-header-row">
-      <div>
-        <h2>Cockpit de GEX</h2>
-        <p class="desc">Alterne entre GEX líquido, CALL x PUT, posicionamento por strike e GEX cumulativo sem sair do mesmo recorte.</p>
-      </div>
+    <div class="card-header-row" style="justify-content:flex-end">
       <div class="info-wrap">
         <button class="info-btn" type="button" aria-label="O que cada modo mostra">?</button>
         <div class="info-tooltip">
@@ -404,7 +396,6 @@ function renderScreener(data) {
 function render() {
   const d = currentData;
   document.getElementById('updatedAt').textContent = `Atualizado ${new Date(d.updated_at).toLocaleString('pt-BR')}`;
-  document.getElementById('subtitle').textContent = `Dados reais de opções da B3 · fonte: ${d.source_label}`;
   document.getElementById('weightModeBtn').textContent = `NET ${d.weight_label}`;
 
   const regimeGood = d.gex_net_total >= 0;
@@ -600,7 +591,6 @@ function hexToRgba(hex, alpha) {
 
 document.getElementById('refreshBtn').addEventListener('click', () => fetchData(true));
 document.getElementById('screenerRefreshBtn').addEventListener('click', () => fetchScreener(true));
-document.getElementById('backToScreener').addEventListener('click', showScreener);
 document.getElementById('toggleGroup').addEventListener('click', (e) => {
   const btn = e.target.closest('.toggle-btn');
   if (!btn) return;
