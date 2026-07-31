@@ -1,11 +1,12 @@
 """Historico de Gamma Flip por ativo, persistido em SQLite local.
 
 Um ponto por (ticker, data de referencia do OI). Preenchido por dois
-caminhos: `backfill_history.py` (rodado uma vez, reconstroi ~12 meses pra
-tras usando arquivos historicos reais da B3) e o warmer em background do
-`server.py` (adiciona o ponto do dia atual, sempre que a data de
-referencia do OI mudar -- assim o historico cresce sozinho dia apos dia,
-sem precisar rodar o backfill de novo).
+caminhos: `backfill_history.py` (rodado uma vez/ocasionalmente, reconstroi
+~12 meses pra tras usando OI historico real da B3 + IV historica real da
+OpLab, `/market/historical/options/...`) e `_compute_asset_payload` em
+`server.py` (adiciona o ponto do dia atual toda vez que o cockpit ao vivo
+e calculado -- assim o historico cresce sozinho dia apos dia, sem precisar
+rodar o backfill de novo).
 """
 
 import sqlite3
@@ -21,7 +22,7 @@ CREATE TABLE IF NOT EXISTS gamma_flip_history (
     gamma_flip  REAL,
     spot        REAL,
     regime      TEXT,
-    iv_source   TEXT NOT NULL,   -- 'oplab_live' (dado real do dia) ou 'realized_vol_proxy' (backfill historico)
+    iv_source   TEXT NOT NULL,   -- 'oplab_live' (calculado ao vivo hoje) ou 'oplab_historical' (backfill, via endpoint historico da OpLab) -- ambos IV real, nunca proxy
     computed_at TEXT NOT NULL,
     PRIMARY KEY (ticker, ref_date)
 );
@@ -61,9 +62,16 @@ def get_history(ticker, months_back=12):
 
 
 def has_snapshot(ticker, ref_date):
+    return get_snapshot(ticker, ref_date) is not None
+
+
+def get_snapshot(ticker, ref_date):
     with _conn() as conn:
         row = conn.execute(
-            "SELECT 1 FROM gamma_flip_history WHERE ticker = ? AND ref_date = ?",
+            "SELECT gamma_flip, spot, regime, iv_source FROM gamma_flip_history "
+            "WHERE ticker = ? AND ref_date = ?",
             (ticker, ref_date),
         ).fetchone()
-    return row is not None
+    if row is None:
+        return None
+    return {"gamma_flip": row[0], "spot": row[1], "regime": row[2], "iv_source": row[3]}

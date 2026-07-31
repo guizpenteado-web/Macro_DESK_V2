@@ -46,3 +46,14 @@ def _get(path, params=None):
 
 def get_stock(symbol):
     return _get(f"/market/stocks/{symbol}")
+
+
+def get_historical_options(spot_ticker, date_from, date_to):
+    """Historico REAL de opcoes (IV/gregas/spot por opcao/dia), endpoint
+    /market/historical/options/{spot}/{from}/{to} -- achado por engenharia
+    reversa do spec OpenAPI embutido em apidocs.oplab.com.br (nao estava
+    documentado nos endpoints ja mapeados antes; confirmado funcionando com
+    volatility real por opcao voltando a pelo menos jun/2025).
+    date_from/date_to: "YYYY-MM-DD".
+    """
+    return _get(f"/market/historical/options/{spot_ticker}/{date_from}/{date_to}")
