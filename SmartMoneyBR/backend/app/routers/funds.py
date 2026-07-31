@@ -126,9 +126,20 @@ def _return_pct_12m_by_fund(db: Session, fund_ids: list[int], quotas: dict[int, 
         return {}
     earliest_needed = min(last_dates) - timedelta(days=RETURN_WINDOW_DAYS)
 
+    # Achado real 31/jul/2026: uma linha degenerada (patrimonio=0 E
+    # cotistas=0, ver _latest_quota_by_fund acima) no MEIO da serie de
+    # quota_value derrubava o retorno pra None -- compute_window_return via
+    # o salto pra 0 como um "rebase" (ratio < 0.5) e descartava toda a
+    # historia antes dele, sobrando so o proprio ponto zerado (< 2 pontos =
+    # sem retorno). Excluida da serie, igual ja fazemos na tela de detalhe
+    # (performance.py) e no ranking de Top Performers.
     rows = db.execute(
         select(FundQuota.fund_id, FundQuota.ref_date, FundQuota.quota_value)
-        .where(FundQuota.fund_id.in_(fund_ids), FundQuota.ref_date >= earliest_needed)
+        .where(
+            FundQuota.fund_id.in_(fund_ids),
+            FundQuota.ref_date >= earliest_needed,
+            ~and_(FundQuota.net_asset_value == 0, FundQuota.n_shareholders == 0),
+        )
         .order_by(FundQuota.fund_id, FundQuota.ref_date)
     ).all()
 
@@ -161,9 +172,15 @@ def _return_window_by_fund(
         return {}
     earliest_needed = min(starts.values())
 
+    # Mesmo fix de _return_pct_12m_by_fund acima -- linha degenerada no meio
+    # da serie derruba o retorno MTD/YTD do mesmo jeito.
     rows = db.execute(
         select(FundQuota.fund_id, FundQuota.ref_date, FundQuota.quota_value)
-        .where(FundQuota.fund_id.in_(fund_ids), FundQuota.ref_date >= earliest_needed)
+        .where(
+            FundQuota.fund_id.in_(fund_ids),
+            FundQuota.ref_date >= earliest_needed,
+            ~and_(FundQuota.net_asset_value == 0, FundQuota.n_shareholders == 0),
+        )
         .order_by(FundQuota.fund_id, FundQuota.ref_date)
     ).all()
 
