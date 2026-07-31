@@ -47,9 +47,22 @@ def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 def _last_trading_day_snapshot(df: pd.DataFrame) -> pd.DataFrame:
     """Reduce a month's daily rows to one row per fund — its last available
-    trading day that month (handles funds that stop trading mid-month too)."""
-    df = df.sort_values("DT_COMPTC")
-    return df.groupby("CNPJ_FUNDO_CLASSE", as_index=False).last()
+    trading day that month (handles funds that stop trading mid-month too).
+
+    Real bug found 31/jul/2026: alguns administradores reportam tardiamente
+    pra CVM nos ultimos dias do mes, e o arquivo publicado traz uma linha
+    "vazia" (VL_QUOTA=0 E VL_PATRIM_LIQ=0 E NR_COTST=0) nesses dias em vez de
+    simplesmente omitir o fundo. VL_QUOTA=0 e matematicamente impossivel pra
+    um fundo em operacao normal (confirmado: ~250 fundos caiam de patrimonio
+    real, ex. R$10M/4 cotistas, pra exatamente zero nos ultimos 1-2 pregoes
+    do mes, sem nenhuma transicao gradual — assinatura de dado nao reportado,
+    nao de fundo real fechando). Filtramos essas linhas degeneradas ANTES de
+    pegar o ultimo dia, senao a snapshot do mes inteiro fica zerada quando o
+    dado real (das semanas anteriores, no mesmo arquivo) existe.
+    """
+    real = df[~((df["VL_PATRIM_LIQ"] == 0) & (df["NR_COTST"] == 0))]
+    real = real.sort_values("DT_COMPTC")
+    return real.groupby("CNPJ_FUNDO_CLASSE", as_index=False).last()
 
 
 def _parse_month_csv(raw: bytes) -> pd.DataFrame:

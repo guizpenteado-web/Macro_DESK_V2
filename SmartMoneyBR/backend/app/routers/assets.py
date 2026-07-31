@@ -375,10 +375,16 @@ def get_asset_holders(
         # FundNav nao tem contagem de cotistas, entao continua vindo do
         # Informe Diario, sem filtro de plausibilidade (nao afeta nenhum
         # calculo, so exibicao).
+        # Pula linhas degeneradas (patrimonio=0 E cotistas=0 — reporte
+        # incompleto de administrador no fim do mes/ano, achado real
+        # 31/jul/2026, ver funds.py::_latest_quota_by_fund) em vez de deixar
+        # uma delas apagar o ultimo cotistas real conhecido.
         best = None
         for q in quotas_by_fund.get(fund_id, []):
             if q.ref_date > holding_date:
                 break
+            if q.net_asset_value == 0 and q.n_shareholders == 0:
+                continue
             best = q
         return best.n_shareholders if best else None
 

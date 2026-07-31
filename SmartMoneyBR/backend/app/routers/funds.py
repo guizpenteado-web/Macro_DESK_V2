@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.orm import Session, aliased
 
 from app.database import get_db
@@ -66,14 +66,29 @@ def _latest_fund_movements_date(db: Session, fund_id: int) -> date | None:
 
 def _latest_quota_by_fund(db: Session, fund_ids: list[int]) -> dict[int, FundQuota]:
     """Latest fund_quota row (patrimonio + n_cotistas + data) per fund, in one
-    query — DISTINCT ON is Postgres' idiomatic 'latest row per group'."""
+    query — DISTINCT ON is Postgres' idiomatic 'latest row per group'.
+
+    Real bug found 31/jul/2026: alguns administradores reportam pra CVM uma
+    linha degenerada (patrimonio=0 E cotistas=0) num mes inteiro, nao so no
+    ultimo dia — o filtro em inf_diario_ingestion.py resolve o caso "cauda do
+    mes com dado real antes", mas nao esse. Aqui, na camada de exibicao,
+    nunca deixamos uma linha degenerada vencer uma linha real mais antiga:
+    ordena primeiro por "e degenerada" (real=0 antes de degenerada=1), so
+    depois por data — um fundo so aparece com 0/0 se TODO o historico dele
+    for realmente 0 (fundo novo/sem movimentacao), nunca por causa de um mes
+    com problema de reporte escondendo um mes anterior com dado real.
+    """
     if not fund_ids:
         return {}
+    is_degenerate = case(
+        (and_(FundQuota.net_asset_value == 0, FundQuota.n_shareholders == 0), 1),
+        else_=0,
+    )
     rows = db.execute(
         select(FundQuota)
         .where(FundQuota.fund_id.in_(fund_ids))
         .distinct(FundQuota.fund_id)
-        .order_by(FundQuota.fund_id, FundQuota.ref_date.desc())
+        .order_by(FundQuota.fund_id, is_degenerate, FundQuota.ref_date.desc())
     ).scalars()
     return {q.fund_id: q for q in rows}
 
@@ -231,11 +246,19 @@ def search_funds(
     # nenhuma posicao de equity, fora do escopo do app) em vez dos ~9,3 mil
     # que realmente importam — EXPLAIN ANALYZE mediu ~4s a mais nesse passo
     # sozinho. Filtrar antes do DISTINCT ON reduz a base de sort/dedup em ~6x.
+    # is_degenerate: mesma logica de _latest_quota_by_fund acima — nunca
+    # deixar uma linha com patrimonio=0 E cotistas=0 (reporte incompleto de
+    # administrador, achado real 31/jul/2026) vencer uma linha real mais
+    # antiga na hora de decidir qual e "a" ultima leitura do fundo.
+    is_degenerate = case(
+        (and_(FundQuota.net_asset_value == 0, FundQuota.n_shareholders == 0), 1),
+        else_=0,
+    )
     latest_quota_sq = (
         select(FundQuota)
         .where(FundQuota.fund_id.in_(has_equity_list))
         .distinct(FundQuota.fund_id)
-        .order_by(FundQuota.fund_id, FundQuota.ref_date.desc())
+        .order_by(FundQuota.fund_id, is_degenerate, FundQuota.ref_date.desc())
         .subquery()
     )
     LatestQuota = aliased(FundQuota, latest_quota_sq)

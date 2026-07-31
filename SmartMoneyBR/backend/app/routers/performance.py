@@ -9,7 +9,7 @@ import time
 from datetime import date
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -55,12 +55,25 @@ def _compute_top_performers(years: int, limit: int, db: Session) -> dict:
 
     equity_fund_ids = select(FundHolding.fund_id).distinct().subquery()
 
+    # Linha degenerada (patrimonio=0 E cotistas=0 — reporte incompleto de
+    # administrador, achado real 31/jul/2026, ver funds.py::_latest_quota_by_fund)
+    # excluida dos dois passos abaixo: no historico, ela distorceria
+    # compute_window_return (pareceria uma queda de -100% seguida de rebase);
+    # no snapshot da data mais recente, ela derrubaria n_shareholders pra 0 e
+    # excluiria injustamente um fundo bom do ranking via o filtro "< 10
+    # cotistas" logo abaixo.
+    not_degenerate = ~and_(FundQuota.net_asset_value == 0, FundQuota.n_shareholders == 0)
+
     # Full quota history from window_start on, per equity fund — needed (not
     # just first/last) so compute_window_return can detect quota rebases
     # (see app/services/returns.py) instead of blindly dividing last/first.
     quota_rows = db.execute(
         select(FundQuota.fund_id, FundQuota.ref_date, FundQuota.quota_value)
-        .where(FundQuota.ref_date >= window_start, FundQuota.fund_id.in_(select(equity_fund_ids.c.fund_id)))
+        .where(
+            FundQuota.ref_date >= window_start,
+            FundQuota.fund_id.in_(select(equity_fund_ids.c.fund_id)),
+            not_degenerate,
+        )
         .order_by(FundQuota.fund_id, FundQuota.ref_date)
     ).all()
 
@@ -70,7 +83,7 @@ def _compute_top_performers(years: int, limit: int, db: Session) -> dict:
             FundQuota.ref_date,
             FundQuota.net_asset_value,
             FundQuota.n_shareholders,
-        ).where(FundQuota.ref_date == max_date)
+        ).where(FundQuota.ref_date == max_date, not_degenerate)
     ).all()
     last_quota = {r.fund_id: r for r in last_quota_row}
 
@@ -225,7 +238,15 @@ def fund_quota_history(fund_id: int, years: int = Query(20, ge=1, le=26), db: Se
     window_start = date(max_date.year - years, max_date.month, 1)
     rows = db.execute(
         select(FundQuota.ref_date, FundQuota.quota_value)
-        .where(FundQuota.fund_id == fund_id, FundQuota.ref_date >= window_start)
+        .where(
+            FundQuota.fund_id == fund_id,
+            FundQuota.ref_date >= window_start,
+            # Linha degenerada (achado real 31/jul/2026, ver
+            # funds.py::_latest_quota_by_fund) fora do grafico -- senao vira
+            # um mergulho falso a zero seguido de "recuperacao" no dia
+            # seguinte, sem nenhuma base real.
+            ~and_(FundQuota.net_asset_value == 0, FundQuota.n_shareholders == 0),
+        )
         .order_by(FundQuota.ref_date)
     ).all()
     series = [(r.ref_date, float(r.quota_value)) for r in rows]
