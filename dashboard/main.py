@@ -20,11 +20,13 @@ from curl_cffi import requests as cf_requests
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 # ── Config ────────────────────────────────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "intermarket.db")
 INDEX_PATH = os.path.join(BASE_DIR, "index.html")
+STATIC_DIR = os.path.join(BASE_DIR, "static")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -207,7 +209,11 @@ def _upsert_cot(df: pd.DataFrame, conn: sqlite3.Connection) -> int:
 
 def _load_zip_tff(url: str) -> pd.DataFrame:
     """Download a CFTC TFF ZIP and return parsed DataFrame."""
-    r = cf_requests.get(url, impersonate="chrome", timeout=120)
+    # Sem impersonate=: o Cloudflare do cftc.gov bloqueia especificamente a
+    # assinatura TLS/JA3 do impersonate="chrome" do curl_cffi (retorna a
+    # pagina de desafio "Just a moment...", HTTP 403) — sem impersonation
+    # nenhuma, a requisicao passa normal.
+    r = cf_requests.get(url, timeout=120)
     r.raise_for_status()
     with zipfile.ZipFile(io.BytesIO(r.content)) as z:
         txt = next((f for f in z.namelist() if f.lower().endswith(".txt")), None)
@@ -285,7 +291,7 @@ def collect_cot(full: bool = False) -> dict:
     # ── Semana atual (sempre — tem o último release disponível) ───────────────
     try:
         log.info("COT: buscando semana atual FinFutWk.txt")
-        r = cf_requests.get(CFTC_WEEKLY, impersonate="chrome", timeout=30)
+        r = cf_requests.get(CFTC_WEEKLY, timeout=30)  # ver comentario em _load_zip_tff
         r.raise_for_status()
         df_wk = pd.read_csv(io.StringIO(r.text), header=None, low_memory=False)
         brl_wk = df_wk[df_wk[0].astype(str).str.contains("BRAZILIAN", na=False, case=False)]
@@ -797,6 +803,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Highcharts servido local (static/) em vez do CDN code.highcharts.com — o CDN
+# passou a rejeitar o carregamento (403) para este dashboard, autohospedar
+# elimina a dependencia externa de vez.
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 def _collect_all_job():

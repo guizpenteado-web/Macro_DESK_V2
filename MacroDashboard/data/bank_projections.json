@@ -1,6 +1,6 @@
 {
   "_instrucoes": "Atualizar manualmente quando os bancos revisarem targets. Verificar fontes listadas abaixo.",
-  "last_updated": "2026-07-29",
+  "last_updated": "2026-07-31",
 
   "macro_snapshot": {
     "fed_rate": {
@@ -8,13 +8,13 @@
       "low": 3.50,
       "high": 3.75,
       "decision": "HOLD",
-      "decision_date": "2026-06-17",
-      "next_meeting": "2026-07-29",
-      "fomc_probability_hold": 64.0,
+      "decision_date": "2026-07-29",
+      "next_meeting": "2026-09-15/16",
+      "fomc_probability_hold": 29.8,
       "fomc_probability_cut": 0.0,
       "source": "Federal Reserve / CME FedWatch",
       "chair": "Kevin Warsh",
-      "note": "Atualizado 27/jul: probabilidade de CORTE na reunião de 29/jul segue ~0%. Risco de ALTA de 25bps na faixa 34-38% (CME FedWatch, leituras de 27/jul) — estável frente aos ~35-36,5% de 22/jul, ainda elevado mas sem nova alta adicional. EUA e Irã anunciaram TRÉGUA no fim de semana (24-26/jul) após Trump suspender a campanha de bombardeios; petróleo caiu 6-9% em 27/jul (ver commodity_targets), reduzindo o principal driver que vinha pressionando a leitura de inflação persistente. Mercado deve aguardar a decisão de 29/jul (coletiva às 14h30 ET) pra confirmar direção — trégua é sinal positivo mas analistas alertam que não é acordo formal/verificável."
+      "note": "DECISÃO DE 29/jul: FOMC manteve a faixa em 3,50%-3,75% por votação 9-3 — divisão interna rara ('cliffhanger meeting'). As 3 dissidências (Hammack/Cleveland, Kashkari/Minneapolis, Logan/Dallas) pediram ALTA de 25bps, não corte, citando inflação persistente acima da meta de 2% há mais de 5 anos. Warsh chamou o debate interno de 'good family fight'. Mercado reagiu vendendo risco no dia (S&P -1,52%, Ibovespa -1,52% no mesmo pregão) e depois recuperou forte em 30/jul (S&P +1,7% a 7.437,64) com o dólar enfraquecendo. Próxima reunião: 15-16/set/2026 (com novo dot plot/SEP). CME FedWatch pós-decisão (29-30/jul) precifica agora MAIORIA de chance de ALTA em setembro: hold 29,8% | alta 25bps 50,6% | alta 50bps 19,6% — ou seja, ~70% de chance de pelo menos uma alta de juros na próxima reunião, um giro hawkish relevante frente à leitura de hold ampla que prevalecia antes da decisão."
     },
     "cpi": {
       "yoy": 3.5,
@@ -370,14 +370,14 @@
   ],
 
   "commodity_targets": {
-    "_nota": "Atualizado 29/jul/2026 via hierarquia TIER-1→TIER-2→TIER-3. TIER-1: jpmorgan.com/insights (fetch direto das páginas gold-prices e oil-prices, 29/jul). TIER-2: Kitco (spot + research BofA/GS), TradingEconomics/EIA (WTI), Westmetall (LME copper). TIER-3 (confirmação): Reuters/TradingView, Mining Weekly, Rigzone/Bloomberg, BNN Bloomberg, goldsilver.com. Todos os targets abaixo verificados individualmente nesta atualização — nenhum copiado sem checar.",
-    "_precos_referencia": "Ouro $4.015,50/oz (Kitco, 29/jul) | Prata $56,94/oz (Kitco, 29/jul) | WTI $79,28/bbl (fechamento 28/jul, EIA Cushing + TradingEconomics) | Cobre COMEX $6,28/lb / LME $13.643,50/ton (Westmetall, 28/jul). NOTA WTI: semana muito volátil — ataques Houthi a petroleiros sauditas (23/jul) levaram WTI a >$92 intraday, mas uma trégua no fim de semana (24-26/jul) reverteu boa parte da alta; 29/jul intraday ainda oscilando ($77,81-$82,42). Spot usado aqui é o fechamento oficial de 28/jul, mais estável que a leitura intraday.",
+    "_nota": "Atualizado 31/jul/2026 via hierarquia TIER-1→TIER-2→TIER-3. TIER-1: jpmorgan.com/insights. TIER-2: Kitco (spot + research BofA/GS), TradingEconomics/EIA (WTI), Westmetall (LME copper). TIER-3 (confirmação): Reuters/TradingView, Mining Weekly, Rigzone/Bloomberg, BNN Bloomberg, goldsilver.com, BigGo Finance, Yahoo Finance. Todos os targets abaixo verificados individualmente nesta atualização — nenhum copiado sem checar.",
+    "_precos_referencia": "Ouro $4.086,21/oz (TradingEconomics, 31/jul, -0,42% no dia) | Prata $56,94/oz (Kitco, 29/jul, sem leitura mais fresca confirmada) | WTI $79,28/bbl (fechamento 28/jul, EIA Cushing + TradingEconomics — sem revisão de fechamento mais recente confirmada) | Cobre COMEX $6,28/lb / LME $13.643,50/ton (Westmetall, 28/jul) | USD/BRL R$5,07-5,12 (30/jul, real fortaleceu ~1% pós-decisão do Fed).",
     "ouro": {
       "unit": "USD/oz",
-      "preco_atual": 4015.50,
+      "preco_atual": 4086.21,
       "bank_targets": [
-        {"bank": "Goldman Sachs", "target": 4900, "view": "BULL",    "rationale": "Cortou de $5.400→$4.900 (20/jun/26). Fade de ETF flows asiáticos + remoção de cortes do Fed em 2026. Suporte: BCs emergentes comprando +1.000 ton/ano. Reconfirmado 29/jul — sem revisão desde jun/26.", "date": "2026-06"},
-        {"bank": "JP Morgan",     "target": 6000, "view": "BULL",    "rationale": "Q4/26: $6.000/oz | média 2026: $5.243 | média 2027: $6.263. Compras de bancos centrais + demanda física estrutural. Verificado direto em jpmorgan.com/insights/global-research/commodities/gold-prices (fetch 29/jul, página atualizada 09/jun/26). ALTA relevante vs. ciclo anterior — confirmar se cliente já viu esse número.", "date": "2026-06-09"},
+        {"bank": "Goldman Sachs", "target": 4900, "view": "BULL",    "rationale": "Cortou de $5.400→$4.900 (20/jun/26). Fade de ETF flows asiáticos + remoção de cortes do Fed em 2026. Suporte: BCs emergentes comprando +1.000 ton/ano. Reconfirmado 31/jul — sem revisão desde jun/26.", "date": "2026-06"},
+        {"bank": "JP Morgan",     "target": 4500, "view": "BULL",    "rationale": "CORRIGIDO 31/jul: banco cortou o target de Q4/26 em 25%, de $6.000 (09/jun/26) para $4.500 (03/jul/26) — Q3/26 média revisada para $4.300. Recalibração por demanda mais fraca dos setores compradores-chave; banco quantifica queda de ~$20/oz do ouro pra cada 1bps de alta nos yields reais de 10 anos desde final de fev/26. Tese de longo prazo (compras de bancos centrais + demanda física estrutural) mantida intacta pra 2027. O valor de $6.000 usado nesta ficha até 29/jul estava desatualizado — sempre checar a data de publicação antes de usar um target de banco.", "date": "2026-07-03"},
         {"bank": "BofA",          "target": 4360, "view": "BULL",    "rationale": "Cortou média 2026 em 14% para $4.360/oz (08/jul/26) citando Fed mais hawkish. Banco reafirma que vê $5.000/oz 'ao alcance' quando o ciclo de aperto do Fed terminar — corte é tático, não mudança de tese. Substitui o antigo target rolante de 12 meses de $6.000 (01/mai/26, superado por esta revisão). BNN Bloomberg + goldsilver.com, 08/jul/26.", "date": "2026-07-08"},
         {"bank": "Morgan Stanley","target": 5200, "view": "BULL",    "rationale": "Cortou de $5.700→$5.200 para 2H26 (22/jun/26). Queda de ~25% do ATH muda o tom — recuperação depende de BCs/ETFs retomarem compras. Reconfirmado 29/jul, sem revisão nova.", "date": "2026-06-22"},
         {"bank": "Citi",          "target": 4000, "view": "NEUTRAL", "rationale": "Target 0-3 meses cortado de $4.300→$4.000 (09/jun/26). Target 6-12 meses mantido em $4.500 (não usado aqui por não ser 'fim de 2026'). Fed hawkish + inflação persistente. Reconfirmado 29/jul, sem revisão nova.", "date": "2026-06-09"}
@@ -417,7 +417,7 @@
 
   "pesquisas_eleitorais_2026": {
     "_nota": "Eleição presidencial brasileira — outubro 2026. Fontes: Datafolha (TIER-1) e Quaest (TIER-1). Atualizado jul/2026.",
-    "_nivel_atual": "Ibovespa: 174.042 pts (25/jul/2026, -1,52% no dia, realização de lucros — PETR4 -1,7%, PETR3 -2,4%, VALE3 -0,6%) | S&P 500: ~7.412 pts (24/jul/2026, +0,05% no dia, ~2,7% abaixo da máxima histórica de 7.620,90 de 02/jun) | USD/BRL: R$ 5,0873 (25/jul/2026, -0,06% no dia) | Entre as duas leituras: tarifaço de 25% dos EUA entrou em vigor em 22/jul; Ibovespa chegou a cair a 174.056 pts direto após o anúncio (16/jul) e depois disparou +2% em 22/jul puxado por blue chips antes de recuar de novo em 24-25/jul",
+    "_nivel_atual": "Ibovespa: 177.158,86 pts (30/jul/2026, +1,88% no dia, retomada de fluxo estrangeiro + apostas em corte de Selic — recorde histórico do ano segue em 198.657,33 pts de 14/abr, ~10,9% acima do nível atual) | S&P 500: 7.437,64 pts (30/jul/2026, +1,7% no dia, forte recuperação após a queda de -1,52% em 29/jul no dia da decisão do Fed) | USD/BRL: R$ 5,07-5,12 (30/jul/2026, real fortalecendo pós-Fed) | Contexto: Fed manteve juros em 29/jul por 9-3 com dissidência hawkish (ver macro_snapshot.fed_rate) — mercado global vendeu risco no dia da decisão e recuperou no dia seguinte com o giro de foco para a reunião de setembro.",
     "institutos": [
       {
         "instituto": "Datafolha",
