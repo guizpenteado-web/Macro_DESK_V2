@@ -30,15 +30,23 @@ def _try_fetch(d):
     return None
 
 
-def fetch_latest_oi(max_days_back=10):
-    """Retorna (data_json, data_referencia) do dia mais recente disponivel."""
-    d = date.today()
+def fetch_oi_near(target_date, max_days_back=10):
+    """Retorna (data_json, data_referencia) do arquivo disponivel mais proximo
+    de target_date, andando pra tras (fins de semana/feriados nao publicam
+    arquivo -- so tenta o dia anterior ate achar um pregao real).
+    """
+    d = target_date
     for _ in range(max_days_back):
         data = _try_fetch(d)
         if data is not None:
             return data, d
         d -= timedelta(days=1)
-    raise RuntimeError("Nao encontrei arquivo de posicoes em aberto da B3 nos ultimos dias")
+    raise RuntimeError(f"Nao encontrei arquivo de posicoes em aberto da B3 perto de {target_date}")
+
+
+def fetch_latest_oi(max_days_back=10):
+    """Retorna (data_json, data_referencia) do dia mais recente disponivel."""
+    return fetch_oi_near(date.today(), max_days_back=max_days_back)
 
 
 def build_root_index(data):

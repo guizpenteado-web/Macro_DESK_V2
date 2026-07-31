@@ -13,6 +13,7 @@ load_dotenv(BASE_DIR / ".env")
 
 import oplab_client
 import b3_oi_client
+import history_store
 from gex_engine import build_gex_payload, flatten_legs_from_oi
 
 app = Flask(__name__, static_folder=str(BASE_DIR), static_url_path="")
@@ -67,6 +68,21 @@ def _compute_asset_payload(ticker, root, oi_index, ref_date):
     payload["source_label"] = f"Open Interest oficial B3 ({ref_date.strftime('%d/%m/%Y')})"
     payload["oi_reference_date"] = ref_date.strftime("%Y-%m-%d")
     payload["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+
+    # Registra o ponto de hoje no historico com IV real (ao vivo) -- so o
+    # backfill do passado usa proxy de volatilidade realizada. Upsert por
+    # (ticker, ref_date): reescreve o mesmo dia varias vezes ao longo do
+    # pregao sem criar linha duplicada. Nunca deve derrubar o calculo do
+    # cockpit por causa de um problema no SQLite.
+    try:
+        history_store.upsert_snapshot(
+            ticker=ticker, root=root, ref_date=payload["oi_reference_date"],
+            gamma_flip=payload["gamma_flip"], spot=spot, regime=payload["regime"],
+            iv_source="oplab_live", computed_at=payload["updated_at"],
+        )
+    except Exception:
+        traceback.print_exc()
+
     return payload
 
 
@@ -156,6 +172,12 @@ def api_screener():
                 return jsonify(stale)
             return jsonify({"error": str(e)}), 502
     return jsonify(_screener_cache["payload"])
+
+
+@app.route("/api/gex-history")
+def api_gex_history():
+    ticker = request.args.get("ticker", DEFAULT_TICKER)
+    return jsonify({"ticker": ticker, "points": history_store.get_history(ticker)})
 
 
 @app.route("/")

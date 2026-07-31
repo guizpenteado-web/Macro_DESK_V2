@@ -179,6 +179,28 @@
   .back-btn:hover { background: var(--call); color: var(--page); }
   .back-btn .arrow { font-size: 1.05rem; line-height: 1; }
 
+  .detail-layout { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+  .detail-main { flex: 1 1 480px; min-width: 0; }
+  .history-panel {
+    flex: 0 0 240px;
+    position: sticky; top: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px 6px;
+  }
+  .history-panel h3 { font-size: 0.82rem; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; }
+  .history-list { margin-top: 6px; max-height: 320px; overflow-y: auto; }
+  .history-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 6px 0; border-bottom: 1px solid var(--gridline);
+    font-size: 0.78rem;
+  }
+  .history-row:last-child { border-bottom: none; }
+  .history-date { color: var(--text-muted); }
+  .history-value { font-variant-numeric: tabular-nums; font-weight: 700; }
+  .history-empty { font-size: 0.78rem; color: var(--text-muted); padding: 8px 0; }
+
   table.screener-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
   table.screener-table th { text-align: right; padding: 8px 10px; color: var(--text-muted); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; border-bottom: 1px solid var(--gridline); }
   table.screener-table td { text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--gridline); font-variant-numeric: tabular-nums; }
@@ -229,67 +251,81 @@
 
   <button class="back-btn" id="backToScreener" type="button"><span class="arrow">&larr;</span> Voltar</button>
 
-  <header>
-    <div>
-      <h1 id="detailTitle">BOVA11</h1>
-    </div>
-    <div style="text-align:right">
-      <button class="refresh-btn" id="refreshBtn">Atualizar</button>
-      <div class="updated" id="updatedAt"></div>
-    </div>
-  </header>
+  <div class="detail-layout">
 
-  <div class="badges" id="badges"></div>
+    <aside class="history-panel">
+      <h3>Evolução do Gamma Flip</h3>
+      <div id="historyChart" class="plot" style="height:150px"></div>
+      <div id="historyList" class="history-list"></div>
+    </aside>
 
-  <div class="metrics-row" id="metrics"></div>
+    <div class="detail-main">
 
-  <div class="card">
-    <div class="card-header-row" style="justify-content:flex-end">
-      <div class="info-wrap">
-        <button class="info-btn" type="button" aria-label="O que cada modo mostra">?</button>
-        <div class="info-tooltip">
-          <strong>GEX líquido</strong>
-          Eixo: R$. Exposição de gamma ponderada — call contribui positivo, put negativo, somados num valor só por strike. Decide o regime (positivo/negativo) e de onde saem o Gamma Flip e os Call Wall/Put Wall.
-          <strong>CALL x PUT</strong>
-          Eixo: também R$, mas sem somar — call e put lado a lado, sem cancelar um com o outro. Use quando um strike chamar atenção no GEX líquido e você quiser saber se é call ou put que domina ali.
-          <strong>NET Open Interest</strong>
-          Eixo: contratos (OI real, sem peso de gamma). Mostra o desequilíbrio bruto de posicionamento — revela OI concentrado longe do spot que hoje não pesa no gamma, mas pode passar a pesar se o preço se aproximar.
-          <strong>Fluxo sugerido</strong>
-          GEX líquido pro regime geral → CALL x PUT pra ver a origem de um pico → NET Open Interest pra saber se é uma posição grande de verdade ou só efeito de proximidade do gamma.
+      <header>
+        <div>
+          <h1 id="detailTitle">BOVA11</h1>
         </div>
-      </div>
-    </div>
-    <div class="toggle-group" id="toggleGroup">
-      <button class="toggle-btn active" data-mode="net">GEX líquido</button>
-      <button class="toggle-btn" data-mode="callput">CALL x PUT</button>
-      <button class="toggle-btn" data-mode="volume" id="weightModeBtn">NET Open Interest</button>
-      <button class="toggle-btn" data-mode="cumulative">GEX cumulativo</button>
-    </div>
-    <div id="cockpitChart" class="plot" style="height:420px"></div>
-    <span class="table-toggle" data-target="cockpitTable">ver tabela</span>
-    <table class="data-table" id="cockpitTable"></table>
-  </div>
-
-  <div class="card">
-    <div class="card-header-row" style="justify-content:flex-end">
-      <div class="info-wrap">
-        <button class="info-btn" type="button" aria-label="Gamma Flip x Zero Gamma">?</button>
-        <div class="info-tooltip">
-          <strong>Gamma Flip</strong>
-          É uma simulação de preço: recalcula o gamma de toda a cadeia (mesmo OI, mesma volatilidade de hoje) pra vários preços hipotéticos dentro de ±30% do spot. O nível onde a soma total muda de sinal é o Gamma Flip — responde "quanto o preço precisa se mover pra mudar de regime".
-          <strong>Zero Gamma (por strike)</strong>
-          É diferente: não simula preço nenhum. Pega o GEX de hoje calculado no spot atual (fixo) pra cada strike, soma acumulado do menor pro maior strike, e vê onde essa soma cruza zero. É uma estatística sobre como o book de hoje está distribuído pelos strikes, não um preço-alvo.
-          <strong>Por que dão números diferentes</strong>
-          Um varre preços simulados recalculando gamma; o outro soma valores fixos percorrendo strikes. Não há motivo pra baterem — principalmente com OI real distribuído de forma irregular. Use o Gamma Flip como o nível que importa; trate o Zero Gamma por strike como contexto.
+        <div style="text-align:right">
+          <button class="refresh-btn" id="refreshBtn">Atualizar</button>
+          <div class="updated" id="updatedAt"></div>
         </div>
-      </div>
-    </div>
-    <div id="profileChart" class="plot" style="height:380px"></div>
-    <span class="table-toggle" data-target="profileTable">ver tabela</span>
-    <table class="data-table" id="profileTable"></table>
-  </div>
+      </header>
 
-  <div class="disclaimer" id="disclaimer"></div>
+      <div class="badges" id="badges"></div>
+
+      <div class="metrics-row" id="metrics"></div>
+
+      <div class="card">
+        <div class="card-header-row" style="justify-content:flex-end">
+          <div class="info-wrap">
+            <button class="info-btn" type="button" aria-label="O que cada modo mostra">?</button>
+            <div class="info-tooltip">
+              <strong>GEX líquido</strong>
+              Eixo: R$. Exposição de gamma ponderada — call contribui positivo, put negativo, somados num valor só por strike. Decide o regime (positivo/negativo) e de onde saem o Gamma Flip e os Call Wall/Put Wall.
+              <strong>CALL x PUT</strong>
+              Eixo: também R$, mas sem somar — call e put lado a lado, sem cancelar um com o outro. Use quando um strike chamar atenção no GEX líquido e você quiser saber se é call ou put que domina ali.
+              <strong>NET Open Interest</strong>
+              Eixo: contratos (OI real, sem peso de gamma). Mostra o desequilíbrio bruto de posicionamento — revela OI concentrado longe do spot que hoje não pesa no gamma, mas pode passar a pesar se o preço se aproximar.
+              <strong>Fluxo sugerido</strong>
+              GEX líquido pro regime geral → CALL x PUT pra ver a origem de um pico → NET Open Interest pra saber se é uma posição grande de verdade ou só efeito de proximidade do gamma.
+            </div>
+          </div>
+        </div>
+        <div class="toggle-group" id="toggleGroup">
+          <button class="toggle-btn active" data-mode="net">GEX líquido</button>
+          <button class="toggle-btn" data-mode="callput">CALL x PUT</button>
+          <button class="toggle-btn" data-mode="volume" id="weightModeBtn">NET Open Interest</button>
+          <button class="toggle-btn" data-mode="cumulative">GEX cumulativo</button>
+        </div>
+        <div id="cockpitChart" class="plot" style="height:420px"></div>
+        <span class="table-toggle" data-target="cockpitTable">ver tabela</span>
+        <table class="data-table" id="cockpitTable"></table>
+      </div>
+
+      <div class="card">
+        <div class="card-header-row" style="justify-content:flex-end">
+          <div class="info-wrap">
+            <button class="info-btn" type="button" aria-label="Gamma Flip x Zero Gamma">?</button>
+            <div class="info-tooltip">
+              <strong>Gamma Flip</strong>
+              É uma simulação de preço: recalcula o gamma de toda a cadeia (mesmo OI, mesma volatilidade de hoje) pra vários preços hipotéticos dentro de ±30% do spot. O nível onde a soma total muda de sinal é o Gamma Flip — responde "quanto o preço precisa se mover pra mudar de regime".
+              <strong>Zero Gamma (por strike)</strong>
+              É diferente: não simula preço nenhum. Pega o GEX de hoje calculado no spot atual (fixo) pra cada strike, soma acumulado do menor pro maior strike, e vê onde essa soma cruza zero. É uma estatística sobre como o book de hoje está distribuído pelos strikes, não um preço-alvo.
+              <strong>Por que dão números diferentes</strong>
+              Um varre preços simulados recalculando gamma; o outro soma valores fixos percorrendo strikes. Não há motivo pra baterem — principalmente com OI real distribuído de forma irregular. Use o Gamma Flip como o nível que importa; trate o Zero Gamma por strike como contexto.
+            </div>
+          </div>
+        </div>
+        <div id="profileChart" class="plot" style="height:380px"></div>
+        <span class="table-toggle" data-target="profileTable">ver tabela</span>
+        <table class="data-table" id="profileTable"></table>
+      </div>
+
+      <div class="disclaimer" id="disclaimer"></div>
+
+    </div>
+
+  </div>
 
   </div>
 
@@ -334,6 +370,60 @@ function showDetail(ticker, root) {
   document.getElementById('screenerView').style.display = 'none';
   document.getElementById('detailView').style.display = '';
   fetchData(false);
+  renderHistory(ticker);
+}
+
+async function renderHistory(ticker) {
+  const chartEl = document.getElementById('historyChart');
+  const listEl = document.getElementById('historyList');
+  listEl.innerHTML = '<div class="history-empty">Carregando...</div>';
+  try {
+    const r = await fetch(`api/gex-history?ticker=${encodeURIComponent(ticker)}`);
+    const data = await r.json();
+    const points = data.points || [];
+    if (points.length === 0) {
+      Plotly.purge(chartEl);
+      listEl.innerHTML = '<div class="history-empty">Sem histórico ainda pra esse ativo.</div>';
+      return;
+    }
+
+    const dates = points.map(p => p.ref_date);
+    const flips = points.map(p => p.gamma_flip);
+
+    Plotly.react(chartEl, [{
+      x: dates, y: flips, type: 'scatter', mode: 'lines+markers',
+      line: { color: cssVar('--call'), width: 2 },
+      marker: { size: 4, color: cssVar('--call') },
+      hovertemplate: '%{x}<br>Gamma Flip: R$ %{y:.2f}<extra></extra>',
+    }], {
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor: 'rgba(0,0,0,0)',
+      font: { family: 'system-ui, -apple-system, "Segoe UI", sans-serif', color: cssVar('--text-secondary'), size: 10 },
+      margin: { l: 42, r: 10, t: 6, b: 24 },
+      xaxis: { gridcolor: cssVar('--gridline'), zerolinecolor: cssVar('--baseline'), linecolor: cssVar('--baseline'), showticklabels: false },
+      yaxis: { gridcolor: cssVar('--gridline'), zerolinecolor: cssVar('--baseline'), linecolor: cssVar('--baseline'), tickprefix: 'R$ ' },
+      hovermode: 'x unified',
+      showlegend: false,
+    }, { displayModeBar: false, responsive: true });
+
+    const recent = points.slice().reverse().slice(0, 12);
+    listEl.innerHTML = recent.map((p, idx) => {
+      const prev = recent[idx + 1];
+      let arrow = '';
+      if (prev && prev.gamma_flip != null && p.gamma_flip != null) {
+        arrow = p.gamma_flip >= prev.gamma_flip
+          ? '<span style="color:var(--good)">&#9650;</span>'
+          : '<span style="color:var(--critical)">&#9660;</span>';
+      }
+      const [y, m, dd] = p.ref_date.split('-');
+      return `<div class="history-row">
+        <span class="history-date">${dd}/${m}/${y.slice(2)}</span>
+        <span class="history-value">${arrow} ${fmtPrice(p.gamma_flip)}</span>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    listEl.innerHTML = '<div class="history-empty">Erro ao carregar histórico.</div>';
+  }
 }
 
 async function fetchData(force) {
