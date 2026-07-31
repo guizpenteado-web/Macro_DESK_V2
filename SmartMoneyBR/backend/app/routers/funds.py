@@ -23,17 +23,18 @@ SortField = Literal[
 # a pagina Fundos voltou a ficar lenta (3,5-9s) porque o "has_equity" (quais
 # fundos tem ao menos 1 posicao de equity, o unico escopo do app) era
 # recalculado do zero A CADA REQUEST via DISTINCT sobre fund_holdings (~8
-# milhoes de linhas, crescendo ~1x/mes via ingestao CDA) — e o pior, essa
-# mesma distinct scan aparecia DUAS VEZES no plano (uma pro JOIN com
-# fund_quota, outra pro WHERE em funds), sem contar que estatisticas do
-# planner desatualizadas (autovacuum nao alcança o limiar de 10% num tempo
-# razoavel numa tabela desse tamanho) faziam o Postgres as vezes escolher um
-# plano catastrofico (nested loop materializado, 72 milhoes de comparacoes
-# descartadas, medido em producao). fund_holdings so muda quando o job de
-# CDA roda (1-2x/dia) — mesmo padrao de cache TTL em memoria ja usado em
-# performance.py pra top-performers/evolution, aqui pro conjunto de
-# fund_ids com equity: transforma 1-2 distinct scans completos por request
-# numa lookup em memoria pra quase todo mundo.
+# milhoes de linhas, crescendo ~1x/mes via ingestao CDA) — usado DUAS vezes
+# no plano (JOIN com fund_quota E WHERE em funds; as duas ocorrencias
+# importam de verdade pro planner, ver comentario junto do WHERE mais
+# abaixo). Estatisticas do planner desatualizadas (autovacuum nao alcança o
+# limiar de 10% num tempo razoavel numa tabela desse tamanho) tambem faziam
+# o Postgres as vezes escolher um plano catastrofico (nested loop
+# materializado, 72 milhoes de comparacoes descartadas, medido em
+# producao). fund_holdings so muda quando o job de CDA roda (1-2x/dia) —
+# mesmo padrao de cache TTL em memoria ja usado em performance.py pra
+# top-performers/evolution, aqui pro conjunto de fund_ids com equity:
+# transforma o DISTINCT completo (~0,6s) numa lookup em memoria pra quase
+# todo mundo.
 _HAS_EQUITY_CACHE_TTL = 3600.0
 _has_equity_cache: dict[str, float | set[int] | None] = {"ts": 0.0, "ids": None}
 
@@ -263,12 +264,16 @@ def search_funds(
     )
     LatestQuota = aliased(FundQuota, latest_quota_sq)
 
-    # Sem WHERE Fund.id IN (has_equity) aqui de proposito: o INNER JOIN acima
-    # com LatestQuota ja restringe a esse mesmo conjunto (LatestQuota so tem
-    # linhas pra fund_id em has_equity_list), entao repetir o filtro so
-    # adicionava trabalho identico sem mudar o resultado — achado 31/jul/2026
-    # ao notar que o plano computava o mesmo has_equity duas vezes.
-    stmt = select(Fund, LatestQuota).join(LatestQuota, LatestQuota.fund_id == Fund.id)
+    # Correcao 31/jul/2026 (mesmo dia): cheguei a tirar este WHERE por
+    # parecer redundante com o INNER JOIN acima (LatestQuota ja so tem
+    # fund_id em has_equity_list) — LOGICAMENTE e' redundante, mas medido em
+    # producao isso piora o plano de ~0,55s pra ~3,0s: sem o WHERE explicito
+    # em Fund.id, o planner perde o caminho de acesso barato (bitmap/index
+    # scan em funds.id por uma lista concreta de ~9,3 mil ints) e volta a
+    # escolher scan ordenado por nome + nested loop nao-indexado contra o
+    # LatestQuota derivado — o mesmo tipo de plano ruim do achado de
+    # ANALYZE. Mantido de proposito, mesmo redundante pro resultado.
+    stmt = select(Fund, LatestQuota).join(LatestQuota, LatestQuota.fund_id == Fund.id).where(Fund.id.in_(has_equity_list))
     if search:
         stmt = stmt.where(Fund.name.ilike(f"%{search}%") | Fund.cnpj.ilike(f"%{search}%"))
     if min_net_asset_value is not None:
