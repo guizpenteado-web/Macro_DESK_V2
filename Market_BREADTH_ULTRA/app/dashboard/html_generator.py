@@ -681,7 +681,7 @@ tr:hover td{{
   <button class="tab-btn active" onclick="showTab('sma',this)">Medias Moveis</button>
   <button class="tab-btn tab-rsi" onclick="showTab('rsi',this)">RSI Breadth</button>
   <button class="tab-btn tab-idx" onclick="showTab('idx',this)">Amplitude por Indices</button>
-  <button class="tab-btn tab-gamma" onclick="showTab('gamma',this)">&#9889; Gamma Screener</button>
+  <button class="tab-btn tab-gamma" onclick="showTab('gamma',this)">Gamma Screener</button>
 </div>
 
 <!-- ═══════════════════════════════════════════════════ TAB SMA -->

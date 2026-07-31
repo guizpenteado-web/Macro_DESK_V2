@@ -1,4 +1,6 @@
+import concurrent.futures
 import os
+import threading
 import time
 import traceback
 from pathlib import Path
@@ -96,39 +98,56 @@ def api_gex():
         return jsonify({"error": str(e)}), 502
 
 
+def _row_for_asset(asset, oi_index, ref_date, force):
+    try:
+        p = _get_asset_payload(asset["ticker"], asset["root"], oi_index, ref_date, force=force)
+        return {
+            "ticker": asset["ticker"],
+            "root": asset["root"],
+            "name": asset["name"],
+            "spot": p["spot"],
+            "gamma_flip": p["gamma_flip"],
+            "distance_pct": ((p["gamma_flip"] / p["spot"] - 1) * 100) if p["gamma_flip"] else None,
+            "regime": p["regime"],
+            "gex_net_total": p["gex_net_total"],
+            "oi_total": asset["oi_total"],
+        }
+    except Exception as asset_err:
+        traceback.print_exc()
+        return {"ticker": asset["ticker"], "root": asset["root"], "name": asset["name"],
+                "error": str(asset_err)}
+
+
+def _refresh_screener(force=False):
+    """Recalcula o screener inteiro. As chamadas por ativo na OpLab sao a
+    parte lenta (I/O de rede, uma por ativo) -- paralelizadas com um thread
+    pool em vez de sequenciais, senao 60 ativos x ~300-500ms cada vira
+    15-25s de espera. O arquivo de OI da B3 continua buscado 1x so (dentro
+    de _get_oi_index, TTL proprio), nunca por ativo.
+    """
+    oi_index, ref_date = _get_oi_index(force=force)
+    universe = b3_oi_client.build_universe(oi_index, top_n=UNIVERSE_SIZE)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=12) as pool:
+        rows = list(pool.map(
+            lambda asset: _row_for_asset(asset, oi_index, ref_date, force), universe
+        ))
+    payload = {
+        "rows": rows,
+        "oi_reference_date": ref_date.strftime("%Y-%m-%d"),
+        "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    }
+    _screener_cache["payload"] = payload
+    _screener_cache["fetched_at"] = time.time()
+    return payload
+
+
 @app.route("/api/screener")
 def api_screener():
     force = request.args.get("force") == "1"
     now = time.time()
     if force or _screener_cache["payload"] is None or now - _screener_cache["fetched_at"] > SCREENER_TTL_SECONDS:
         try:
-            oi_index, ref_date = _get_oi_index(force=force)
-            universe = b3_oi_client.build_universe(oi_index, top_n=UNIVERSE_SIZE)
-            rows = []
-            for asset in universe:
-                try:
-                    p = _get_asset_payload(asset["ticker"], asset["root"], oi_index, ref_date, force=force)
-                    rows.append({
-                        "ticker": asset["ticker"],
-                        "root": asset["root"],
-                        "name": asset["name"],
-                        "spot": p["spot"],
-                        "gamma_flip": p["gamma_flip"],
-                        "distance_pct": ((p["gamma_flip"] / p["spot"] - 1) * 100) if p["gamma_flip"] else None,
-                        "regime": p["regime"],
-                        "gex_net_total": p["gex_net_total"],
-                        "oi_total": asset["oi_total"],
-                    })
-                except Exception as asset_err:
-                    traceback.print_exc()
-                    rows.append({"ticker": asset["ticker"], "root": asset["root"], "name": asset["name"],
-                                 "error": str(asset_err)})
-            _screener_cache["payload"] = {
-                "rows": rows,
-                "oi_reference_date": ref_date.strftime("%Y-%m-%d"),
-                "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
-            }
-            _screener_cache["fetched_at"] = now
+            return jsonify(_refresh_screener(force=force))
         except Exception as e:
             traceback.print_exc()
             if _screener_cache["payload"] is not None:
@@ -142,6 +161,23 @@ def api_screener():
 @app.route("/")
 def index():
     return send_from_directory(str(BASE_DIR), "index.html")
+
+
+def _background_warmer():
+    """Mantem o cache do screener sempre quente, pra quem clicar no botao
+    nunca cair no caminho frio (~15-25s). Roda um pouco antes do TTL vencer,
+    em background, sem depender de nenhum clique de usuario pra disparar.
+    """
+    time.sleep(5)  # da tempo do processo terminar de subir
+    while True:
+        try:
+            _refresh_screener(force=False)
+        except Exception:
+            traceback.print_exc()
+        time.sleep(max(30, SCREENER_TTL_SECONDS - 30))
+
+
+threading.Thread(target=_background_warmer, daemon=True).start()
 
 
 if __name__ == "__main__":
