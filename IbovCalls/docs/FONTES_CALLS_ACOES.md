@@ -18,6 +18,8 @@ O usuário recebe calls diárias num grupo de WhatsApp (formato típico: `++ {Ba
 
 **Achado real (26/jul/2026)**: usuário mandou um exemplo — "JPMorgan compra Motiva, alvo R$19, após leilão Régis Bittencourt (23/jul)". Busca pública não confirmou JPMorgan com esse valor: achou **Bradesco BBI com R$19** (bate o valor, banco errado) e **JPMorgan com R$18** (bate o banco, mas de set/2025, desatualizado). Duas hipóteses: (a) o grupo tem uma nota do JPMorgan pós-leilão ainda não republicada publicamente — bem provável, já que o leilão foi só um dia antes; (b) troca de banco no repasse da mensagem. **Lição**: mesmo vindo de uma fonte "de dentro", sempre tentar cross-check — e se não confirmar, não travar a call no dataset como se fosse fato consolidado.
 
+**Validado em produção 01/ago/2026**: esse fluxo deixou de ser hipotético — usuário confirmou que vai repetir a cada 3-4 dias/semana. Protocolo definitivo (buscar sempre primeiro, `url` vazio se não achar, nunca usar link `nomos.to` como fonte) documentado em detalhe na memória [[feedback-whatsapp-calls-ingestion-protocol]].
+
 ## TIER-1 — fontes diretas dos bancos (melhor sinal, mais raro de achar tudo)
 
 | Banco | Onde buscar |
@@ -43,9 +45,19 @@ Esses sites são os que mais renderam resultado hoje — sempre citam banco, val
 
 | Fonte | Uso |
 |---|---|
-| **Investing.com** (`investing.com/equities/{empresa}-consensus-estimates`) | preço-alvo médio/mín/máx consolidado — útil como sanity check, não pra atribuir a um banco específico |
+| **Investing.com** (`investing.com/equities/{empresa}-consensus-estimates`) | preço-alvo médio/mín/máx consolidado — útil como sanity check, não pra atribuir a um banco específico. **Atualização 01/ago/2026**: o caminho `br.investing.com/news/stock-market-news/...` e `.../analyst-ratings/...` é bem melhor que a página de consensus-estimates — são matérias datadas, com banco e preço-alvo específico citados (ex: rebaixamento do Goldman na Vale, upgrade do BTG na Petrobras). Vale tratar como TIER-2 quando a URL é `/news/`, não como TIER-3. |
 | **Investidor10** / **Status Invest** | idem, bom pra pegar a lista de quem cobre o ativo |
 | **Riconnect (Rico)** / **BTG Pactual Content** | espelham research de vários bancos, mas nem sempre com data clara |
+
+## TIER-2 (novos, adicionados 01/ago/2026) — mesmo padrão do grupo acima, achados na expansão de 130 calls via export de WhatsApp
+
+| Portal | Uso |
+|---|---|
+| **ADVFN Brasil** (`br.advfn.com/jornal/...`) | republica calls com bastante detalhe — bom pra JPMorgan e XP (achado: Petrobras/JPMorgan, Copasa/XP) |
+| **Acionista.com.br** (`acionista.com.br`) | bom pra Safra e Itaú BBA (achado: Petrobras/Safra, Usiminas/Itaú BBA) |
+| **BPMoney** (`bpmoney.com.br`) | bom pra Citi (achado: Usiminas/Citi, WEG/Citi) — já usado antes pra BB Investimentos (Carteira 5+), agora confirmado bom pra Citi também |
+| **TeleTime** (`teletime.com.br`) | trade publication vertical de telecom — melhor fonte específica pra VIVT3/TIMS3 (cobre XP e outras casas com granularidade que os portais generalistas não têm) |
+| **Monitor do Mercado** (`monitordomercado.com.br`) | bom pra BTG Pactual (achado: TIM/Vivo pós-balanço) |
 
 ---
 
@@ -71,6 +83,7 @@ Ver [[project-ibov-calls]]: call sobre **uma ação específica** por dinâmica 
 - **26/jul/2026** (segunda leva, mesmo dia): 21 ativos, 32 calls — PRIO3, SUZB3, RDOR3, LREN3, BBSE3, GGBR4, ABEV3, ASAI3 adicionados
 - **26/jul/2026** (terceira leva, mesmo dia): 28 ativos, 39 calls — EMBJ3, RAIL3, TOTS3, VIVT3, USIM5, CSNA3, MULT3 adicionados
 - **26/jul/2026** (quarta leva, "expanda ao máximo" — 4 agentes de pesquisa em paralelo por setor): 60 ativos, 99 calls — +32 tickers: AXIA3, TAEE11, EGIE3, ENEV3, SBSP3, SAPR11, CSMG3 (utilities/energia) · HAPV3, RADL3, FLRY3, PCAR3, NATU3, HYPE3, AUAU3, ALPA4, SAUD3 (consumo/varejo/saúde) · MOTV3, ECOR3, RAIZ4, JBSS32, MBRF3, CYRE3, MRVE3, EZTC3 (industriais/transporte/imobiliário) · ITSA4, IRBR3, PSSA3, CSAN3, VBBR3, UGPA3, KLBN11, VAMO3 (financeiro/outros)
+- **01/ago/2026** (primeira execução real do fluxo TIER-0 acima — export de WhatsApp de ~1300 linhas, 6 agentes de pesquisa em paralelo por bloco de tickers): 81 ativos, 229 calls — +21 tickers: ALUP11, ISAE4, IGTI11, ALOS3, LOGG3, TIMS3, BHIA3, COGN3, TTEN3, RECV3, YDUQ3, ANIM3, BRBI11, BRAV3, JSLG3, GMAT3, DASA3, INTB3, SIMH3, MELI34, BEEF3. Das 130 calls novas, 81 (62%) tiveram fonte pública confirmada; 49 ficaram com `url` vazio (buscadas, não encontradas — não confirmar não bloqueia a entrada, só tira o link "Ver fonte original", ver [[feedback-whatsapp-calls-ingestion-protocol]]). **Achado**: links `nomos.to` (TradeNews) que vêm junto no export do WhatsApp NÃO são fonte válida — redirecionam pra um Google Drive privado, não pra matéria pública; sempre ignorar e buscar a fonte de verdade.
 
 ## Método que funcionou bem pra expansão grande: pesquisa em paralelo por setor
 
