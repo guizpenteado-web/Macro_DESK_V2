@@ -38,6 +38,7 @@ def get_ibov_data():
     try:
         ibov = yf.Ticker('^BVSP')
         hist = ibov.history(period=period, interval='1d')
+        hist = hist.dropna(subset=['Close'])
 
         if hist.empty:
             return jsonify({'error': 'No data returned from Yahoo Finance'}), 500
@@ -59,6 +60,7 @@ def get_ibov_data():
             })
 
         quote = ibov.history(period='5d', interval='1d')
+        quote = quote.dropna(subset=['Close'])
         current_price = None
         change = None
         change_pct = None
@@ -489,6 +491,7 @@ def get_stock_quote():
     try:
         stock = yf.Ticker(yf_ticker)
         hist = stock.history(period=period, interval='1d')
+        hist = hist.dropna(subset=['Close'])
 
         if hist.empty:
             return jsonify({'error': f'Sem dados para {ticker}'}), 404
@@ -509,6 +512,7 @@ def get_stock_quote():
             })
 
         quote = stock.history(period='5d', interval='1d')
+        quote = quote.dropna(subset=['Close'])
         current_price = None
         change = None
         change_pct = None
