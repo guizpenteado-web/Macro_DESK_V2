@@ -102,6 +102,17 @@ body {
 .chart-wrapper canvas { width: 100% !important; max-height: 460px; }
 .loading-chart { text-align: center; padding: 40px; color: #8b949e; font-size: 14px; }
 
+.call-tooltip {
+    display: none; position: absolute; z-index: 20; max-width: 280px;
+    background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+    padding: 10px 12px; pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    transform: translate(-50%, calc(-100% - 12px));
+}
+.call-tooltip .bank { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.call-tooltip .title { font-size: 12px; font-weight: 600; color: #f0f6fc; margin-bottom: 4px; line-height: 1.35; }
+.call-tooltip .summary { font-size: 11px; color: #8b949e; line-height: 1.4; }
+.call-tooltip .date { font-size: 10px; color: #6e7681; margin-top: 4px; }
+
 .timeline-section h2 { font-size: 18px; color: #f0f6fc; margin-bottom: 16px; }
 .timeline { position: relative; padding-left: 32px; }
 .timeline::before {
@@ -186,6 +197,7 @@ body {
             </div>
             <div class="loading-chart" id="chartLoading">Carregando cotação...</div>
             <canvas id="stockChart"></canvas>
+            <div class="call-tooltip" id="callTooltip"></div>
         </div>
 
         <div class="timeline-section">
@@ -314,6 +326,7 @@ function showList() {
     document.getElementById('listView').style.display = '';
     document.getElementById('detailView').style.display = 'none';
     currentTicker = null;
+    hideCallTooltip();
 }
 
 async function showDetail(ticker) {
@@ -407,32 +420,70 @@ async function loadQuote(ticker) {
     }
 }
 
+function showCallTooltip(call, canvasX, canvasY) {
+    const canvas = document.getElementById('stockChart');
+    const tooltip = document.getElementById('callTooltip');
+    const bc = BANK_COLORS[call.bank] || '#58a6ff';
+    tooltip.innerHTML = `
+        <div class="bank" style="color:${bc}">${call.bank}</div>
+        <div class="title">${call.title}</div>
+        <div class="summary">${call.summary}</div>
+        <div class="date">${fmtDate(call.date)}</div>
+    `;
+    tooltip.style.left = (canvas.offsetLeft + canvasX) + 'px';
+    tooltip.style.top = (canvas.offsetTop + canvasY) + 'px';
+    tooltip.style.display = 'block';
+}
+
+function hideCallTooltip() {
+    document.getElementById('callTooltip').style.display = 'none';
+}
+
 function renderStockChart(data) {
+    hideCallTooltip();
     if (!data || data.length === 0) return;
     const ctx = document.getElementById('stockChart').getContext('2d');
     const labels = data.map(d => d.date);
     const prices = data.map(d => d.close);
 
+    // Cai num dia sem pregão (fim de semana/feriado)? Usa o próximo dia útil
+    // disponível no gráfico (ou o último ponto, se a call for mais recente que o dado).
+    function resolveIndex(call) {
+        const exact = labels.indexOf(call.date);
+        if (exact !== -1) return exact;
+        const next = labels.findIndex(d => d >= call.date);
+        return next === -1 ? labels.length - 1 : next;
+    }
+
+    // Várias calls no mesmo pregão (comum em dia de resultado) cairiam exatamente
+    // em cima uma da outra — agrupa por dia e espalha os marcadores lado a lado.
+    const dayGroups = {};
+    currentCalls.forEach((call, idx) => {
+        const di = resolveIndex(call);
+        (dayGroups[di] = dayGroups[di] || []).push(idx);
+    });
+
     const annotations = {};
     currentCalls.forEach((call, idx) => {
-        // Cai num dia sem pregão (fim de semana/feriado)? Usa o próximo dia útil
-        // disponível no gráfico (ou o último ponto, se a call for mais recente que o dado).
-        let di = labels.indexOf(call.date);
-        if (di === -1) {
-            di = labels.findIndex(d => d >= call.date);
-            if (di === -1) di = labels.length - 1;
-        }
+        const di = resolveIndex(call);
+        const group = dayGroups[di];
+        const posInGroup = group.indexOf(idx);
+        const xOffset = (posInGroup - (group.length - 1) / 2) * 18;
         const bc = BANK_COLORS[call.bank] || '#58a6ff';
         annotations[`c${idx}`] = {
             type: 'point', xValue: labels[di], yValue: prices[di],
+            xAdjust: xOffset,
             backgroundColor: bc, borderColor: '#0d1117', borderWidth: 2,
             radius: 8, pointStyle: 'rectRounded',
             label: {
-                display: true, content: call.bank, position: 'start', yAdjust: -16,
+                display: true, content: call.bank, position: 'start',
+                xAdjust: xOffset, yAdjust: -16 - (posInGroup % 2) * 14,
                 backgroundColor: bc, color: '#0d1117',
                 font: { size: 9, weight: 'bold' },
                 padding: { top: 3, bottom: 3, left: 5, right: 5 }, borderRadius: 3
-            }
+            },
+            enter(actx) { showCallTooltip(call, actx.element.x, actx.element.y); return true; },
+            leave() { hideCallTooltip(); return true; }
         };
     });
 
