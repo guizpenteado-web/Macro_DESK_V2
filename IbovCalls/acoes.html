@@ -108,10 +108,7 @@ body {
     padding: 10px 12px; pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
     transform: translate(-50%, calc(-100% - 12px));
 }
-.call-tooltip .bank { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-.call-tooltip .title { font-size: 12px; font-weight: 600; color: #f0f6fc; margin-bottom: 4px; line-height: 1.35; }
-.call-tooltip .summary { font-size: 11px; color: #8b949e; line-height: 1.4; }
-.call-tooltip .date { font-size: 10px; color: #6e7681; margin-top: 4px; }
+.call-tooltip .title { font-size: 12px; font-weight: 600; color: #f0f6fc; line-height: 1.35; }
 
 .timeline-section h2 { font-size: 18px; color: #f0f6fc; margin-bottom: 16px; }
 .timeline { position: relative; padding-left: 32px; }
@@ -423,13 +420,7 @@ async function loadQuote(ticker) {
 function showCallTooltip(call, canvasX, canvasY) {
     const canvas = document.getElementById('stockChart');
     const tooltip = document.getElementById('callTooltip');
-    const bc = BANK_COLORS[call.bank] || '#58a6ff';
-    tooltip.innerHTML = `
-        <div class="bank" style="color:${bc}">${call.bank}</div>
-        <div class="title">${call.title}</div>
-        <div class="summary">${call.summary}</div>
-        <div class="date">${fmtDate(call.date)}</div>
-    `;
+    tooltip.innerHTML = `<div class="title">${call.title}</div>`;
     tooltip.style.left = (canvas.offsetLeft + canvasX) + 'px';
     tooltip.style.top = (canvas.offsetTop + canvasY) + 'px';
     tooltip.style.display = 'block';
