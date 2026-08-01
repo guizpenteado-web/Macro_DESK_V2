@@ -363,7 +363,7 @@ function renderDetailTimeline(calls) {
             <div class="summary">${call.summary}</div>
             <div class="targets">${targetsHtml}</div>
             <br>
-            <a href="${call.url}" target="_blank" rel="noopener">Ver fonte original →</a>
+            ${call.url ? `<a href="${call.url}" target="_blank" rel="noopener">Ver fonte original →</a>` : ''}
         `;
         c.appendChild(d);
     });
@@ -458,7 +458,7 @@ function renderStockChart(data) {
                         if (id && id.startsWith('c')) {
                             const idx = parseInt(id.substring(1));
                             const call = currentCalls[idx];
-                            if (call) window.open(call.url, '_blank');
+                            if (call && call.url) window.open(call.url, '_blank');
                         }
                     }
                 }
