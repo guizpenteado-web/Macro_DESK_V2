@@ -19,6 +19,7 @@ SEASONALITY_TICKERS = {
         "EWZ":      "EWZ",              # iShares MSCI Brazil ETF (USD-traded)
         "VIX":      "^VIX",
         "DXY":      "DX-Y.NYB",
+        "BRL (6L)": "6L=F",              # CME Brazilian Real futures — mesmo contrato do COT TFF abaixo
     },
     "energia": {
         "Petróleo WTI": "CL=F",
@@ -72,6 +73,7 @@ COT_CONTRACTS_TFF = {
     "vix":   ["VIX FUTURES - CBOE FUTURES EXCHANGE"],
     "btc":   ["BITCOIN - CHICAGO MERCANTILE EXCHANGE"],
     "bcom":  ["BBG COMMODITY - CHICAGO BOARD OF TRADE"],      # Bloomberg Commodity Index (TFF, 2022+)
+    "brl":   ["BRAZILIAN REAL - CHICAGO MERCANTILE EXCHANGE"],  # 6L, codigo CFTC 102741
 }
 
 BTC_TICKER = "BTC-USD"

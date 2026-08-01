@@ -25,7 +25,7 @@ COT_PRICE_MAP = {
     "sp500":  "^GSPC",       "vix":    "^VIX",
     "btc":    "BTC-USD",     "milho":  "ZC=F",
     "trigo":  "PWHEAMTUSDM", "soja":   "ZS=F",
-    "bcom":   "^BCOM",
+    "bcom":   "^BCOM",       "brl":    "6L=F",
 }
 _FRED_SET = set(FRED_TICKERS.keys())
 
@@ -1144,8 +1144,9 @@ td.num {{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
     <div class="chart-box"><div class="chart-title">VIX</div><div id="ch-saz-vix" style="height:260px"></div></div>
     <div class="chart-box"><div class="chart-title">EWZ — iShares Brasil ETF (USD)</div><div id="ch-saz-ewz" style="height:260px"></div></div>
     <div class="chart-box"><div class="chart-title">IBOVESPA (^BVSP — pontos BRL)</div><div id="ch-saz-ibov" style="height:260px"></div></div>
+    <div class="chart-box"><div class="chart-title">BRL (6L — CME Futures, USD por BRL)</div><div id="ch-saz-brl" style="height:260px"></div></div>
   </div>
-  <div class="source-note">Retorno médio mensal calculado sobre histórico disponível (até 20 anos). IBOVESPA = ^BVSP em pontos BRL. EWZ = ETF Brasil negociado em USD (captura também variação BRL/USD). Sazonalidade é estatística histórica — não garante comportamento futuro. Fonte: Yahoo Finance.</div>
+  <div class="source-note">Retorno médio mensal calculado sobre histórico disponível (até 20 anos). IBOVESPA = ^BVSP em pontos BRL. EWZ = ETF Brasil negociado em USD (captura também variação BRL/USD). BRL usa o contrato futuro 6L da CME (cotado em USD por BRL — sobe quando o Real se fortalece). Sazonalidade é estatística histórica — não garante comportamento futuro. Fonte: Yahoo Finance.</div>
 
   <div class="section-title">COT — Posicionamento Institucional — Financeiros (CFTC TFF, 2018–2026)</div>
   <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.6">
@@ -1184,9 +1185,15 @@ td.num {{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
       </div>
       <div id="ch-cot-vix" style="height:430px"></div>{_cot_weekly_html('vix', 'Asset Manager')}
     </div>
-    <div></div>
+    <div class="chart-box">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span class="chart-title" style="flex:1" id="cot-brl-lbl">BRL (6L) — COT CME &nbsp;|&nbsp; Asset Managers &amp; Lev. Funds</span>
+        <span id="ch-cot-brl-zlbl"></span>
+      </div>
+      <div id="ch-cot-brl" style="height:430px"></div>{_cot_weekly_html('brl', 'Asset Manager')}
+    </div>
   </div>
-  <div class="source-note">Fonte: CFTC Traders in Financial Futures (TFF). <b style="color:#f59e0b">Leveraged Funds</b>: hedge funds/CTAs em contratos financeiros (≈ Managed Money). <b style="color:#818cf8">Large Speculators</b>: Lev. Funds + Other Reportables. Interpretação: net longo em DXY = bull USD; net longo em S&amp;P = especuladores comprados no mercado; net longo em VIX = hedge contra queda.</div>
+  <div class="source-note">Fonte: CFTC Traders in Financial Futures (TFF). <b style="color:#f59e0b">Leveraged Funds</b>: hedge funds/CTAs em contratos financeiros (≈ Managed Money). <b style="color:#818cf8">Large Speculators</b>: Lev. Funds + Other Reportables. Interpretação: net longo em DXY = bull USD; net longo em S&amp;P = especuladores comprados no mercado; net longo em VIX = hedge contra queda; net longo em BRL (6L) = bull Real (aposta no fortalecimento do BRL vs USD).</div>
 
 </section>
 
@@ -2157,6 +2164,7 @@ var DATA = {{
     ewz:   {_saz_js('mercados','EWZ')},
     vix:   {_saz_js('mercados','VIX')},
     dxy:   {_saz_js('mercados','DXY')},
+    brl:   {_saz_js('mercados','BRL (6L)')},
     wti:   {_saz_js('energia','Petróleo WTI')},
     gas:   {_saz_js('energia','Gás Natural')},
     ouro:  {_saz_js('metais','Ouro')},
@@ -2181,6 +2189,7 @@ var DATA = {{
     trigo:  {_cot_js('trigo')},
     soja:   {_cot_js('soja')},
     bcom:   {_cot_js('bcom')},
+    brl:    {_cot_js('brl')},
   }},
   btcSaz:   {kw['btc_saz']},
   btcCycle: {kw['btc_cycle']},
@@ -2204,12 +2213,15 @@ function renderCharts(tab) {{
     barChart("ch-saz-vix",   DATA.saz.vix);
     barChart("ch-saz-ewz",   DATA.saz.ewz);
     barChart("ch-saz-ibov",  DATA.saz.ibov);
+    barChart("ch-saz-brl",   DATA.saz.brl);
     cotPanel("ch-cot-dxy",   "ch-cot-dxy-zlbl",   DATA.cot.dxy,   "Asset Managers");
     cotPanel("ch-cot-sp500", "ch-cot-sp500-zlbl", DATA.cot.sp500, "Asset Managers");
     cotPanel("ch-cot-vix",   "ch-cot-vix-zlbl",   DATA.cot.vix,   "Asset Managers");
+    cotPanel("ch-cot-brl",   "ch-cot-brl-zlbl",   DATA.cot.brl,   "Asset Managers");
     renderCotWeeklyTable("dxy", 12);
     renderCotWeeklyTable("sp500", 12);
     renderCotWeeklyTable("vix", 12);
+    renderCotWeeklyTable("brl", 12);
   }} else if (tab === "saz-energia") {{
     barChart("ch-saz-wti",  DATA.saz.wti);
     barChart("ch-saz-gas",  DATA.saz.gas);
