@@ -327,12 +327,14 @@ async function showDetail(ticker) {
     document.getElementById('chartLoading').style.display = '';
     document.getElementById('chartLoading').textContent = 'Carregando cotação...';
 
-    currentRange = 'ytd';
+    await loadCalls(ticker);
+
+    currentRange = pickDefaultRange(currentCalls);
     document.querySelectorAll('#rangeControls .range-btn').forEach(b => {
         b.classList.toggle('active', b.dataset.range === currentRange);
     });
 
-    await Promise.all([loadQuote(ticker), loadCalls(ticker)]);
+    await loadQuote(ticker);
 }
 
 let currentCalls = [];
@@ -341,6 +343,19 @@ async function loadCalls(ticker) {
     const res = await fetch('/api/stock-calls?ticker=' + encodeURIComponent(ticker));
     currentCalls = await res.json();
     renderDetailTimeline(currentCalls);
+}
+
+function pickDefaultRange(calls) {
+    if (!calls || calls.length === 0) return 'ytd';
+    const earliest = calls.reduce((min, c) => (c.date < min ? c.date : min), calls[0].date);
+    const earliestDate = new Date(earliest + 'T12:00:00');
+    const now = new Date();
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+    if (earliestDate >= yearStart) return 'ytd';
+    const diffDays = (now - earliestDate) / 86400000;
+    if (diffDays <= 190) return '6mo';
+    if (diffDays <= 370) return '1y';
+    return 'max';
 }
 
 function renderDetailTimeline(calls) {
@@ -400,11 +415,16 @@ function renderStockChart(data) {
 
     const annotations = {};
     currentCalls.forEach((call, idx) => {
-        const di = labels.indexOf(call.date);
-        if (di === -1) return;
+        // Cai num dia sem pregão (fim de semana/feriado)? Usa o próximo dia útil
+        // disponível no gráfico (ou o último ponto, se a call for mais recente que o dado).
+        let di = labels.indexOf(call.date);
+        if (di === -1) {
+            di = labels.findIndex(d => d >= call.date);
+            if (di === -1) di = labels.length - 1;
+        }
         const bc = BANK_COLORS[call.bank] || '#58a6ff';
         annotations[`c${idx}`] = {
-            type: 'point', xValue: call.date, yValue: prices[di],
+            type: 'point', xValue: labels[di], yValue: prices[di],
             backgroundColor: bc, borderColor: '#0d1117', borderWidth: 2,
             radius: 8, pointStyle: 'rectRounded',
             label: {
