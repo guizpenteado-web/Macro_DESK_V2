@@ -1,6 +1,6 @@
 {
   "_instrucoes": "Atualizar manualmente quando os bancos revisarem targets. Verificar fontes listadas abaixo.",
-  "last_updated": "2026-07-31",
+  "last_updated": "2026-08-03",
 
   "macro_snapshot": {
     "fed_rate": {
@@ -14,7 +14,7 @@
       "fomc_probability_cut": 0.0,
       "source": "Federal Reserve / CME FedWatch",
       "chair": "Kevin Warsh",
-      "note": "DECISÃO DE 29/jul: FOMC manteve a faixa em 3,50%-3,75% por votação 9-3 — divisão interna rara ('cliffhanger meeting'). As 3 dissidências (Hammack/Cleveland, Kashkari/Minneapolis, Logan/Dallas) pediram ALTA de 25bps, não corte, citando inflação persistente acima da meta de 2% há mais de 5 anos. Warsh chamou o debate interno de 'good family fight'. Mercado reagiu vendendo risco no dia (S&P -1,52%, Ibovespa -1,52% no mesmo pregão) e depois recuperou forte em 30/jul (S&P +1,7% a 7.437,64) com o dólar enfraquecendo. Próxima reunião: 15-16/set/2026 (com novo dot plot/SEP). CME FedWatch pós-decisão (29-30/jul) precifica agora MAIORIA de chance de ALTA em setembro: hold 29,8% | alta 25bps 50,6% | alta 50bps 19,6% — ou seja, ~70% de chance de pelo menos uma alta de juros na próxima reunião, um giro hawkish relevante frente à leitura de hold ampla que prevalecia antes da decisão."
+      "note": "DECISÃO DE 29/jul: FOMC manteve a faixa em 3,50%-3,75% por votação 9-3 — divisão interna rara ('cliffhanger meeting'). As 3 dissidências (Hammack/Cleveland, Kashkari/Minneapolis, Logan/Dallas) pediram ALTA de 25bps, não corte, citando inflação persistente acima da meta de 2% há mais de 5 anos. Warsh chamou o debate interno de 'good family fight'. Mercado reagiu vendendo risco no dia (S&P -1,52%, Ibovespa -1,52% no mesmo pregão) e depois recuperou forte em 30/jul (S&P +1,7% a 7.437,64) com o dólar enfraquecendo. Próxima reunião: 15-16/set/2026 (com novo dot plot/SEP). CME FedWatch pós-decisão (29-30/jul) precifica agora MAIORIA de chance de ALTA em setembro: hold 29,8% | alta 25bps 50,6% | alta 50bps 19,6% — ou seja, ~70% de chance de pelo menos uma alta de juros na próxima reunião, um giro hawkish relevante frente à leitura de hold ampla que prevalecia antes da decisão. ATUALIZAÇÃO 03/ago: JPMorgan revisou pra ver 1 alta em dez/2026 (ver fed_rate_views); Goldman reafirmou HOLD em 02/ago. Vale monitorar: o Brent, que tinha estourado US$100/bbl em 23-24/jul (driver do giro hawkish via choque de energia), recuou forte pra ~US$83/bbl até 03/ago — pode esfriar a narrativa de choque inflacionário que sustentava as apostas de alta em setembro. Próximos catalisadores: NFP 07/ago, CPI 12/ago, Jackson Hole 27-29/ago."
     },
     "cpi": {
       "yoy": 3.5,
@@ -127,15 +127,15 @@
     },
     {
       "bank": "JP Morgan",
-      "end_2026_low": 3.50,
-      "end_2026_high": 3.75,
-      "end_2026_label": "3.50%–3.75%",
-      "cuts_hikes": 0,
-      "cuts_hikes_label": "HOLD",
-      "view": "NEUTRAL",
-      "rationale": "Fed em hold pelo resto de 2026. Inflação persistente impede cortes. Próximo movimento: possível alta em 2027 se core PCE não ceder.",
-      "date_published": "2026-06",
-      "source_url": "https://finance.yahoo.com/news/j-p-morgan-predicts-fed-035700750.html"
+      "end_2026_low": 3.75,
+      "end_2026_high": 4.00,
+      "end_2026_label": "3.75%–4.00%",
+      "cuts_hikes": -1,
+      "cuts_hikes_label": "1 alta (dez)",
+      "view": "HAWK",
+      "rationale": "REVISADO 30/jul/2026: banco (economista-chefe Michael Feroli) agora espera ALTA de 25bps em dezembro/2026, abandonando a projeção anterior de alta só na 2ª metade de 2027. Motivo: entrevista coletiva ambígua de Kevin Warsh pós-FOMC de 29/jul, sem sinalização clara de como o novo chair pretende atingir a meta de inflação. JPMorgan também sinalizou que 'o risco de uma alta em setembro é real'.",
+      "date_published": "2026-07-30",
+      "source_url": "https://www.kitco.com/news/off-the-wire/2026-07-30/jpmorgan-brings-forward-fed-rate-hike-call-december-after-july-hold"
     },
     {
       "bank": "Goldman Sachs",
@@ -194,11 +194,11 @@
       "period": "Jun/2026",
       "meta": 3.0,
       "teto": 4.5,
-      "projecao_fim_2026": 5.12,
+      "projecao_fim_2026": 5.03,
       "release_date": "2026-07-10",
       "next_release": "2026-08-11",
       "source": "IBGE / Boletim Focus (projeção)",
-      "note": "IPCA de junho veio bem abaixo do esperado (0,16% vs. ~0,31% de mediana), levando o acumulado 12m de 4,72% para 4,64%. Ibovespa subiu 2,86% no dia (10/jul), maior patamar em 2 meses, com mercado precificando maior chance de corte da Selic no Copom de 4-5/ago. Projeção do Boletim Focus pro fim de 2026 reduzida de 5,15% para 5,12% (leitura de 27/jul) — segue acima do teto da meta (4,5%)."
+      "note": "IPCA de junho veio bem abaixo do esperado (0,16% vs. ~0,31% de mediana), levando o acumulado 12m de 4,72% para 4,64%. Ibovespa subiu 2,86% no dia (10/jul), maior patamar em 2 meses, com mercado precificando maior chance de corte da Selic no Copom de 4-5/ago. ATUALIZAÇÃO: Boletim Focus de 03/ago (5ª queda semanal seguida) reduziu a projeção pro fim de 2026 de 5,12% para 5,03% — segue acima do teto da meta (4,5%). Focus também cortou a projeção de Selic fim-2026 de 14,00% para 13,75% e reduziu o PIB 2026 de 1,99% (fim-jul) para 1,57% (03/ago)."
     },
     "selic": {
       "value": 14.25,
@@ -211,12 +211,12 @@
     "copom_views": [
       {
         "bank": "Focus BCB",
-        "selic_fim_2026": 14.00,
-        "selic_label": "14.00%",
-        "movimento": "1 corte",
-        "view": "NEUTRAL",
-        "rationale": "Mediana do Focus 27/jul/2026 (Banco Central) — Selic 2026 MANTIDA em 14,00% e Selic 2027 MANTIDA em 12,00%. IPCA 2026 projetado em 5.12% (reduzido de 5.15%) — segue acima do teto de 4.5%. PIB 2026 mantido em 1,99%. Copom de 4-5/ago (280ª reunião): mercado majoritariamente não espera corte nem em agosto nem em setembro, vê espaço pra só mais 1 corte de 25bps até dezembro.",
-        "date_published": "2026-07-27"
+        "selic_fim_2026": 13.75,
+        "selic_label": "13.75%",
+        "movimento": "2 cortes",
+        "view": "DOVE",
+        "rationale": "ATUALIZADO 03/ago/2026 (última leitura antes da decisão do Copom de 4-5/ago): mediana do Focus cortou Selic fim-2026 de 14,00% para 13,75% e IPCA fim-2026 de 5,12% para 5,03% (5ª queda semanal seguida). Selic 2027 estável em 12,00% há 7 semanas. PIB 2026 caiu de 1,99% (fim-jul) para 1,57%. Precificação de mercado (opções de Copom na B3, véspera da decisão): ~75-80% de probabilidade de corte de 25bps (14,25%→14,00%) nesta reunião, ~21% de manutenção — decisão sai na quarta 05/ago após o fechamento.",
+        "date_published": "2026-08-03"
       },
       {
         "bank": "Itaú BBA",
@@ -370,11 +370,11 @@
   ],
 
   "commodity_targets": {
-    "_nota": "Atualizado 31/jul/2026 via hierarquia TIER-1→TIER-2→TIER-3. TIER-1: jpmorgan.com/insights. TIER-2: Kitco (spot + research BofA/GS), TradingEconomics/EIA (WTI), Westmetall (LME copper). TIER-3 (confirmação): Reuters/TradingView, Mining Weekly, Rigzone/Bloomberg, BNN Bloomberg, goldsilver.com, BigGo Finance, Yahoo Finance. Todos os targets abaixo verificados individualmente nesta atualização — nenhum copiado sem checar.",
-    "_precos_referencia": "Ouro $4.086,21/oz (TradingEconomics, 31/jul, -0,42% no dia) | Prata $56,94/oz (Kitco, 29/jul, sem leitura mais fresca confirmada) | WTI $79,28/bbl (fechamento 28/jul, EIA Cushing + TradingEconomics — sem revisão de fechamento mais recente confirmada) | Cobre COMEX $6,28/lb / LME $13.643,50/ton (Westmetall, 28/jul) | USD/BRL R$5,07-5,12 (30/jul, real fortaleceu ~1% pós-decisão do Fed).",
+    "_nota": "Atualizado 03/ago/2026 via hierarquia TIER-1→TIER-2→TIER-3. TIER-1: jpmorgan.com/insights. TIER-2: Kitco (spot + research BofA/GS), TradingEconomics/EIA (WTI), Westmetall (LME copper). TIER-3 (confirmação): Reuters/TradingView, Mining Weekly, Rigzone/Bloomberg, BNN Bloomberg, goldsilver.com, BigGo Finance, Yahoo Finance. Bancos rechecados nesta rodada: nenhuma revisão nova de target encontrada desde 31/jul (BofA e Morgan Stanley copper seguem sem revisão pública há ~1 ano — tratar como limite real de cobertura, não falha de busca; Morgan Stanley/Citi WTI seguem no dado de fim-jun, sem revisão pós-pico de Hormuz de 23-27/jul encontrada). Só preços spot atualizados nesta rodada.",
+    "_precos_referencia": "Ouro ~$4.045/oz (Yahoo/CNBC, 03/ago) | Prata ~$58,5/oz (Yahoo Finance, 03/ago, +1,5% no dia) | WTI ~$79,62/bbl (Forbes Advisor, 03/ago, -5,97% no dia após Trump pausar ataque planejado ao Irã e retomar conversas de paz — abriu em $86,21) | Cobre COMEX ~$6,50/lb / LME ~$14.330/ton (TradingEconomics, 03/ago) | USD/BRL ~R$5,08 (03/ago).",
     "ouro": {
       "unit": "USD/oz",
-      "preco_atual": 4086.21,
+      "preco_atual": 4045,
       "bank_targets": [
         {"bank": "Goldman Sachs", "target": 4900, "view": "BULL",    "rationale": "Cortou de $5.400→$4.900 (20/jun/26). Fade de ETF flows asiáticos + remoção de cortes do Fed em 2026. Suporte: BCs emergentes comprando +1.000 ton/ano. Reconfirmado 31/jul — sem revisão desde jun/26.", "date": "2026-06"},
         {"bank": "JP Morgan",     "target": 4500, "view": "BULL",    "rationale": "CORRIGIDO 31/jul: banco cortou o target de Q4/26 em 25%, de $6.000 (09/jun/26) para $4.500 (03/jul/26) — Q3/26 média revisada para $4.300. Recalibração por demanda mais fraca dos setores compradores-chave; banco quantifica queda de ~$20/oz do ouro pra cada 1bps de alta nos yields reais de 10 anos desde final de fev/26. Tese de longo prazo (compras de bancos centrais + demanda física estrutural) mantida intacta pra 2027. O valor de $6.000 usado nesta ficha até 29/jul estava desatualizado — sempre checar a data de publicação antes de usar um target de banco.", "date": "2026-07-03"},
@@ -385,7 +385,7 @@
     },
     "prata": {
       "unit": "USD/oz",
-      "preco_atual": 56.94,
+      "preco_atual": 58.5,
       "bank_targets": [
         {"bank": "JP Morgan",     "target": 85, "view": "BULL", "rationale": "Q4/26: $85/oz | Q1: $84 | Q2: $75 | Q3: $80. Média anual 2026: $81 (+102% vs 2025 avg $40). Demanda solar + déficit físico. Confirmado por 2 buscas independentes em 29/jul — sem revisão desde fev/26.", "date": "2026-02"},
         {"bank": "BofA",          "target": 86, "view": "BULL", "rationale": "Média 2026: $85,93/oz (+15% vs est. anterior de $75). Demanda solar e EV sustentam déficit estrutural de oferta. Reconfirmado 29/jul, sem revisão nova desde 01/mai/26.", "date": "2026-05-01"},
@@ -394,7 +394,7 @@
     },
     "petroleo_wti": {
       "unit": "USD/barril",
-      "preco_atual": 79.28,
+      "preco_atual": 79.62,
       "bank_targets": [
         {"bank": "Goldman Sachs", "target": 76, "view": "NEUTRAL", "rationale": "CORRIGIDO 29/jul: caso-base reafirmado em 23/jul é Brent $80/WTI $76 pro Q4/26 (tanker traffic no Estreito de Hormuz normalizando até fim de jul) — o cenário bull de WTI $116 mostrado antes era um risco condicional a Hormuz seguir bloqueado, que NÃO se confirmou (trégua 24-26/jul, petróleo caiu 6-9% em 27/jul). BOE Report, 23/jul/26.", "date": "2026-07-23"},
         {"bank": "JP Morgan",     "target": 76, "view": "NEUTRAL", "rationale": "Brent Q3/26 $86 | Q4/26 $80 | saída-2026 $78 (sem WTI próprio publicado — conversão aprox. via spread de ~$4 usado pelo próprio Goldman). Verificado direto em jpmorgan.com/insights/global-research/commodities/oil-prices (fetch 29/jul, página atualizada 16/jul/26 — já reflete o período pós-pico Houthi). Corte por demanda mais fraca (EVs na China).", "date": "2026-07-16"},
@@ -404,7 +404,7 @@
     },
     "cobre": {
       "unit": "USD/lb (COMEX)",
-      "preco_atual": 6.28,
+      "preco_atual": 6.50,
       "bank_targets": [
         {"bank": "Citi",          "target": 6.80, "view": "BULL",    "rationale": "LME $15.000/ton (~$6.80/lb) pro fim de 2026 — reconfirmado em Mining Weekly de 28/jul/26 (dado mais fresco de toda a pesquisa), banco mantém 'supply under much greater pressure'. Near-term (0-3m): $14.500/ton.", "date": "2026-07-28"},
         {"bank": "Goldman Sachs", "target": 6.23, "view": "NEUTRAL", "rationale": "Year-end LME $13.735/ton (~$6.23/lb, elevado de $12.465 em 01/jun/26). Oferta mais apertada (Grasberg + Kamoa-Kakula). Reconfirmado 29/jul, sem revisão nova.", "date": "2026-06-01"},
@@ -417,7 +417,7 @@
 
   "pesquisas_eleitorais_2026": {
     "_nota": "Eleição presidencial brasileira — outubro 2026. Fontes: Datafolha (TIER-1) e Quaest (TIER-1). Atualizado jul/2026.",
-    "_nivel_atual": "Ibovespa: 177.158,86 pts (30/jul/2026, +1,88% no dia, retomada de fluxo estrangeiro + apostas em corte de Selic — recorde histórico do ano segue em 198.657,33 pts de 14/abr, ~10,9% acima do nível atual) | S&P 500: 7.437,64 pts (30/jul/2026, +1,7% no dia, forte recuperação após a queda de -1,52% em 29/jul no dia da decisão do Fed) | USD/BRL: R$ 5,07-5,12 (30/jul/2026, real fortalecendo pós-Fed) | Contexto: Fed manteve juros em 29/jul por 9-3 com dissidência hawkish (ver macro_snapshot.fed_rate) — mercado global vendeu risco no dia da decisão e recuperou no dia seguinte com o giro de foco para a reunião de setembro.",
+    "_nivel_atual": "Ibovespa: ~177.300 pts (03/ago/2026, leve queda no dia — pressionado por queda do petróleo em meio a expectativa de acordo de paz no Oriente Médio, PETR4 e VALE3 em queda; recorde histórico do ano segue em 198.657,33 pts de 14/abr) | S&P 500: 7.605-7.607 pts (03/ago/2026, +1,5-1,6% no dia, puxado por big techs e alívio no petróleo) | USD/BRL: ~R$ 5,08 (03/ago/2026) | Contexto: Fed manteve juros em 29/jul por 9-3 com dissidência hawkish (ver macro_snapshot.fed_rate); Copom decide Selic em 05/ago (mercado precifica ~75-80% de corte de 25bps); convenção do PL oficializou candidatura de Flávio Bolsonaro em 25/jul, registro no TSE previsto pra 02/ago.",
     "institutos": [
       {
         "instituto": "Datafolha",
@@ -509,6 +509,72 @@
         ],
         "resumo": "CORRIGIDO 26/jul — número de primeiro turno do Flávio estava registrado como 39,7%, o correto (conferido na fonte, TSE nº BR-04582/2026) é 36,6%. Lula lidera em 1T com 46,3% vs Flávio 36,6% (demais candidatos somam ~17,1%). No 2T: 48,8% vs 42,3% (margem 6,5pp, 8,9% branco/nulo/não sabe).",
         "source_url": "https://www.gazetadopovo.com.br/eleicoes/2026/pesquisa-eleitoral-2026/atlasintel-presidente-julho-2026/"
+      },
+      {
+        "instituto": "Datafolha",
+        "data_coleta": "2026-07-22/23",
+        "data_divulgacao": "2026-07-24",
+        "amostra": 2004,
+        "margem_erro": 2,
+        "metodo": "Presencial",
+        "nivel_confianca": 95,
+        "primeiro_turno": [
+          {"candidato": "Lula", "partido": "PT", "pct": 40},
+          {"candidato": "Flávio Bolsonaro", "partido": "PL", "pct": 32},
+          {"candidato": "Ronaldo Caiado", "partido": "PSD", "pct": 4},
+          {"candidato": "Renan Santos", "partido": "Missão", "pct": 3},
+          {"candidato": "Romeu Zema", "partido": "Novo", "pct": 3},
+          {"candidato": "Augusto Cury", "partido": "N/D", "pct": 2},
+          {"candidato": "Samara Martins", "partido": "N/D", "pct": 1},
+          {"candidato": "Cabo Daciolo", "partido": "N/D", "pct": 1}
+        ],
+        "segundo_turno": [
+          {"cenario": "Lula vs Flávio Bolsonaro", "lula": 48, "oponente": 43, "vencedor": "Lula"}
+        ],
+        "resumo": "Primeira pesquisa pós-convenções partidárias — Datafolha ressalva que não é diretamente comparável à rodada anterior (20/jun) por mudança na lista de pré-candidatos. Lula 40% vs Flávio 32% no 1º turno (branco/nulo 8%, não sabe 3%); 48%-43% no 2º turno.",
+        "source_url": "https://www.opovo.com.br/noticias/politica/eleicoes/2026/07/24/pesquisa-datafolha-de-presidente-com-lula-e-flavio-bolsonaro.html"
+      },
+      {
+        "instituto": "AtlasIntel",
+        "data_coleta": "2026-07-22/27",
+        "data_divulgacao": "2026-07-29",
+        "amostra": 5021,
+        "margem_erro": 1,
+        "metodo": "Online (coleta massiva)",
+        "nivel_confianca": 95,
+        "primeiro_turno": [
+          {"candidato": "Lula", "partido": "PT", "pct": 44.9},
+          {"candidato": "Flávio Bolsonaro", "partido": "PL", "pct": 35.8},
+          {"candidato": "Renan Santos", "partido": "Missão", "pct": 7.8},
+          {"candidato": "Ronaldo Caiado", "partido": "PSD", "pct": 3.1},
+          {"candidato": "Romeu Zema", "partido": "Novo", "pct": 2.8}
+        ],
+        "segundo_turno": [
+          {"cenario": "Lula vs Flávio Bolsonaro", "lula": 49.2, "oponente": 42.9, "vencedor": "Lula"}
+        ],
+        "resumo": "Cenário com lista completa de pré-candidatos (cenário 2, lista reduzida, mostra Lula 47,4% vs Flávio 37%; cenário 3 com Haddad no lugar de Lula mostra Haddad 40,3% vs Flávio 36,9%). No 2º turno: Lula 49,2% vs Flávio 42,9%.",
+        "source_url": "https://www.gazetadopovo.com.br/eleicoes/2026/pesquisa-eleitoral-2026/atlasintel-presidente-julho-2026-2/"
+      },
+      {
+        "instituto": "BTG/Nexus",
+        "data_coleta": "2026-07-31/2026-08-02",
+        "data_divulgacao": "2026-08-03",
+        "amostra": 2002,
+        "margem_erro": 2,
+        "metodo": "N/D",
+        "nivel_confianca": 95,
+        "primeiro_turno": [
+          {"candidato": "Lula", "partido": "PT", "pct": 41},
+          {"candidato": "Flávio Bolsonaro", "partido": "PL", "pct": 37},
+          {"candidato": "Ronaldo Caiado", "partido": "PSD", "pct": 5},
+          {"candidato": "Renan Santos", "partido": "Missão", "pct": 4},
+          {"candidato": "Romeu Zema", "partido": "Novo", "pct": 3}
+        ],
+        "segundo_turno": [
+          {"cenario": "Lula vs Flávio Bolsonaro", "lula": 46, "oponente": 45, "vencedor": "Empate técnico"}
+        ],
+        "resumo": "NOVO instituto no dataset (TSE nº BR-02874/2026). Mostra o menor gap entre Lula e Flávio de todas as pesquisas registradas até agora — 46% x 45% no 2º turno é empate técnico dentro da margem de erro, destoando das demais pesquisas de jul/2026 (Datafolha, Quaest, AtlasIntel), que mostram vantagem de Lula entre 6-8pp. Vale monitorar se é outlier metodológico ou início de uma tendência real de aperto da corrida.",
+        "source_url": "https://www.nexus.fsb.com.br/estudos-divulgados/pesquisa-btg-nexus-de-intencao-de-votos-para-presidente-do-brasil-3-de-agosto-de-2026/"
       }
     ]
   }
