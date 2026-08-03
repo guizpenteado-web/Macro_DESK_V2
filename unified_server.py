@@ -195,7 +195,14 @@ def _start_subservers() -> None:
             "port": PORT_IBOV,
             "cmd":  [PYTHON_4, "server.py"],
             "cwd":  str(IBOV_DIR),
-            "env":  {**__import__("os").environ, "PORT": str(PORT_IBOV)},
+            # DEEPVAL_HTML_PATH: o default hardcoded em IbovCalls/server.py
+            # espera o projeto DeepValuationBrasil como IRMAO do Hub
+            # (Mktsentiment/DeepValuationBrasil/), mas ele mora fora do repo
+            # do Hub, em Downloads/TestCarlao/DeepValuationBrasil -- sem essa
+            # env var, /api/consenso-analistas sempre 503 (achado 03/ago/2026).
+            # Caminho so vale nesta maquina local; VPS nao tem essa pasta ainda.
+            "env":  {**__import__("os").environ, "PORT": str(PORT_IBOV),
+                     "DEEPVAL_HTML_PATH": r"C:\Users\Guilherme\Downloads\TestCarlao\DeepValuationBrasil\consenso_analistas.html"},
         },
         {
             "name": "RRGCompleto",
@@ -2119,17 +2126,45 @@ def _calendar_cron_refresh():
     except Exception:
         _logging.getLogger(__name__).exception("calendar_cron_refresh falhou")
 
-def _start_calendar_scheduler():
+
+# Consenso dos Analistas (DeepValuationBrasil) -- achado em 03/ago/2026 que
+# essa feature nao tinha NENHUM coletor agendado, so o script manual
+# refresh_public_data.py (Yahoo + RI, ~100s de execucao real, validado).
+# Fica fora do repo do Hub (Downloads/TestCarlao/DeepValuationBrasil, projeto
+# a parte, sem venv proprio -- usa o Python global da maquina) -- por isso
+# roda via subprocess em vez de import direto, diferente do calendario.
+# Cadencia diaria as 07h BRT e um DEFAULT razoavel (antes da abertura do
+# pregao, 10h BRT) escolhido na ausencia de uma cadencia explicita do
+# usuario -- ajustar se ele quiser outra frequencia.
+_DEEPVAL_DIR = r"C:\Users\Guilherme\Downloads\TestCarlao\DeepValuationBrasil"
+
+def _consensus_cron_refresh():
+    try:
+        result = subprocess.run(
+            [sys.executable, "refresh_public_data.py", "--source", "all"],
+            cwd=_DEEPVAL_DIR, timeout=900, capture_output=True, text=True,
+        )
+        if result.returncode != 0:
+            _logging.getLogger(__name__).error(
+                "consensus_cron_refresh saiu com codigo %s: %s",
+                result.returncode, result.stdout[-2000:] + result.stderr[-2000:],
+            )
+    except Exception:
+        _logging.getLogger(__name__).exception("consensus_cron_refresh falhou")
+
+
+def _start_hub_collectors_scheduler():
     from apscheduler.schedulers.background import BackgroundScheduler
     from apscheduler.triggers.cron import CronTrigger
     sched = BackgroundScheduler(timezone="America/Sao_Paulo")
     sched.add_job(_calendar_cron_refresh, CronTrigger(day_of_week="fri", hour=18, minute=0, timezone="America/Sao_Paulo"), id="calendar_refresh_fri")
     sched.add_job(_calendar_cron_refresh, CronTrigger(day_of_week="mon", hour=18, minute=0, timezone="America/Sao_Paulo"), id="calendar_refresh_mon")
+    sched.add_job(_consensus_cron_refresh, CronTrigger(hour=7, minute=0, timezone="America/Sao_Paulo"), id="consensus_refresh_daily")
     sched.start()
-    print(f"[calendar] scheduler ok, proximas execucoes: {[j.next_run_time for j in sched.get_jobs()]}", flush=True)
+    print(f"[collectors] scheduler ok, proximas execucoes: {[(j.id, j.next_run_time) for j in sched.get_jobs()]}", flush=True)
     return sched
 
-_calendar_scheduler = _start_calendar_scheduler()
+_hub_collectors_scheduler = _start_hub_collectors_scheduler()
 
 @app.get("/api/calendar")
 async def api_calendar(days: int = 7) -> JSONResponse:
