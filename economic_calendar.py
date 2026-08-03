@@ -49,7 +49,14 @@ class EconomicCalendar:
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                       "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
     }
-    _TE_TTL = 1800  # 30min
+    # TTL alto de propósito: o refresh de verdade agora é dirigido por cron
+    # (sexta 18h + segunda 18h BRT, ver _schedule_calendar_refresh em
+    # unified_server.py, pedido do usuário em 03/ago/2026 -- calendário
+    # semanal não muda o suficiente pra justificar scraping a cada 30min).
+    # Esse TTL só age como rede de segurança: se o cron falhar silenciosamente
+    # por algum motivo, o cache nunca fica velho por mais que ~4 dias (maior
+    # intervalo entre as duas janelas agendadas + margem).
+    _TE_TTL = 4 * 24 * 60 * 60  # 4 dias
 
     _BR_URL = "https://tradingeconomics.com/brazil/calendar"
     _US_URL = "https://tradingeconomics.com/united-states/calendar"
@@ -332,21 +339,23 @@ class EconomicCalendar:
         return events
 
     @classmethod
-    def _fetch_tradingeconomics_br(cls) -> list[dict]:
+    def _fetch_tradingeconomics_br(cls, force: bool = False) -> list[dict]:
         now = time.time()
-        if cls._br_cache["data"] is not None and now - cls._br_cache["ts"] < cls._TE_TTL:
+        if not force and cls._br_cache["data"] is not None and now - cls._br_cache["ts"] < cls._TE_TTL:
             return cls._br_cache["data"]
         try:
             events = cls._scrape_te_calendar(cls._BR_URL, cls._BR_WHITELIST, "Brazil", "BRL")
             cls._br_cache = {"ts": now, "data": events}
             return events
         except Exception:
+            # mantem o cache anterior intocado (nao limpo antes de tentar) --
+            # uma falha pontual no cron de refresh nunca apaga o ultimo dado bom.
             return cls._br_cache["data"] if cls._br_cache["data"] is not None else []
 
     @classmethod
-    def _fetch_tradingeconomics_us(cls) -> list[dict]:
+    def _fetch_tradingeconomics_us(cls, force: bool = False) -> list[dict]:
         now = time.time()
-        if cls._us_cache["data"] is not None and now - cls._us_cache["ts"] < cls._TE_TTL:
+        if not force and cls._us_cache["data"] is not None and now - cls._us_cache["ts"] < cls._TE_TTL:
             return cls._us_cache["data"]
         try:
             events = cls._scrape_te_calendar(cls._US_URL, cls._US_WHITELIST, "United States", "USD")
@@ -354,6 +363,15 @@ class EconomicCalendar:
             return events
         except Exception:
             return cls._us_cache["data"] if cls._us_cache["data"] is not None else []
+
+    @classmethod
+    def refresh_now(cls) -> None:
+        """Forca um scrape novo de BR+US agora, ignorando o TTL -- usado pelo
+        cron de sexta/segunda 18h BRT (ver unified_server.py). Silencioso em
+        caso de falha de rede: mantem o cache anterior intocado (nunca limpa
+        antes de tentar buscar; so troca se o scrape novo tiver sucesso)."""
+        cls._fetch_tradingeconomics_br(force=True)
+        cls._fetch_tradingeconomics_us(force=True)
 
     @classmethod
     def fetch_filtered(cls, days: int = 7) -> list[dict]:

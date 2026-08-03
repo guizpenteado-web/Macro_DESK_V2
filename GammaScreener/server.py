@@ -37,7 +37,7 @@ MIN_FINANCIAL_VOLUME = 10_000_000  # liquidez minima do papel-base, R$/dia (via 
 # iv_current > 0 (cotacao viva de opcao na OpLab) tambem e exigido, checado
 # direto em _passes_quality_filter -- sem constante numerica, e booleano.
 
-OI_TTL_SECONDS = 6 * 60 * 60  # arquivo da B3 so muda uma vez por dia
+OI_TTL_SECONDS = 2 * 60 * 60  # pedido do usuario 03/ago/2026 (era 6h)
 ASSET_TTL_SECONDS = 5 * 60    # spot/IV mudam intraday
 SCREENER_TTL_SECONDS = 5 * 60
 

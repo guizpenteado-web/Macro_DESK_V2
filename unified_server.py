@@ -2106,6 +2106,31 @@ from economic_calendar import EconomicCalendar
 _CAL_CACHE: dict[int, dict] = {}
 _CAL_TTL = 600  # 10 min
 
+# Refresh do calendario dirigido por cron (pedido do usuario, 03/ago/2026):
+# calendario semanal nao muda o suficiente pra justificar scraping continuo
+# a cada 30min -- sexta 18h e segunda 18h BRT bastam. EconomicCalendar.refresh_now()
+# forca o scrape ignorando o TTL interno (que agora e so rede de seguranca, 4 dias);
+# limpa _CAL_CACHE em seguida pra proxima request pegar o dado novo na hora,
+# em vez de esperar os 10min desse cache secundario vencerem sozinhos.
+def _calendar_cron_refresh():
+    try:
+        EconomicCalendar.refresh_now()
+        _CAL_CACHE.clear()
+    except Exception:
+        _logging.getLogger(__name__).exception("calendar_cron_refresh falhou")
+
+def _start_calendar_scheduler():
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from apscheduler.triggers.cron import CronTrigger
+    sched = BackgroundScheduler(timezone="America/Sao_Paulo")
+    sched.add_job(_calendar_cron_refresh, CronTrigger(day_of_week="fri", hour=18, minute=0, timezone="America/Sao_Paulo"), id="calendar_refresh_fri")
+    sched.add_job(_calendar_cron_refresh, CronTrigger(day_of_week="mon", hour=18, minute=0, timezone="America/Sao_Paulo"), id="calendar_refresh_mon")
+    sched.start()
+    print(f"[calendar] scheduler ok, proximas execucoes: {[j.next_run_time for j in sched.get_jobs()]}", flush=True)
+    return sched
+
+_calendar_scheduler = _start_calendar_scheduler()
+
 @app.get("/api/calendar")
 async def api_calendar(days: int = 7) -> JSONResponse:
     cached = _CAL_CACHE.get(days)
