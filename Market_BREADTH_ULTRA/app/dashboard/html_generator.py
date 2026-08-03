@@ -320,7 +320,7 @@ def generate_dashboard() -> Path:
 
     freq_universe = _load_frequency_universe()
     freq_meta     = freq_universe.fillna("").to_dict("records")
-    freq_chips    = _load_freq_liquidity_chips(freq_universe, n=59)
+    freq_chips    = _load_freq_liquidity_chips(freq_universe, n=87)
     default_freq_ticker = freq_chips[0] if freq_chips else (freq_meta[0]["ticker"] if freq_meta else "")
     freq_chips_html = "".join(
         f'<button class="fbtn{" active" if i == 0 else ""}" id="fc-{t}" onclick="_freqSelect(\'{t}\')">{t}</button>'
@@ -649,6 +649,7 @@ tr:hover td{{
 .fbtn.active{{background:var(--accent2);border-color:rgba(45,123,191,.45);color:#7bbde8}}
 .freq-tf-btn{{padding:2px 9px;font-size:9.5px;letter-spacing:.4px}}
 #chart-freq.freq-draw-mode{{cursor:crosshair}}
+#chart-freq{{user-select:none}}
 /* SMA position filter */
 .fbtn.f-sma21.active{{background:rgba(0,180,255,.15);border-color:rgba(0,180,255,.45);color:#00c8ff}}
 .fbtn.f-sma50.active{{background:rgba(240,180,41,.15);border-color:rgba(240,180,41,.45);color:#f0c050}}
@@ -905,9 +906,7 @@ tr:hover td{{
 <!-- ═══════════════════════════════════════════ TAB FREQUENCY -->
 <div id="tab-freq" class="tab-content">
 
-  <div class="section" style="padding-top:16px"><h2>Frequency &mdash; Cotacao &amp; Distance from SMA (IBOV + Consenso dos Analistas + RRG, 154 ativos)</h2></div>
-
-  <div class="filter-bar" style="position:relative;z-index:15">
+  <div class="filter-bar" style="position:relative;z-index:15;margin-top:16px">
     <div style="position:relative;flex:1;max-width:340px">
       <input id="freq-search" type="text" placeholder="Buscar ativo (ex: PETR4, VALE3...)" autocomplete="off"
         value="{default_freq_ticker}"
@@ -936,7 +935,7 @@ tr:hover td{{
   </div>
 
   <div class="filter-bar" style="border-top:1px solid rgba(255,255,255,0.03);padding-top:6px;padding-bottom:6px">
-    <span class="filter-label">Top 59 liquidez</span>
+    <span class="filter-label">Top {len(freq_chips)} liquidez</span>
     <div class="filter-group" id="freq-chips">{freq_chips_html}</div>
   </div>
 
@@ -1358,6 +1357,8 @@ var _freqCache     = {{}};
 var _freqLines     = [];
 var _freqLineSeq   = 0;
 var _freqDrawArmed = false;
+var _freqSelectedLineId = null;
+var _freqDragging  = null;
 
 function _freqFilterDropdown(q) {{
   var dd = document.getElementById("freq-dropdown");
@@ -1448,6 +1449,8 @@ function _freqFetchOhlc(ticker, tf, cb) {{
 function buildFreqChart() {{
   var lbl = document.getElementById("freq-current");
   if (!_freqTicker) return;
+  _freqSelectedLineId = null;
+  _freqDragging = null;
   if (lbl) lbl.textContent = "Carregando " + _freqTicker + "...";
   _freqFetchOhlc(_freqTicker, _freqTf, function(d) {{
     var box = document.getElementById("chart-freq");
@@ -1534,32 +1537,91 @@ function armFreqDraw(btn) {{
   if (box) box.classList.toggle("freq-draw-mode", _freqDrawArmed);
 }}
 
+// Geometria compartilhada pixel<->dado (Plotly nao expõe isso pra clique
+// livre fora de pontos de dado / edicao de shape em qualquer eixo).
+function _freqAxisPixelBand(gd, axis) {{
+  var fl = gd._fullLayout;
+  var plotTop = fl.margin.t, plotBottom = fl.height - fl.margin.b;
+  var plotH = plotBottom - plotTop;
+  return {{
+    top: plotTop + (1 - axis.domain[1]) * plotH,
+    bot: plotTop + (1 - axis.domain[0]) * plotH
+  }};
+}}
+
+function _freqPixelYToValue(axis, py, band) {{
+  var frac = (py - band.top) / (band.bot - band.top);
+  var r = axis.range;
+  return r[1] - frac * (r[1] - r[0]);
+}}
+
+function _freqValueToPixelY(axis, val, band) {{
+  var r = axis.range;
+  var frac = (r[1] - val) / (r[1] - r[0]);
+  return band.top + frac * (band.bot - band.top);
+}}
+
 function _freqPixelToData(gd, clientX, clientY) {{
   var fl = gd._fullLayout;
   if (!fl || !fl.yaxis || !fl.yaxis2) return null;
   var rect = gd.getBoundingClientRect();
-  var px = clientX - rect.left, py = clientY - rect.top;
-  var plotTop = fl.margin.t, plotBottom = fl.height - fl.margin.b;
-  var plotH = plotBottom - plotTop;
+  var py = clientY - rect.top;
 
-  function hit(axis, key) {{
-    var top = plotTop + (1 - axis.domain[1]) * plotH;
-    var bot = plotTop + (1 - axis.domain[0]) * plotH;
-    if (py < top || py > bot) return null;
-    var frac = (py - top) / (bot - top);
-    var r = axis.range;
-    return {{axis: key, y: r[1] - frac * (r[1] - r[0])}};
+  var band2 = _freqAxisPixelBand(gd, fl.yaxis2);
+  if (py >= band2.top && py <= band2.bot) {{
+    return {{axis: "y2", y: _freqPixelYToValue(fl.yaxis2, py, band2)}};
   }}
+  var band1 = _freqAxisPixelBand(gd, fl.yaxis);
+  if (py >= band1.top && py <= band1.bot) {{
+    return {{axis: "y", y: _freqPixelYToValue(fl.yaxis, py, band1)}};
+  }}
+  return null;
+}}
 
-  return hit(fl.yaxis2, "y2") || hit(fl.yaxis, "y");
+function _freqPixelToDataOnAxis(gd, axisKey, clientY) {{
+  var fl = gd._fullLayout;
+  var axis = axisKey === "y2" ? fl.yaxis2 : fl.yaxis;
+  if (!fl || !axis) return null;
+  var rect = gd.getBoundingClientRect();
+  var py = clientY - rect.top;
+  return _freqPixelYToValue(axis, py, _freqAxisPixelBand(gd, axis));
+}}
+
+// Verifica se o ponto esta em cima de algum rotulo/"x" renderizado (usa o
+// bounding box real do SVG, nao um chute de largura em pixels — o texto do
+// valor varia de tamanho conforme o preco/percentual).
+function _freqOverAnnotation(gd, clientX, clientY) {{
+  var anns = gd.querySelectorAll(".annotation");
+  for (var i = 0; i < anns.length; i++) {{
+    var r = anns[i].getBoundingClientRect();
+    if (clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) return true;
+  }}
+  return false;
+}}
+
+// Acha a linha (se houver) sob o cursor.
+function _freqLineHitTest(gd, clientX, clientY) {{
+  var fl = gd._fullLayout;
+  if (!fl) return null;
+  var rect = gd.getBoundingClientRect();
+  var py = clientY - rect.top;
+  var TOL = 6;
+  for (var i = _freqLines.length - 1; i >= 0; i--) {{
+    var l = _freqLines[i];
+    var axis = l.axis === "y2" ? fl.yaxis2 : fl.yaxis;
+    var lp = _freqValueToPixelY(axis, l.y, _freqAxisPixelBand(gd, axis));
+    if (Math.abs(py - lp) <= TOL) return l;
+  }}
+  return null;
 }}
 
 function _freqBuildShapes() {{
   var zero = {{type: "line", xref: "paper", yref: "y", x0: 0, x1: 1, y0: 0, y1: 0,
                line: {{color: "rgba(255,255,255,0.2)", width: 1, dash: "dot"}}}};
   var user = _freqLines.map(function(l) {{
+    var sel = l.id === _freqSelectedLineId;
     return {{type: "line", xref: "paper", yref: l.axis, x0: 0, x1: 1, y0: l.y, y1: l.y,
-             line: {{color: "#38bdf8", width: 1.5, dash: "solid"}}}};
+             line: {{color: sel ? "#7dd3fc" : "#38bdf8", width: sel ? 3 : 1.5, dash: "solid"}}}};
   }});
   return [zero].concat(user);
 }}
@@ -1599,9 +1661,45 @@ function _freqApplyLines(gd) {{
 
 function _freqRemoveLine(id) {{
   _freqLines = _freqLines.filter(function(l) {{ return l.id !== id; }});
+  if (_freqSelectedLineId === id) _freqSelectedLineId = null;
   var gd = document.getElementById("chart-freq");
   if (gd) _freqApplyLines(gd);
 }}
+
+// Arrasta a linha selecionada verticalmente (mousedown nela + mousemove) —
+// so muda o Y, no proprio eixo (preco fica preco, indicador fica indicador).
+function _freqOnDragMove(e) {{
+  if (!_freqDragging) return;
+  var gd = document.getElementById("chart-freq");
+  if (!gd) return;
+  var v = _freqPixelToDataOnAxis(gd, _freqDragging.axis, e.clientY);
+  if (v === null) return;
+  var line = _freqLines.find(function(l) {{ return l.id === _freqDragging.id; }});
+  if (line) {{ line.y = v; _freqApplyLines(gd); }}
+}}
+
+function _freqOnDragEnd() {{
+  if (!_freqDragging) return;
+  var gd = document.getElementById("chart-freq");
+  if (gd) {{
+    Plotly.relayout(gd, {{dragmode: _freqDragging.prevDragmode || "pan"}});
+    gd.style.cursor = "";
+  }}
+  _freqDragging = null;
+  document.removeEventListener("mousemove", _freqOnDragMove);
+  document.removeEventListener("mouseup", _freqOnDragEnd);
+}}
+
+// Delete/Backspace remove a linha selecionada — ignorado se o foco estiver
+// num campo de texto (pra nao interferir com a busca de ativo).
+document.addEventListener("keydown", function(e) {{
+  if (_freqSelectedLineId === null) return;
+  if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+  if (e.key === "Delete" || e.key === "Backspace") {{
+    e.preventDefault();
+    _freqRemoveLine(_freqSelectedLineId);
+  }}
+}});
 
 function _freqBindEvents(gd) {{
   if (!gd) return;
@@ -1623,6 +1721,35 @@ function _freqBindEvents(gd) {{
       if (btn) btn.classList.remove("active");
       gd.classList.remove("freq-draw-mode");
       _freqApplyLines(gd);
+    }});
+
+    // Clique numa linha existente: seleciona + arma arraste. Clique fora
+    // de qualquer linha: desseleciona. Roda em fase de captura pra poder
+    // interceptar ANTES do pan nativo do Plotly quando acerta uma linha.
+    gd.addEventListener("mousedown", function(e) {{
+      if (_freqDrawArmed) return;
+      if (_freqOverAnnotation(gd, e.clientX, e.clientY)) return;
+      var hit = _freqLineHitTest(gd, e.clientX, e.clientY);
+      if (!hit) {{
+        if (_freqSelectedLineId !== null) {{ _freqSelectedLineId = null; _freqApplyLines(gd); }}
+        return;
+      }}
+      e.preventDefault();
+      e.stopPropagation();
+      _freqSelectedLineId = hit.id;
+      _freqDragging = {{id: hit.id, axis: hit.axis, prevDragmode: gd._fullLayout.dragmode}};
+      gd.style.cursor = "ns-resize";
+      Plotly.relayout(gd, {{shapes: _freqBuildShapes(), annotations: _freqBuildAnnotations(), dragmode: false}});
+      document.addEventListener("mousemove", _freqOnDragMove);
+      document.addEventListener("mouseup", _freqOnDragEnd);
+    }}, true);
+
+    // Cursor ns-resize ao passar por cima de uma linha (fora do modo de
+    // desenho e fora de um arraste em andamento).
+    gd.addEventListener("mousemove", function(e) {{
+      if (_freqDrawArmed || _freqDragging) return;
+      var overLine = !_freqOverAnnotation(gd, e.clientX, e.clientY) && _freqLineHitTest(gd, e.clientX, e.clientY);
+      gd.style.cursor = overLine ? "ns-resize" : "";
     }});
   }}
 }}
