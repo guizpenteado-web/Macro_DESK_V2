@@ -182,36 +182,61 @@ def _load_ibov() -> tuple[list[str], list[float]]:
     return df["date"].dt.strftime("%Y-%m-%d").tolist(), df["close"].round(0).tolist()
 
 
+# Universo de busca da aba Frequency: uniao de (1) composicao completa do
+# IBOV, (2) universo do "Consenso dos Analistas" (IBrA, ~148 com alvo de
+# preco) e (3) RRG "Indice: Todos" (154 ativos). Verificado em 03/ago/2026
+# que os 3 conjuntos hoje coincidem exatamente com o IBrA/RRG Todos (154) —
+# lista fixa em vez de consulta cross-projeto (RRGCOMPLETO/DeepValuationBrasil
+# vivem em repos/paths separados que nem sempre existem no ambiente de deploy).
+_FREQ_UNIVERSE: list[str] = [
+    "ABCB4","ABEV3","ALOS3","ALPA4","ALUP11","ANIM3","ARML3","ASAI3","AUAU3","AURE3",
+    "AXIA3","AZZA3","B3SA3","BBAS3","BBDC3","BBDC4","BBSE3","BEEF3","BHIA3","BLAU3",
+    "BMOB3","BPAC11","BRAP4","BRAV3","BRBI11","BRKM5","BRSR6","CAML3","CASH3","CBAV3",
+    "CEAB3","CMIG4","CMIN3","COCE5","COGN3","CPFE3","CPLE3","CSAN3","CSMG3","CSNA3",
+    "CURY3","CVCB3","CXSE3","CYRE3","DASA3","DESK3","DIRR3","DXCO3","ECOR3","EGIE3",
+    "EMBJ3","ENEV3","ENGI11","EQTL3","EVEN3","EZTC3","FESA4","FLRY3","FRAS3","GFSA3",
+    "GGBR4","GGPS3","GMAT3","GOAU4","GRND3","HAPV3","HBOR3","HBSA3","HYPE3","IGTI11",
+    "INTB3","IRBR3","ISAE4","ITSA4","ITUB3","ITUB4","JHSF3","JSLG3","KEPL3","KLBN11",
+    "LAVV3","LEVE3","LJQQ3","LOGG3","LREN3","LWSA3","MBRF3","MDIA3","MDNE3","MGLU3",
+    "MILS3","MOTV3","MOVI3","MRVE3","MULT3","MYPK3","NATU3","ORVR3","PETR3","PETR4",
+    "PGMN3","PINE4","PLPL3","PNVL3","POMO3","POMO4","POSI3","PRIO3","PRNR3","PSSA3",
+    "QUAL3","RADL3","RAIL3","RANI3","RAPT4","RCSL4","RDOR3","RECV3","RENT3","RIAA3",
+    "SANB11","SAPR11","SAUD3","SBFG3","SBSP3","SEER3","SIMH3","SLCE3","SMFT3","SMTO3",
+    "SOJA3","SUZB3","SYNE3","TAEE11","TEND3","TFCO4","TGMA3","TIMS3","TOTS3","TTEN3",
+    "TUPY3","UGPA3","UNIP6","USIM5","VALE3","VAMO3","VBBR3","VIVA3","VIVT3","VLID3",
+    "VTRU3","VULC3","WEGE3","YDUQ3",
+]
+
+
 def _load_frequency_universe() -> pd.DataFrame:
-    """Top 20 ativos mais liquidos do IBOV (peso B3) para a aba Frequency."""
-    return pd.read_sql(
-        "SELECT ticker, name, weight FROM assets WHERE is_active = 1 "
-        "ORDER BY weight DESC LIMIT 20",
+    """[{ticker, name, weight}] pros 154 ativos de _FREQ_UNIVERSE — nome/peso
+    vem de `assets` quando existir (so os que tem peso B3, ~85 hoje); os
+    demais aparecem so pelo ticker (ainda buscaveis, tem preco em `prices`)."""
+    placeholders = ",".join(f"'{t}'" for t in _FREQ_UNIVERSE)
+    known = pd.read_sql(
+        f"SELECT ticker, name, weight FROM assets WHERE ticker IN ({placeholders})",
         engine,
-    )
+    ).set_index("ticker")
+    rows = []
+    for t in _FREQ_UNIVERSE:
+        if t in known.index:
+            name   = known.at[t, "name"]
+            weight = known.at[t, "weight"]
+        else:
+            name, weight = None, None
+        rows.append({"ticker": t, "name": name if name and str(name) != "nan" else "", "weight": weight})
+    return pd.DataFrame(rows)
 
 
-def _load_ohlc_map(tickers: list[str]) -> dict:
-    """{ticker: {dates, open, high, low, close}} para o candlestick da aba Frequency."""
-    if not tickers:
-        return {}
-    placeholders = ",".join(f"'{t}'" for t in tickers)
-    df = pd.read_sql(
-        f"SELECT ticker, date, open, high, low, close FROM prices "
-        f"WHERE ticker IN ({placeholders}) ORDER BY ticker, date",
-        engine,
-    )
-    result = {}
-    for ticker, g in df.groupby("ticker"):
-        g = g.sort_values("date")
-        result[ticker] = {
-            "dates": g["date"].astype(str).tolist(),
-            "open":  _safe_list(g["open"], 2),
-            "high":  _safe_list(g["high"], 2),
-            "low":   _safe_list(g["low"], 2),
-            "close": _safe_list(g["close"], 2),
-        }
-    return result
+def _load_freq_liquidity_chips(universe: pd.DataFrame, n: int = 30) -> list[str]:
+    """Top N ativos por liquidez (peso B3), deduplicando ON/PN da mesma
+    empresa (ex.: PETR3/PETR4 -> so o mais liquido dos dois) e excluindo
+    ITSA4 (pedido explicito do usuario, 03/ago/2026)."""
+    df = universe.dropna(subset=["weight"])
+    df = df[(df["weight"] > 0) & (df["ticker"] != "ITSA4")].copy()
+    df["_base"] = df["ticker"].str[:4]
+    df = df.sort_values("weight", ascending=False).drop_duplicates(subset="_base", keep="first")
+    return df.head(n)["ticker"].tolist()
 
 
 def _load_index_breadth() -> dict:
@@ -294,13 +319,12 @@ def generate_dashboard() -> Path:
     ibov_dates, ibov_prices = _load_ibov()
 
     freq_universe = _load_frequency_universe()
-    freq_tickers  = freq_universe["ticker"].tolist()
-    freq_ohlc     = _load_ohlc_map(freq_tickers)
     freq_meta     = freq_universe.fillna("").to_dict("records")
-    default_freq_ticker = freq_tickers[0] if freq_tickers else ""
+    freq_chips    = _load_freq_liquidity_chips(freq_universe, n=30)
+    default_freq_ticker = freq_chips[0] if freq_chips else (freq_meta[0]["ticker"] if freq_meta else "")
     freq_chips_html = "".join(
         f'<button class="fbtn{" active" if i == 0 else ""}" id="fc-{t}" onclick="_freqSelect(\'{t}\')">{t}</button>'
-        for i, t in enumerate(freq_tickers)
+        for i, t in enumerate(freq_chips)
     )
 
     p21  = float(latest["pct_sma21"])
@@ -472,8 +496,8 @@ def generate_dashboard() -> Path:
     ibov_prices_json  = json.dumps(ibov_prices)
     dates_json        = json.dumps(dates_str)
     idx_breadth_json  = json.dumps(idx_breadth)
-    freq_ohlc_json    = json.dumps(freq_ohlc)
     freq_meta_json    = json.dumps(freq_meta)
+    freq_chips_json   = json.dumps(freq_chips)
 
     html = f"""<!DOCTYPE html>
 <html lang="pt-BR">
@@ -623,6 +647,8 @@ tr:hover td{{
 }}
 .fbtn:hover{{border-color:rgba(255,255,255,0.14);color:#98bcd8}}
 .fbtn.active{{background:var(--accent2);border-color:rgba(45,123,191,.45);color:#7bbde8}}
+.freq-tf-btn{{padding:2px 9px;font-size:9.5px;letter-spacing:.4px}}
+#chart-freq.freq-draw-mode{{cursor:crosshair}}
 /* SMA position filter */
 .fbtn.f-sma21.active{{background:rgba(0,180,255,.15);border-color:rgba(0,180,255,.45);color:#00c8ff}}
 .fbtn.f-sma50.active{{background:rgba(240,180,41,.15);border-color:rgba(240,180,41,.45);color:#f0c050}}
@@ -879,7 +905,7 @@ tr:hover td{{
 <!-- ═══════════════════════════════════════════ TAB FREQUENCY -->
 <div id="tab-freq" class="tab-content">
 
-  <div class="section" style="padding-top:16px"><h2>Frequency &mdash; Cotacao &amp; Distance from SMA (Top 20 mais liquidos do IBOV)</h2></div>
+  <div class="section" style="padding-top:16px"><h2>Frequency &mdash; Cotacao &amp; Distance from SMA (IBOV + Consenso dos Analistas + RRG, 154 ativos)</h2></div>
 
   <div class="filter-bar" style="position:relative;z-index:15">
     <div style="position:relative;flex:1;max-width:340px">
@@ -892,17 +918,25 @@ tr:hover td{{
     <div style="width:1px;background:#30363d;height:20px;margin:0 2px"></div>
     <div class="filter-group">
       <span class="filter-label">SMA</span>
-      <button class="fbtn" onclick="setFreqLen(20,this)">20</button>
-      <button class="fbtn active" onclick="setFreqLen(48,this)">48</button>
+      <button class="fbtn active" onclick="setFreqLen(20,this)">20</button>
       <button class="fbtn" onclick="setFreqLen(50,this)">50</button>
       <button class="fbtn" onclick="setFreqLen(100,this)">100</button>
       <button class="fbtn" onclick="setFreqLen(200,this)">200</button>
+    </div>
+    <div style="width:1px;background:#30363d;height:20px;margin:0 2px"></div>
+    <div class="filter-group">
+      <button class="fbtn freq-tf-btn active" id="freq-tf-d" onclick="setFreqTf('D',this)">DAILY</button>
+      <button class="fbtn freq-tf-btn" id="freq-tf-w" onclick="setFreqTf('W',this)">WEEKLY</button>
+    </div>
+    <div style="width:1px;background:#30363d;height:20px;margin:0 2px"></div>
+    <div class="filter-group">
+      <button class="fbtn" id="freq-draw-btn" onclick="armFreqDraw(this)" title="Clique aqui e depois em um nivel do grafico pra marcar uma linha">+ Linha</button>
     </div>
     <div id="freq-current" style="margin-left:auto;font-size:12px;color:#6a8099"></div>
   </div>
 
   <div class="filter-bar" style="border-top:1px solid rgba(255,255,255,0.03);padding-top:6px;padding-bottom:6px">
-    <span class="filter-label">Top 20 liquidez</span>
+    <span class="filter-label">Top 30 liquidez</span>
     <div class="filter-group" id="freq-chips">{freq_chips_html}</div>
   </div>
 
@@ -928,8 +962,8 @@ var rsiOverbought = {rsi_overbought_json};
 var ibovDates     = {ibov_dates_json};
 var ibovPrices   = {ibov_prices_json};
 var idxBreadth   = {idx_breadth_json};
-var freqOhlc     = {freq_ohlc_json};
 var freqMeta     = {freq_meta_json};
+var freqChips    = {freq_chips_json};
 var chartsMade   = {{}};
 
 // Configuracao Plotly: scroll do mouse = zoom proporcional em X e Y
@@ -1160,6 +1194,9 @@ function showTab(id, btn){{
       document.getElementById("gamma-iframe").src = "../gamma/";
     }}
   }}
+
+  var footerEl = document.querySelector(".footer");
+  if(footerEl) footerEl.style.display = (id === "gamma") ? "none" : "";
 }}
 
 // ── RSI chart — subplots (IBOV topo, RSI breadth baixo) ─────
@@ -1314,8 +1351,13 @@ function _buildIdxCards(metric) {{
 }}
 
 // ── Frequency — busca + candlestick + Distance from SMA ──────
-var _freqTicker = freqMeta.length ? freqMeta[0].ticker : null;
-var _freqLen = 48;
+var _freqTicker    = freqChips.length ? freqChips[0] : (freqMeta.length ? freqMeta[0].ticker : null);
+var _freqLen       = 20;
+var _freqTf        = "D";
+var _freqCache     = {{}};
+var _freqLines     = [];
+var _freqLineSeq   = 0;
+var _freqDrawArmed = false;
 
 function _freqFilterDropdown(q) {{
   var dd = document.getElementById("freq-dropdown");
@@ -1324,7 +1366,7 @@ function _freqFilterDropdown(q) {{
     return !q || m.ticker.indexOf(q) !== -1 || (m.name || "").toUpperCase().indexOf(q) !== -1;
   }});
   if (!matches.length) {{ dd.style.display = "none"; return; }}
-  dd.innerHTML = matches.map(function(m) {{
+  dd.innerHTML = matches.slice(0, 40).map(function(m) {{
     return '<div onclick="_freqSelect(\\'' + m.ticker + '\\')" '
          + 'style="padding:8px 14px;cursor:pointer;display:flex;justify-content:space-between;gap:10px" '
          + 'onmouseover="this.style.background=\\'rgba(45,123,191,0.12)\\'" onmouseout="this.style.background=\\'\\'">'
@@ -1360,7 +1402,16 @@ function setFreqLen(len, btn) {{
   buildFreqChart();
 }}
 
-// (close/ma - 1) * 100, mesma formula do Pine "Distance From SMA %"
+function setFreqTf(tf, btn) {{
+  _freqTf = tf;
+  var group = btn.closest(".filter-group");
+  group.querySelectorAll(".fbtn").forEach(function(b) {{ b.classList.remove("active"); }});
+  btn.classList.add("active");
+  buildFreqChart();
+}}
+
+// (close/ma - 1) * 100, mesma formula do Pine "Distance From SMA %" — "len"
+// e sempre em numero de barras do timeframe corrente (dias ou semanas)
 function _distFromSma(closes, len) {{
   var out = new Array(closes.length).fill(null);
   var sum = 0, count = 0;
@@ -1379,18 +1430,43 @@ function _distFromSma(closes, len) {{
   return out;
 }}
 
+// Busca OHLC sob demanda — com 154 ativos x historico completo nao cabe
+// mais tudo embutido no HTML de saida, so o par ticker/timeframe atual e
+// buscado, com cache em memoria pra nao rebuscar ao alternar de volta.
+function _freqFetchOhlc(ticker, tf, cb) {{
+  var key = ticker + "|" + tf;
+  if (_freqCache[key]) {{ cb(_freqCache[key]); return; }}
+  fetch("/api/freq_ohlc/" + encodeURIComponent(ticker) + "?tf=" + tf)
+    .then(function(r) {{ return r.ok ? r.json() : null; }})
+    .then(function(d) {{
+      if (d && d.dates && d.dates.length) {{ _freqCache[key] = d; cb(d); }}
+      else cb(null);
+    }})
+    .catch(function() {{ cb(null); }});
+}}
+
 function buildFreqChart() {{
-  var box = document.getElementById("chart-freq");
   var lbl = document.getElementById("freq-current");
-  var d = _freqTicker ? freqOhlc[_freqTicker] : null;
-  if (!d || !d.dates.length) {{
-    box.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#484f58">'
-                   + 'Sem dados para ' + (_freqTicker || "-") + '</div>';
-    return;
-  }}
+  if (!_freqTicker) return;
+  if (lbl) lbl.textContent = "Carregando " + _freqTicker + "...";
+  _freqFetchOhlc(_freqTicker, _freqTf, function(d) {{
+    var box = document.getElementById("chart-freq");
+    if (!d) {{
+      box.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#484f58">'
+                     + 'Sem dados para ' + _freqTicker + '</div>';
+      if (lbl) lbl.textContent = _freqTicker + " — sem dados";
+      return;
+    }}
+    _freqRenderChart(d);
+  }});
+}}
+
+function _freqRenderChart(d) {{
+  var lbl = document.getElementById("freq-current");
   var meta = freqMeta.find(function(m) {{ return m.ticker === _freqTicker; }});
+  var tfLabel = _freqTf === "W" ? "Semanal" : "Diario";
   if (lbl) {{
-    lbl.textContent = _freqTicker + (meta && meta.name ? " — " + meta.name : "") + " · SMA(" + _freqLen + ")";
+    lbl.textContent = _freqTicker + (meta && meta.name ? " — " + meta.name : "") + " · " + tfLabel + " · SMA(" + _freqLen + ")";
   }}
 
   var candle = {{
@@ -1436,12 +1512,103 @@ function buildFreqChart() {{
     legend: {{bgcolor: "rgba(0,0,0,0)", bordercolor: "rgba(255,255,255,0.07)", borderwidth: 1}},
     hovermode: "x unified",
     dragmode: "pan",
-    shapes: [{{type: "line", xref: "paper", yref: "y", x0: 0, x1: 1, y0: 0, y1: 0,
-              line: {{color: "rgba(255,255,255,0.2)", width: 1, dash: "dot"}}}}]
+    shapes: _freqBuildShapes(),
+    annotations: _freqBuildAnnotations()
   }};
 
   Plotly.newPlot("chart-freq", [candle, distTrace], layout, plotConfig)
-    .then(function() {{ _addCtrlZoom("chart-freq"); }});
+    .then(function() {{
+      _addCtrlZoom("chart-freq");
+      _freqBindEvents(document.getElementById("chart-freq"));
+    }});
+}}
+
+// ── Linha horizontal (preco ou indicador), com "x" pra deletar ───────
+// Um clique em "+ Linha" arma o modo; o PROXIMO clique no grafico (painel
+// de cima = nivel de preco, painel de baixo = nivel de distancia da SMA)
+// desenha uma linha continua nesse nivel, com um "x" no canto direito dela.
+function armFreqDraw(btn) {{
+  _freqDrawArmed = !_freqDrawArmed;
+  btn.classList.toggle("active", _freqDrawArmed);
+  var box = document.getElementById("chart-freq");
+  if (box) box.classList.toggle("freq-draw-mode", _freqDrawArmed);
+}}
+
+function _freqPixelToData(gd, clientX, clientY) {{
+  var fl = gd._fullLayout;
+  if (!fl || !fl.yaxis || !fl.yaxis2) return null;
+  var rect = gd.getBoundingClientRect();
+  var px = clientX - rect.left, py = clientY - rect.top;
+  var plotTop = fl.margin.t, plotBottom = fl.height - fl.margin.b;
+  var plotH = plotBottom - plotTop;
+
+  function hit(axis, key) {{
+    var top = plotTop + (1 - axis.domain[1]) * plotH;
+    var bot = plotTop + (1 - axis.domain[0]) * plotH;
+    if (py < top || py > bot) return null;
+    var frac = (py - top) / (bot - top);
+    var r = axis.range;
+    return {{axis: key, y: r[1] - frac * (r[1] - r[0])}};
+  }}
+
+  return hit(fl.yaxis2, "y2") || hit(fl.yaxis, "y");
+}}
+
+function _freqBuildShapes() {{
+  var zero = {{type: "line", xref: "paper", yref: "y", x0: 0, x1: 1, y0: 0, y1: 0,
+               line: {{color: "rgba(255,255,255,0.2)", width: 1, dash: "dot"}}}};
+  var user = _freqLines.map(function(l) {{
+    return {{type: "line", xref: "paper", yref: l.axis, x0: 0, x1: 1, y0: l.y, y1: l.y,
+             line: {{color: "#38bdf8", width: 1.5, dash: "solid"}}}};
+  }});
+  return [zero].concat(user);
+}}
+
+function _freqBuildAnnotations() {{
+  return _freqLines.map(function(l) {{
+    return {{
+      xref: "paper", yref: l.axis, x: 1, y: l.y,
+      xanchor: "left", yanchor: "middle", xshift: 6,
+      text: "✕", showarrow: false, captureevents: true,
+      font: {{color: "#f05a5a", size: 11, family: "Inter,sans-serif"}},
+      bgcolor: "rgba(8,15,24,0.85)", borderpad: 2,
+      _freqLineId: l.id
+    }};
+  }});
+}}
+
+function _freqApplyLines(gd) {{
+  Plotly.relayout(gd, {{shapes: _freqBuildShapes(), annotations: _freqBuildAnnotations()}});
+}}
+
+function _freqRemoveLine(id) {{
+  _freqLines = _freqLines.filter(function(l) {{ return l.id !== id; }});
+  var gd = document.getElementById("chart-freq");
+  if (gd) _freqApplyLines(gd);
+}}
+
+function _freqBindEvents(gd) {{
+  if (!gd) return;
+  if (gd.removeAllListeners) gd.removeAllListeners("plotly_clickannotation");
+  gd.on("plotly_clickannotation", function(evt) {{
+    var ann = evt && evt.annotation;
+    if (ann && ann._freqLineId) _freqRemoveLine(ann._freqLineId);
+  }});
+  if (!gd._freqClickBound) {{
+    gd._freqClickBound = true;
+    gd.addEventListener("click", function(e) {{
+      if (!_freqDrawArmed) return;
+      if (e.target && e.target.closest && e.target.closest(".annotation")) return;
+      var hitv = _freqPixelToData(gd, e.clientX, e.clientY);
+      if (!hitv) return;
+      _freqLines.push({{id: "fl" + (++_freqLineSeq), axis: hitv.axis, y: hitv.y}});
+      _freqDrawArmed = false;
+      var btn = document.getElementById("freq-draw-btn");
+      if (btn) btn.classList.remove("active");
+      gd.classList.remove("freq-draw-mode");
+      _freqApplyLines(gd);
+    }});
+  }}
 }}
 
 // ── Y-axis scale handles (esquerdo=breadth %, direito=IBOV) ──

@@ -3,9 +3,10 @@ Servidor local do IBOV Market Breadth.
 Acesso: http://localhost:8001
 
 Rotas:
-  GET  /           — dashboard HTML
-  POST /api/update — dispara o pipeline de atualização em background
-  GET  /api/status — estado atual do pipeline
+  GET  /                       — dashboard HTML
+  POST /api/update             — dispara o pipeline de atualização em background
+  GET  /api/status             — estado atual do pipeline
+  GET  /api/freq_ohlc/{ticker} — OHLC sob demanda pra aba Frequency (tf=D|W)
 """
 from __future__ import annotations
 import threading
@@ -169,6 +170,48 @@ def get_status():
         "step":        _state["step"],
         "last_update": _state["last_update"],
         "error":       _state["error"],
+    }
+
+
+@app.get("/api/freq_ohlc/{ticker}")
+def freq_ohlc(ticker: str, tf: str = "D"):
+    """OHLC sob demanda pra aba Frequency — 154 ativos x historico completo
+    nao cabe embutido no HTML gerado, entao so o ticker/timeframe que o
+    usuario esta olhando e buscado aqui. tf=D (diario, cru) ou tf=W
+    (semanal, resample O=primeiro/H=max/L=min/C=ultimo, fecha na sexta)."""
+    import math
+    import pandas as pd
+    from app.database.connection import engine
+
+    df = pd.read_sql(
+        "SELECT date, open, high, low, close FROM prices WHERE ticker = :t ORDER BY date",
+        engine, params={"t": ticker.upper()},
+    )
+    if df.empty:
+        return JSONResponse({"error": "sem dados"}, status_code=404)
+
+    df["date"] = pd.to_datetime(df["date"])
+    if tf == "W":
+        df = (
+            df.set_index("date")
+            .resample("W-FRI")
+            .agg({"open": "first", "high": "max", "low": "min", "close": "last"})
+            .dropna(subset=["close"])
+            .reset_index()
+        )
+
+    def _safe(col: str) -> list:
+        return [None if (v is None or (isinstance(v, float) and math.isnan(v))) else round(float(v), 2)
+                for v in df[col]]
+
+    return {
+        "ticker": ticker.upper(),
+        "tf": "W" if tf == "W" else "D",
+        "dates": df["date"].dt.strftime("%Y-%m-%d").tolist(),
+        "open":  _safe("open"),
+        "high":  _safe("high"),
+        "low":   _safe("low"),
+        "close": _safe("close"),
     }
 
 
