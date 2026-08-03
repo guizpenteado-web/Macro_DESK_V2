@@ -124,6 +124,32 @@ def collect_btc_lth_supply_profit():
         log.error("checkonchain LTH error: %s", e)
 
 
+def collect_btc_early_history(end_date: str = "2014-09-16"):
+    """Backfill único do BTC-USD pré-yfinance (que só cobre a partir de 2014-09-17), via
+    CoinMetrics Community API (gratuita, sem chave, cobre desde 2010). Sem isso, o ciclo do
+    halving de 2012 no gráfico de Ciclos ficava sem base (indexado errado ao preço de 2014,
+    não ao preço real do halving ~$12) — ver [[project_btc_cycle_2012_backfill]].
+    Não faz parte do collect_all(): é histórico fixo, não precisa refazer diariamente."""
+    url = (
+        "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics"
+        f"?assets=btc&metrics=PriceUSD&start_time=2012-11-01&end_time={end_date}"
+        "&frequency=1d&page_size=10000"
+    )
+    try:
+        r = requests.get(url, timeout=30)
+        r.raise_for_status()
+        data = r.json().get("data", [])
+        rows = [
+            (row["time"][:10], float(row["PriceUSD"]))
+            for row in data if row.get("PriceUSD") is not None
+        ]
+        if rows:
+            upsert_prices(BTC_TICKER, rows)
+            log.info("CoinMetrics BTC early history: %d registros (%s a %s)", len(rows), rows[0][0], rows[-1][0])
+    except Exception as e:
+        log.error("CoinMetrics BTC early history error: %s", e)
+
+
 def collect_fred():
     """Coleta series do FRED via CSV e armazena como precos mensais."""
     start_year = pd.Timestamp.now().year - SEASONALITY_YEARS
