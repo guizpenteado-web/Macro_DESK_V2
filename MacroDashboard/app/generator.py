@@ -916,9 +916,48 @@ td.num {{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
 
 /* Source note */
 .source-note {{ font-size:11px; color:var(--muted); margin-top:12px; padding:8px 12px; background:var(--surface2); border-radius:6px; border-left:3px solid var(--gold) }}
+
+/* Botão de ajuda "?" — abre modal explicativo de um indicador */
+.help-btn {{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:22px; height:22px; border-radius:50%;
+  background:var(--surface2); border:1px solid var(--border); color:var(--muted);
+  font-size:13px; font-weight:700; cursor:pointer; margin-left:8px; vertical-align:middle;
+  transition:.15s;
+}}
+.help-btn:hover {{ background:var(--gold); border-color:var(--gold); color:#0b1120 }}
+.help-modal-overlay {{
+  display:none; position:fixed; inset:0; background:rgba(4,8,16,.72);
+  z-index:300; align-items:center; justify-content:center; padding:20px;
+}}
+.help-modal-overlay.open {{ display:flex }}
+.help-modal {{
+  background:var(--surface); border:1px solid var(--border); border-radius:12px;
+  max-width:560px; width:100%; max-height:80vh; overflow-y:auto; padding:22px 24px;
+  box-shadow:0 20px 60px rgba(0,0,0,.5);
+}}
+.help-modal h3 {{ margin:0 0 12px; font-size:14px; color:var(--gold); letter-spacing:.5px; text-transform:uppercase }}
+.help-modal p {{ font-size:12.5px; line-height:1.6; color:var(--text); margin:0 0 10px }}
+.help-modal ul {{ margin:0 0 10px; padding-left:18px }}
+.help-modal li {{ font-size:12.5px; line-height:1.6; color:var(--text); margin-bottom:4px }}
+.help-modal b {{ color:var(--gold) }}
+.help-modal-close {{
+  margin-top:6px; background:var(--surface2); border:1px solid var(--border); color:var(--text);
+  font-size:11px; font-weight:600; letter-spacing:.5px; text-transform:uppercase;
+  padding:8px 16px; border-radius:6px; cursor:pointer;
+}}
+.help-modal-close:hover {{ border-color:var(--gold); color:var(--gold) }}
 </style>
 </head>
 <body>
+
+<div class="help-modal-overlay" id="help-modal-overlay" onclick="if(event.target===this) closeHelp()">
+  <div class="help-modal">
+    <h3 id="help-modal-title"></h3>
+    <div id="help-modal-body"></div>
+    <button class="help-modal-close" onclick="closeHelp()">Fechar</button>
+  </div>
+</div>
 
 <nav>
   <div class="brand">&#9670; Macro Dashboard</div>
@@ -1538,7 +1577,9 @@ td.num {{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
     Atualizado semanalmente junto com o restante do pipeline.
   </div>
 
-  <div class="section-title">Bitcoin — Long-Term Holder % Supply em Lucro</div>
+  <div class="section-title">Bitcoin — Long-Term Holder % Supply em Lucro
+    <span class="help-btn" onclick="openHelp('lthProfit')" title="Como usar este indicador">?</span>
+  </div>
   <div id="btc-lth-profit-stats" class="btc-stats"></div>
   <div class="chart-box" style="margin-bottom:20px">
     <div class="chart-title">Preço vs. % da Supply de Long-Term Holders em Lucro</div>
@@ -2255,6 +2296,35 @@ function btcLthProfitChart(divId, data) {{
   }});
   Plotly.newPlot(divId, traces, layout, CFG_Z);
 }}
+
+// ─── Modal de ajuda (botão "?" em títulos de seção) ────────────────────
+var HELP_CONTENT = {{
+  lthProfit: {{
+    title: "LTH % Supply em Lucro — como usar",
+    html:
+      '<p>Mede quantos <b>Bitcoins parados há mais de 155 dias</b> (Long-Term Holders, os investidores de longo prazo) estão, hoje, valendo mais do que custaram quando foram comprados. Quanto maior o %, mais gente "no lucro"; quanto menor, mais gente "no prejuízo" mesmo segurando a longo prazo.</p>' +
+      '<p><b>Como ler as zonas do gráfico:</b></p>' +
+      '<ul>' +
+        '<li><b>Perto do topo (linha vermelha, +1σ, ~95-100%):</b> quase todo mundo está no lucro — sinal de euforia/ganância no mercado. Historicamente, essa zona costuma aparecer perto de topos de ciclo.</li>' +
+        '<li><b>Perto do fundo (linha verde, -1σ, ~65-70%):</b> mesmo os investidores de longo prazo estão sentindo dor — sinal de capitulação. Historicamente, essa zona coincidiu com os principais fundos de mercado (2019, 2022 e o momento atual).</li>' +
+        '<li><b>Perto da média (linha cinza tracejada):</b> mercado em zona neutra, sem sinal extremo em nenhuma direção.</li>' +
+      '</ul>' +
+      '<p><b>Como usar com responsabilidade:</b> é um indicador de <b>contexto</b>, não uma bola de cristal. Ele mostra se o mercado está historicamente "esticado" (perto do fundo ou do topo estatístico), mas não diz o dia exato de virada — o preço pode continuar caindo ou subindo por semanas/meses depois de tocar essas zonas. Use sempre em conjunto com outros dados (preço, notícias, seu próprio horizonte de investimento) e nunca como único critério de compra ou venda.</p>' +
+      '<p style="color:var(--muted);font-size:11px">Fonte: _checkonchain. Atualizado diariamente.</p>',
+  }},
+}};
+
+function openHelp(key) {{
+  var c = HELP_CONTENT[key];
+  if (!c) return;
+  document.getElementById("help-modal-title").textContent = c.title;
+  document.getElementById("help-modal-body").innerHTML = c.html;
+  document.getElementById("help-modal-overlay").classList.add("open");
+}}
+function closeHelp() {{
+  document.getElementById("help-modal-overlay").classList.remove("open");
+}}
+document.addEventListener("keydown", function(e) {{ if (e.key === "Escape") closeHelp(); }});
 
 // ─── Embed data ───────────────────────────────────────────────────────
 var DATA = {{
