@@ -1356,7 +1356,12 @@ var _freqTicker    = freqChips.length ? freqChips[0] : (freqMeta.length ? freqMe
 var _freqLen       = 20;
 var _freqTf        = "D";
 var _freqCache     = {{}};
-var _freqLines     = [];
+var _freqLinesByTicker = {{}};   // linhas tracadas, isoladas por ativo (nao vazam entre tickers)
+function _freqLinesFor(ticker) {{
+  if (!_freqLinesByTicker[ticker]) _freqLinesByTicker[ticker] = [];
+  return _freqLinesByTicker[ticker];
+}}
+var _freqLines     = _freqLinesFor(_freqTicker);
 var _freqLineSeq   = 0;
 var _freqDrawArmed = false;
 var _freqSelectedLineId = null;
@@ -1383,6 +1388,7 @@ function _freqFilterDropdown(q) {{
 
 function _freqSelect(ticker) {{
   _freqTicker = ticker;
+  _freqLines = _freqLinesFor(ticker);
   var box = document.getElementById("freq-search");
   if (box) box.value = ticker;
   var clearBtn = document.getElementById("freq-search-clear");
@@ -1675,7 +1681,7 @@ function _freqApplyLines(gd) {{
 }}
 
 function _freqRemoveLine(id) {{
-  _freqLines = _freqLines.filter(function(l) {{ return l.id !== id; }});
+  _freqLines = _freqLinesByTicker[_freqTicker] = _freqLines.filter(function(l) {{ return l.id !== id; }});
   if (_freqSelectedLineId === id) _freqSelectedLineId = null;
   var gd = document.getElementById("chart-freq");
   if (gd) _freqApplyLines(gd);
