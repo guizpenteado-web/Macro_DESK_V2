@@ -320,7 +320,7 @@ def generate_dashboard() -> Path:
 
     freq_universe = _load_frequency_universe()
     freq_meta     = freq_universe.fillna("").to_dict("records")
-    freq_chips    = _load_freq_liquidity_chips(freq_universe, n=30)
+    freq_chips    = _load_freq_liquidity_chips(freq_universe, n=59)
     default_freq_ticker = freq_chips[0] if freq_chips else (freq_meta[0]["ticker"] if freq_meta else "")
     freq_chips_html = "".join(
         f'<button class="fbtn{" active" if i == 0 else ""}" id="fc-{t}" onclick="_freqSelect(\'{t}\')">{t}</button>'
@@ -936,7 +936,7 @@ tr:hover td{{
   </div>
 
   <div class="filter-bar" style="border-top:1px solid rgba(255,255,255,0.03);padding-top:6px;padding-bottom:6px">
-    <span class="filter-label">Top 30 liquidez</span>
+    <span class="filter-label">Top 59 liquidez</span>
     <div class="filter-group" id="freq-chips">{freq_chips_html}</div>
   </div>
 
@@ -1564,17 +1564,33 @@ function _freqBuildShapes() {{
   return [zero].concat(user);
 }}
 
+// Preco (painel de cima, eixo y2) mostra R$; indicador (painel de baixo,
+// eixo y) mostra a % de distancia da SMA correspondente ao nivel tracado.
+function _freqFmtLineValue(l) {{
+  if (l.axis === "y2") return "R$ " + l.y.toFixed(2);
+  return (l.y >= 0 ? "+" : "") + l.y.toFixed(2) + "%";
+}}
+
 function _freqBuildAnnotations() {{
-  return _freqLines.map(function(l) {{
-    return {{
+  var anns = [];
+  _freqLines.forEach(function(l) {{
+    anns.push({{
+      xref: "paper", yref: l.axis, x: 1, y: l.y,
+      xanchor: "right", yanchor: "bottom", xshift: -2, yshift: 4,
+      text: _freqFmtLineValue(l), showarrow: false,
+      font: {{color: "#38bdf8", size: 10, family: "'DM Mono',monospace"}},
+      bgcolor: "rgba(8,15,24,0.85)", borderpad: 2
+    }});
+    anns.push({{
       xref: "paper", yref: l.axis, x: 1, y: l.y,
       xanchor: "left", yanchor: "middle", xshift: 6,
       text: "✕", showarrow: false, captureevents: true,
       font: {{color: "#f05a5a", size: 11, family: "Inter,sans-serif"}},
       bgcolor: "rgba(8,15,24,0.85)", borderpad: 2,
       _freqLineId: l.id
-    }};
+    }});
   }});
+  return anns;
 }}
 
 function _freqApplyLines(gd) {{
