@@ -141,6 +141,87 @@ body {
 .timeline-item a { color: #58a6ff; font-size: 12px; text-decoration: none; }
 .timeline-item a:hover { text-decoration: underline; }
 
+.search-wrapper { display: flex; gap: 10px; }
+.search-wrapper .search-input { flex: 1; }
+.consenso-cta {
+    display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+    padding: 11px 24px; border-radius: 12px; border: 1px solid #1f6feb;
+    background: #1f6feb26; color: #58a6ff; font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+}
+.consenso-cta:hover { background: #1f6feb40; border-color: #58a6ff; }
+
+.consenso-back {
+    display: inline-flex; align-items: center; gap: 6px; color: #8b949e;
+    background: none; border: none; cursor: pointer; font-size: 13px;
+    margin-bottom: 16px; padding: 0;
+}
+.consenso-back:hover { color: #e1e4e8; }
+.consenso-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; flex-wrap: wrap; gap: 12px; }
+.consenso-header h2 { font-size: 22px; font-weight: 700; color: #f0f6fc; }
+.consenso-stamp { font-size: 12px; color: #8b949e; }
+
+.consenso-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
+.consenso-card { background: #161b22; border: 1px solid #21262d; border-radius: 12px; padding: 14px 16px; }
+.consenso-card small { display: block; color: #8b949e; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+.consenso-card strong { display: block; font-size: 26px; font-weight: 700; color: #f0f6fc; margin: 6px 0 2px; }
+.consenso-card span { color: #8b949e; font-size: 11px; }
+
+.consenso-tabs { display: flex; gap: 6px; border-bottom: 1px solid #21262d; margin-bottom: 18px; }
+.consenso-tab { border: 0; background: none; color: #8b949e; font-weight: 600; padding: 10px 16px; cursor: pointer; border-bottom: 2px solid transparent; font-size: 14px; }
+.consenso-tab.active { color: #58a6ff; border-color: #58a6ff; }
+.consenso-view { display: none; }
+.consenso-view.active { display: block; }
+
+.consenso-panel { background: #161b22; border: 1px solid #21262d; border-radius: 12px; padding: 16px; margin-top: 6px; }
+.consenso-panel-head { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+.consenso-table-title { color: #f0f6fc; font-size: 16px; font-weight: 700; }
+.consenso-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.consenso-search, .consenso-select, .consenso-number {
+    height: 32px; border: 1px solid #30363d; border-radius: 8px; background: #0d1117;
+    color: #f0f6fc; outline: none; padding: 0 10px; font: inherit; font-size: 13px;
+}
+.consenso-search { width: 210px; }
+.consenso-search:focus, .consenso-select:focus, .consenso-number:focus { border-color: #58a6ff; }
+.consenso-number { width: 76px; }
+.consenso-field-label { display: flex; align-items: center; gap: 6px; color: #8b949e; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.consenso-count { font-size: 12px; color: #8b949e; }
+
+.consenso-table-wrap { overflow: auto; max-height: 620px; border: 1px solid #21262d; border-radius: 9px; }
+.consenso-table-wrap table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+.consenso-table-wrap th { position: sticky; top: 0; z-index: 1; background: #1c2128; color: #8b949e; text-align: left; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; padding: 10px 12px; border-bottom: 1px solid #21262d; }
+.consenso-table-wrap th.sortable { cursor: pointer; user-select: none; }
+.consenso-table-wrap th.sortable:hover, .consenso-table-wrap th.sortable.active { color: #58a6ff; }
+.consenso-table-wrap th .arrow { display: inline-block; width: 10px; margin-left: 4px; color: #58a6ff; }
+.consenso-table-wrap td { padding: 9px 12px; border-bottom: 1px solid #21262d; color: #c9d1d9; font-size: 13px; }
+.consenso-table-wrap tbody tr:hover { background: #1c2128; }
+.consenso-table-wrap td.num, .consenso-table-wrap th.num { text-align: right; }
+.consenso-ticker { color: #58a6ff; font-weight: 700; }
+.consenso-status-badge { display: inline-block; margin-left: 6px; padding: 2px 5px; border-radius: 4px; font-size: 8px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; vertical-align: 1px; }
+.consenso-status-badge.proxy { border: 1px solid rgba(210,153,34,.5); color: #d29922; background: rgba(210,153,34,.08); }
+.consenso-status-badge.missing { border: 1px solid #30363d; color: #6e7681; background: #0d1117; }
+.consenso-positive { color: #3fb950; }
+.consenso-negative { color: #f85149; }
+.consenso-empty { text-align: center; color: #8b949e; padding: 30px !important; }
+
+.consenso-title-row { display: flex; align-items: center; gap: 9px; margin-top: 6px; }
+.consenso-title-row h3 { font-size: 16px; font-weight: 700; color: #f0f6fc; margin: 0; }
+.consenso-help-button { width: 22px; height: 22px; border: 1px solid #30363d; border-radius: 50%; background: #0d1117; color: #8b949e; font-weight: 700; cursor: pointer; padding: 0; line-height: 20px; font-size: 12px; }
+.consenso-help-button:hover, .consenso-help-button[aria-expanded="true"] { background: #1c2128; color: #e1e4e8; border-color: #484f58; }
+.consenso-help-panel { max-width: 820px; margin: 10px 0 16px; padding: 12px 14px; border: 1px solid #30363d; border-radius: 9px; background: #0d1117; color: #c9d1d9; line-height: 1.55; font-size: 13px; }
+.consenso-help-panel p { margin: 5px 0; }
+.consenso-help-panel strong { color: #f0f6fc; }
+.consenso-sub { color: #8b949e; margin: 6px 0 14px; line-height: 1.55; font-size: 13px; }
+
+@media (max-width: 900px) { .consenso-cards { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px) {
+    .consenso-cards { grid-template-columns: 1fr; }
+    .consenso-panel { padding: 12px; }
+    .consenso-search { width: 100%; }
+    .consenso-tools { width: 100%; }
+    .consenso-tools > * { flex: 1; }
+}
+
 .loading { text-align: center; padding: 80px 20px; color: #8b949e; }
 .loading .spinner {
     width: 40px; height: 40px; border: 3px solid #21262d;
@@ -161,8 +242,9 @@ body {
     <div class="header">
         <div class="header-left">
             <h1><button class="back-btn" onclick="history.back()" title="Voltar pra página anterior">←</button><span>AÇÕES</span><a href="/" class="view-toggle-btn">IBOVESPA</a></h1>
-            <div class="subtitle">Preço-alvo e recomendações por ativo, desde início de 2026</div>
+            <div class="subtitle">Preço-alvo e recomendações por ativo</div>
         </div>
+        <button type="button" class="consenso-cta" onclick="window.location.hash='#/consenso'">Consenso Analistas</button>
     </div>
 
     <div id="listView">
@@ -200,6 +282,56 @@ body {
         <div class="timeline-section">
             <h2>Calls sobre este ativo</h2>
             <div class="timeline" id="detailTimeline"></div>
+        </div>
+    </div>
+
+    <div id="consensoView" style="display:none">
+        <button type="button" class="consenso-back" onclick="window.location.hash=''">← Voltar</button>
+        <div class="consenso-header">
+            <h2>Consenso de Analistas</h2>
+            <div class="consenso-stamp" id="consensoStamp"></div>
+        </div>
+        <div class="consenso-tabs">
+            <button class="consenso-tab active" data-view="consenso-overview">Visão geral</button>
+            <button class="consenso-tab" data-view="consenso-dispersion">Dispersão</button>
+        </div>
+
+        <div class="consenso-view active" id="consenso-overview">
+            <div class="consenso-cards" id="consensoCards"></div>
+            <div class="consenso-panel">
+                <div class="consenso-panel-head">
+                    <div class="consenso-table-title">Preços-alvo e cobertura do sell-side</div>
+                    <div class="consenso-tools">
+                        <input id="consensoSearch" class="consenso-search" type="search" placeholder="Pesquisar ticker ou empresa…">
+                        <select id="consensoSector" class="consenso-select"><option value="">Todos os setores</option></select>
+                        <label class="consenso-field-label" for="consensoMin"><span>Nº Analistas</span><input id="consensoMin" class="consenso-number" type="number" min="0" value="0" title="Número mínimo de analistas" aria-label="Número mínimo de analistas"></label>
+                        <span class="consenso-count" id="consensoCount"></span>
+                    </div>
+                </div>
+                <div class="consenso-table-wrap"><table id="consensoOverviewTable"></table></div>
+            </div>
+        </div>
+
+        <div class="consenso-view" id="consenso-dispersion">
+            <div class="consenso-title-row">
+                <h3>Dispersão das estimativas</h3>
+                <button id="consensoDispersionHelpBtn" class="consenso-help-button" type="button" aria-label="Abrir interpretação da dispersão" aria-expanded="false" aria-controls="consensoDispersionHelp">?</button>
+            </div>
+            <p class="consenso-sub">Dispersão = (máximo − mínimo) ÷ mediana. Quanto maior, menor o acordo entre as estimativas.</p>
+            <div id="consensoDispersionHelp" class="consenso-help-panel" hidden>
+                <p><strong>Interpretação prática:</strong></p>
+                <p><strong>Dispersão baixa:</strong> analistas relativamente alinhados; o consenso tende a ser mais representativo.</p>
+                <p><strong>Dispersão alta:</strong> o preço-alvo médio deve ser tratado com cautela.</p>
+                <p><strong>Dispersão muito alta e poucos analistas:</strong> o consenso pode ser pouco confiável.</p>
+                <p><strong>Média muito diferente da mediana:</strong> provavelmente existe algum preço-alvo extremo puxando a média.</p>
+            </div>
+            <div class="consenso-panel">
+                <div class="consenso-panel-head">
+                    <h3 style="margin:0">Ranking de dispersão</h3>
+                    <input id="consensoDispersionSearch" class="consenso-search" type="search" placeholder="Pesquisar ticker…">
+                </div>
+                <div class="consenso-table-wrap"><table id="consensoDispersionTable"></table></div>
+            </div>
         </div>
     </div>
 </div>
@@ -289,6 +421,7 @@ function applyFilters() {
 
 function route() {
     const hash = window.location.hash;
+    if (hash === '#/consenso') { showConsenso(); return; }
     if (hash.startsWith('#/')) {
         const ticker = hash.slice(2).toUpperCase();
         if (ticker) { showDetail(ticker); return; }
@@ -322,13 +455,24 @@ function renderTickerGrid(tickers) {
 function showList() {
     document.getElementById('listView').style.display = '';
     document.getElementById('detailView').style.display = 'none';
+    document.getElementById('consensoView').style.display = 'none';
     currentTicker = null;
     hideCallTooltip();
+}
+
+function showConsenso() {
+    document.getElementById('listView').style.display = 'none';
+    document.getElementById('detailView').style.display = 'none';
+    document.getElementById('consensoView').style.display = '';
+    currentTicker = null;
+    hideCallTooltip();
+    if (!consensoLoaded) fetchConsenso();
 }
 
 async function showDetail(ticker) {
     currentTicker = ticker;
     document.getElementById('listView').style.display = 'none';
+    document.getElementById('consensoView').style.display = 'none';
     document.getElementById('detailView').style.display = '';
     document.getElementById('detailTicker').textContent = ticker;
     const known = allTickers.find(t => t.ticker === ticker);
@@ -553,6 +697,159 @@ document.getElementById('rangeControls').addEventListener('click', (e) => {
     currentRange = btn.dataset.range;
     loadQuote(currentTicker);
 });
+
+// ---- Consenso Analistas ----
+let consensoLoaded = false;
+let consensoCoverage = [];
+let consensoDispersion = [];
+const consensoTableSort = { key: 'analyst_count', dir: 'desc' };
+
+const csVal = x => typeof x === 'number' && Number.isFinite(x);
+const csBrl = x => csVal(x) ? x.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—';
+const csPct = x => csVal(x) ? x.toLocaleString('pt-BR', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1, signDisplay: 'exceptZero' }) : '—';
+const csInteger = x => csVal(x) ? x.toLocaleString('pt-BR') : '—';
+const csEsc = x => String(x ?? '—').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const csRatio = (target, price) => csVal(target) && csVal(price) && price > 0 ? target / price - 1 : null;
+const csAvg = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
+const csMedian = a => { if (!a.length) return null; const b = [...a].sort((x, y) => x - y), m = Math.floor(b.length / 2); return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
+
+async function fetchConsenso() {
+    const grid = document.getElementById('consensoOverviewTable');
+    grid.innerHTML = '<tbody><tr><td class="consenso-empty">Carregando consenso...</td></tr></tbody>';
+    try {
+        const res = await fetch('/api/consenso-analistas');
+        const snapshot = await res.json();
+        if (snapshot.error) throw new Error(snapshot.error);
+        consensoLoaded = true;
+        buildConsensoRows(snapshot);
+    } catch (e) {
+        grid.innerHTML = '<tbody><tr><td class="consenso-empty">Erro ao carregar consenso de analistas.</td></tr></tbody>';
+    }
+}
+
+function buildConsensoRows(snapshot) {
+    const rows = (snapshot.rows || []).map(r => ({
+        ...r,
+        upside: csRatio(r.target_mean, r.price),
+        spread: csVal(r.target_high) && csVal(r.target_low) && csVal(r.target_median) && r.target_median > 0 ? (r.target_high - r.target_low) / r.target_median : null,
+        mean_median_gap: csVal(r.target_mean) && csVal(r.target_median) && r.target_median > 0 ? r.target_mean / r.target_median - 1 : null,
+    }));
+    const eligible = rows.filter(r => csVal(r.upside));
+    const upsides = eligible.map(r => r.upside);
+    const spreads = rows.map(r => r.spread).filter(csVal);
+
+    document.getElementById('consensoStamp').textContent = snapshot.generated_at
+        ? `Atualizado em ${new Date(snapshot.generated_at).toLocaleString('pt-BR')}` : '';
+
+    document.getElementById('consensoCards').innerHTML = [
+        ['Upside médio', csPct(csAvg(upsides)), 'média transversal'],
+        ['Upside mediano', csPct(csMedian(upsides)), 'menor influência de extremos'],
+        ['Consensos positivos', csInteger(eligible.filter(r => r.upside > 0).length), `${eligible.filter(r => r.upside < 0).length} com downside`],
+        ['Dispersão mediana', csPct(csMedian(spreads)), '(máximo − mínimo) ÷ mediana'],
+    ].map(x => `<div class="consenso-card"><small>${x[0]}</small><strong>${x[1]}</strong><span>${x[2]}</span></div>`).join('');
+
+    consensoCoverage = [...rows].sort((a, b) => (b.analyst_count ?? -1) - (a.analyst_count ?? -1) || a.ticker.localeCompare(b.ticker)).map((r, i) => ({ ...r, position: i + 1 }));
+    consensoDispersion = [...rows].filter(r => csVal(r.spread)).sort((a, b) => b.spread - a.spread);
+
+    const sectorSelect = document.getElementById('consensoSector');
+    sectorSelect.innerHTML = '<option value="">Todos os setores</option>';
+    [...new Set(rows.map(r => r.sector).filter(Boolean))].sort().forEach(s => {
+        sectorSelect.insertAdjacentHTML('beforeend', `<option>${csEsc(s)}</option>`);
+    });
+
+    renderConsensoOverview();
+    renderConsensoDispersion();
+}
+
+function csTickerLabel(r) {
+    const ticker = `<span class="consenso-ticker">${csEsc(r.ticker)}</span>`;
+    if (r.consensus_status === 'proxy') return `${ticker}<span class="consenso-status-badge proxy" title="Referência da outra classe; não é consenso original de ${csEsc(r.ticker)}">proxy ${csEsc(r.consensus_proxy_ticker)}</span>`;
+    if (r.consensus_status === 'no_public_target') return `${ticker}<span class="consenso-status-badge missing" title="Nenhum preço-alvo público disponível nas fontes atuais">sem preço-alvo</span>`;
+    return ticker;
+}
+function csColoredPct(x) { return `<span class="${csVal(x) && x < 0 ? 'consenso-negative' : 'consenso-positive'}">${csPct(x)}</span>`; }
+
+const consensoOverviewCols = [
+    ['Pos.', 'num', r => r.position],
+    ['Ticker', '', r => csTickerLabel(r)],
+    ['Setor', '', r => csEsc(r.sector)],
+    ['Preço', 'num', r => csBrl(r.price)],
+    ['Analistas', 'num', r => csInteger(r.analyst_count), 'analyst_count'],
+    ['Mínimo', 'num', r => csBrl(r.target_low)],
+    ['Mediana', 'num', r => csBrl(r.target_median)],
+    ['Média', 'num', r => csBrl(r.target_mean)],
+    ['Máximo', 'num', r => csBrl(r.target_high)],
+    ['Upside', 'num', r => csColoredPct(r.upside), 'upside'],
+    ['Dispersão', 'num', r => csPct(r.spread), 'spread'],
+];
+const consensoDispersionCols = [
+    ['Ticker', '', r => `<span class="consenso-ticker">${csEsc(r.ticker)}</span>`],
+    ['Empresa', '', r => csEsc(r.company)],
+    ['Opiniões', 'num', r => csInteger(r.analyst_count)],
+    ['Mínimo', 'num', r => csBrl(r.target_low)],
+    ['Mediana', 'num', r => csBrl(r.target_median)],
+    ['Média', 'num', r => csBrl(r.target_mean)],
+    ['Máximo', 'num', r => csBrl(r.target_high)],
+    ['Dispersão', 'num', r => csPct(r.spread)],
+    ['Média vs. mediana', 'num', r => csColoredPct(r.mean_median_gap)],
+];
+
+function csRenderTable(id, data, columns, sortable) {
+    const el = document.getElementById(id);
+    el.innerHTML = `<thead><tr>${columns.map(c => {
+        const active = sortable && c[3] === consensoTableSort.key;
+        const arrow = active ? (consensoTableSort.dir === 'asc' ? '▲' : '▼') : '';
+        return `<th class="${c[1]} ${sortable && c[3] ? 'sortable' : ''} ${active ? 'active' : ''}" ${sortable && c[3] ? `onclick="csSetSort('${c[3]}')"` : ''}>${c[0]}${sortable && c[3] ? `<span class="arrow">${arrow}</span>` : ''}</th>`;
+    }).join('')}</tr></thead><tbody>${data.length ? data.map(r => `<tr>${columns.map(c => `<td class="${c[1]}">${c[2](r)}</td>`).join('')}</tr>`).join('') : `<tr><td class="consenso-empty" colspan="${columns.length}">Nenhum ativo encontrado.</td></tr>`}</tbody>`;
+}
+
+function csSortByState(data) {
+    return [...data].sort((a, b) => {
+        const av = a[consensoTableSort.key], bv = b[consensoTableSort.key];
+        const am = av === null || av === undefined || av === '', bm = bv === null || bv === undefined || bv === '';
+        if (am || bm) return am === bm ? 0 : am ? 1 : -1;
+        const comparison = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv), 'pt-BR', { sensitivity: 'base' });
+        return consensoTableSort.dir === 'asc' ? comparison : -comparison;
+    });
+}
+function csSetSort(key) {
+    if (consensoTableSort.key === key) consensoTableSort.dir = consensoTableSort.dir === 'asc' ? 'desc' : 'asc';
+    else { consensoTableSort.key = key; consensoTableSort.dir = 'asc'; }
+    renderConsensoOverview();
+}
+function csMatch(r, q) {
+    q = q.trim().toLocaleLowerCase('pt-BR');
+    return !q || [r.ticker, r.company, r.sector].some(x => String(x || '').toLocaleLowerCase('pt-BR').includes(q));
+}
+
+function renderConsensoOverview() {
+    const q = document.getElementById('consensoSearch').value;
+    const sector = document.getElementById('consensoSector').value;
+    const min = Number(document.getElementById('consensoMin').value || 0);
+    const filtered = consensoCoverage.filter(r => csMatch(r, q) && (!sector || r.sector === sector) && (r.analyst_count || 0) >= min);
+    const data = csSortByState(filtered);
+    csRenderTable('consensoOverviewTable', data, consensoOverviewCols, true);
+    document.getElementById('consensoCount').textContent = `${data.length} de ${consensoCoverage.length}`;
+}
+function renderConsensoDispersion() {
+    const q = document.getElementById('consensoDispersionSearch').value;
+    csRenderTable('consensoDispersionTable', consensoDispersion.filter(r => csMatch(r, q)), consensoDispersionCols, false);
+}
+
+document.querySelectorAll('.consenso-tab').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.consenso-tab, .consenso-view').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById(b.dataset.view).classList.add('active');
+}));
+document.getElementById('consensoDispersionHelpBtn').addEventListener('click', (e) => {
+    const panel = document.getElementById('consensoDispersionHelp');
+    const open = e.currentTarget.getAttribute('aria-expanded') === 'true';
+    e.currentTarget.setAttribute('aria-expanded', String(!open));
+    panel.hidden = open;
+});
+['consensoSearch', 'consensoMin'].forEach(id => document.getElementById(id).addEventListener('input', renderConsensoOverview));
+document.getElementById('consensoSector').addEventListener('change', renderConsensoOverview);
+document.getElementById('consensoDispersionSearch').addEventListener('input', renderConsensoDispersion);
 
 init();
 </script>
