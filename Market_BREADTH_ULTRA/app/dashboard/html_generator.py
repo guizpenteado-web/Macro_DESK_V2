@@ -182,34 +182,43 @@ def _load_ibov() -> tuple[list[str], list[float]]:
     return df["date"].dt.strftime("%Y-%m-%d").tolist(), df["close"].round(0).tolist()
 
 
-# Universo de busca da aba Frequency: uniao de (1) composicao completa do
-# IBOV, (2) universo do "Consenso dos Analistas" (IBrA, ~148 com alvo de
-# preco) e (3) RRG "Indice: Todos" (154 ativos). Verificado em 03/ago/2026
-# que os 3 conjuntos hoje coincidem exatamente com o IBrA/RRG Todos (154) —
-# lista fixa em vez de consulta cross-projeto (RRGCOMPLETO/DeepValuationBrasil
-# vivem em repos/paths separados que nem sempre existem no ambiente de deploy).
+# Universo de busca da aba Frequency: TODOS os ativos da B3 com liquidez
+# diaria media (2 meses) acima de R$1 milhao — pedido explicito do usuario
+# 03/ago/2026 (antes era só a uniao IBOV+Consenso+RRG Todos, ~154 nomes;
+# esse criterio de liquidez e mais abrangente, ~200). Fonte: screener publico
+# do fundamentus.com.br (coluna "Liq.2meses", sem necessidade de login),
+# checado ao vivo nessa data — 199 tickers passaram do corte, 3 descartados
+# por terem historico de preco praticamente inexistente no yfinance
+# (AXIA6/NGRD3 com 1 dia, PASS3 com 59 dias — grafico ficaria vazio/quebrado).
+# Lista fixa (nao consulta o fundamentus a cada geracao do dashboard) — pra
+# atualizar, rerodar o screener e comparar contra `prices` pra backfill dos
+# tickers novos (ver app/downloader/price_downloader.py:update_prices).
 _FREQ_UNIVERSE: list[str] = [
-    "ABCB4","ABEV3","ALOS3","ALPA4","ALUP11","ANIM3","ARML3","ASAI3","AUAU3","AURE3",
-    "AXIA3","AZZA3","B3SA3","BBAS3","BBDC3","BBDC4","BBSE3","BEEF3","BHIA3","BLAU3",
-    "BMOB3","BPAC11","BRAP4","BRAV3","BRBI11","BRKM5","BRSR6","CAML3","CASH3","CBAV3",
-    "CEAB3","CMIG4","CMIN3","COCE5","COGN3","CPFE3","CPLE3","CSAN3","CSMG3","CSNA3",
-    "CURY3","CVCB3","CXSE3","CYRE3","DASA3","DESK3","DIRR3","DXCO3","ECOR3","EGIE3",
-    "EMBJ3","ENEV3","ENGI11","EQTL3","EVEN3","EZTC3","FESA4","FLRY3","FRAS3","GFSA3",
-    "GGBR4","GGPS3","GMAT3","GOAU4","GRND3","HAPV3","HBOR3","HBSA3","HYPE3","IGTI11",
-    "INTB3","IRBR3","ISAE4","ITSA4","ITUB3","ITUB4","JHSF3","JSLG3","KEPL3","KLBN11",
-    "LAVV3","LEVE3","LJQQ3","LOGG3","LREN3","LWSA3","MBRF3","MDIA3","MDNE3","MGLU3",
-    "MILS3","MOTV3","MOVI3","MRVE3","MULT3","MYPK3","NATU3","ORVR3","PETR3","PETR4",
-    "PGMN3","PINE4","PLPL3","PNVL3","POMO3","POMO4","POSI3","PRIO3","PRNR3","PSSA3",
-    "QUAL3","RADL3","RAIL3","RANI3","RAPT4","RCSL4","RDOR3","RECV3","RENT3","RIAA3",
-    "SANB11","SAPR11","SAUD3","SBFG3","SBSP3","SEER3","SIMH3","SLCE3","SMFT3","SMTO3",
-    "SOJA3","SUZB3","SYNE3","TAEE11","TEND3","TFCO4","TGMA3","TIMS3","TOTS3","TTEN3",
-    "TUPY3","UGPA3","UNIP6","USIM5","VALE3","VAMO3","VBBR3","VIVA3","VIVT3","VLID3",
-    "VTRU3","VULC3","WEGE3","YDUQ3",
+    "ABCB4","ABEV3","AGRO3","ALLD3","ALOS3","ALPA4","ALUP11","AMER3","ANIM3","ARML3",
+    "ASAI3","AUAU3","AURA33","AURE3","AXIA3","AZEV3","AZEV4","AZUL3","AZZA3","B3SA3",
+    "BBAS3","BBDC3","BBDC4","BBSE3","BEEF3","BHIA3","BLAU3","BMEB4","BMGB4","BMOB3",
+    "BPAC11","BRAP4","BRAV3","BRBI11","BRKM5","BRSR6","CAML3","CASH3","CBAV3","CEAB3",
+    "CMIG3","CMIG4","CMIN3","COGN3","CPFE3","CPLE3","CSAN3","CSED3","CSMG3","CSNA3",
+    "CSUD3","CURY3","CVCB3","CXSE3","CYRE3","CYRE4","DASA3","DESK3","DIRR3","DXCO3",
+    "ECOR3","EGIE3","EMBJ3","ENEV3","ENGI11","EQTL3","EUCA4","EVEN3","EZTC3","FESA4",
+    "FIQE3","FLRY3","FRAS3","GFSA3","GGBR4","GGPS3","GMAT3","GOAU4","GRND3","HAPV3",
+    "HBOR3","HBRE3","HBSA3","HYPE3","IGTI11","INTB3","IRBR3","ISAE4","ITSA3","ITSA4",
+    "ITUB3","ITUB4","JALL3","JHSF3","JSLG3","KEPL3","KLBN11","KLBN3","KLBN4","LAND3",
+    "LAVV3","LEVE3","LIGT3","LJQQ3","LOGG3","LREN3","LWSA3","MATD3","MBRF3","MDIA3",
+    "MDNE3","MELK3","MGLU3","MILS3","MLAS3","MOTV3","MOVI3","MRVE3","MTRE3","MULT3",
+    "MYPK3","NATU3","OBTC3","ONCO3","OPCT3","ORVR3","PCAR3","PETR3","PETR4","PGMN3",
+    "PINE4","PLPL3","PMAM3","PNVL3","POMO3","POMO4","POSI3","PRIO3","PRNR3","PSSA3",
+    "QUAL3","RADL3","RAIL3","RAIZ4","RANI3","RAPT4","RCSL4","RDOR3","RECV3","RENT3",
+    "RIAA3","SANB11","SANB3","SANB4","SAPR11","SAPR4","SAUD3","SBFG3","SBSP3","SEER3",
+    "SHUL4","SIMH3","SLCE3","SMFT3","SMTO3","SOJA3","SUZB3","SYNE3","TAEE11","TAEE3",
+    "TAEE4","TASA4","TEND3","TFCO4","TGMA3","TIMS3","TOTS3","TRIS3","TTEN3","TUPY3",
+    "UGPA3","UNIP6","USIM3","USIM5","VALE3","VAMO3","VBBR3","VIVA3","VIVT3","VLID3",
+    "VTRU3","VULC3","VVEO3","WEGE3","WIZC3","YDUQ3",
 ]
 
 
 def _load_frequency_universe() -> pd.DataFrame:
-    """[{ticker, name, weight}] pros 154 ativos de _FREQ_UNIVERSE — nome/peso
+    """[{ticker, name, weight}] pros ~196 ativos de _FREQ_UNIVERSE — nome/peso
     vem de `assets` quando existir (so os que tem peso B3, ~85 hoje); os
     demais aparecem so pelo ticker (ainda buscaveis, tem preco em `prices`)."""
     placeholders = ",".join(f"'{t}'" for t in _FREQ_UNIVERSE)
@@ -1452,7 +1461,7 @@ function _distFromSma(closes, len) {{
   return out;
 }}
 
-// Busca OHLC sob demanda — com 154 ativos x historico completo nao cabe
+// Busca OHLC sob demanda — com ~200 ativos x historico completo nao cabe
 // mais tudo embutido no HTML de saida, so o par ticker/timeframe atual e
 // buscado, com cache em memoria pra nao rebuscar ao alternar de volta.
 function _freqFetchOhlc(ticker, tf, cb) {{
