@@ -11,7 +11,7 @@ from app.seasonality import (
     calc_btc_seasonality, calc_btc_cycle, get_cycle_stats,
 )
 from app.btc_cost_model import compute_prodcost_series
-from app.market import BTC_HASHRATE_TICKER
+from app.market import BTC_HASHRATE_TICKER, BTC_LTH_PCTPROFIT_TICKER, BTC_LTH_MEAN_TICKER, BTC_LTH_MEANP1_TICKER, BTC_LTH_MEANM1_TICKER
 
 log = logging.getLogger(__name__)
 
@@ -134,6 +134,36 @@ def _btc_prodcost_data() -> str:
     return json.dumps(series) if series else "null"
 
 
+def _btc_lth_profit_data() -> str:
+    """LTH % Supply in Profit (_checkonchain) — ver app/market.py:collect_btc_lth_supply_profit."""
+    price_by_date = {d: v for d, v in get_prices(BTC_TICKER) if v is not None}
+    pct_rows  = get_prices(BTC_LTH_PCTPROFIT_TICKER)
+    mean_by_date  = {d: v for d, v in get_prices(BTC_LTH_MEAN_TICKER)}
+    p1_by_date    = {d: v for d, v in get_prices(BTC_LTH_MEANP1_TICKER)}
+    m1_by_date    = {d: v for d, v in get_prices(BTC_LTH_MEANM1_TICKER)}
+    if not pct_rows or len(pct_rows) < 30:
+        return "null"
+
+    dates, price, pct, mean, p1sd, m1sd = [], [], [], [], [], []
+    for d, v in pct_rows:
+        p = price_by_date.get(d)
+        if p is None:
+            continue
+        dates.append(d)
+        price.append(round(p, 2))
+        pct.append(round(v, 2))
+        mean.append(mean_by_date.get(d))
+        p1sd.append(p1_by_date.get(d))
+        m1sd.append(m1_by_date.get(d))
+
+    if len(dates) < 30:
+        return "null"
+    return json.dumps({
+        "dates": dates, "price": price, "pct": pct,
+        "mean": mean, "p1sd": p1sd, "m1sd": m1sd,
+    })
+
+
 COT_START = "2019-01-01"   # data de início igual ao Sharketo
 
 def _cot_chart_data(contract_key: str) -> str:
@@ -229,6 +259,7 @@ def generate():
     btc_cycle = _btc_cycle_data()
     btc_stats = _btc_stats_data()
     btc_prodcost = _btc_prodcost_data()
+    btc_lth_profit = _btc_lth_profit_data()
 
     cot_data = {key: _cot_chart_data(key) for key in {**COT_CONTRACTS, **COT_CONTRACTS_TFF}}
 
@@ -255,6 +286,7 @@ def generate():
         sp500_targets=sp500_targets, fed_views=fed_views,
         brazil=brazil, copom_views=copom_views,
         saz=saz, btc_saz=btc_saz, btc_cycle=btc_cycle, btc_stats=btc_stats, btc_prodcost=btc_prodcost,
+        btc_lth_profit=btc_lth_profit,
         last_updated=bank.get("last_updated","—"),
         current_spx=current_spx, nfp_table=nfp_table, nfp_fp_json=nfp_fp_json, wage_json=wage_json,
         cot_data=cot_data,
@@ -1506,6 +1538,20 @@ td.num {{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
     Atualizado semanalmente junto com o restante do pipeline.
   </div>
 
+  <div class="section-title">Bitcoin — Long-Term Holder % Supply em Lucro</div>
+  <div id="btc-lth-profit-stats" class="btc-stats"></div>
+  <div class="chart-box" style="margin-bottom:20px">
+    <div class="chart-title">Preço vs. % da Supply de Long-Term Holders em Lucro</div>
+    <div id="ch-btc-lth-profit" style="height:420px"></div>
+  </div>
+  <div class="source-note">
+    Fonte: _checkonchain (charts.checkonchain.com), série pública de análise on-chain. Long-Term Holder (LTH) =
+    UTXOs parados há mais de 155 dias. A métrica cruza o preço médio de aquisição (cost basis) de cada UTXO com o
+    preço atual para saber se aquele LTH está em lucro; a linha mostra o % da supply de LTH nessa condição.
+    Bandas tracejadas: média histórica ± 1 desvio-padrão. Historicamente, quedas até a banda inferior coincidem
+    com fundos de mercado (mesmo padrão nos ciclos 2019 e 2022). Atualizado diariamente junto com o pipeline.
+  </div>
+
 </section>
 
 </main>
@@ -2153,6 +2199,63 @@ function btcProdCostChart(divId, data) {{
   Plotly.newPlot(divId, traces, layout, CFG_Z);
 }}
 
+// ─── BTC LTH % Supply in Profit (_checkonchain) ────────────────────────
+function renderBtcLthProfitStats(data) {{
+  var el = document.getElementById("btc-lth-profit-stats");
+  if (!data || !data.dates || !data.dates.length) {{ el.innerHTML = ''; return; }}
+  var n = data.dates.length;
+  var pct = data.pct[n-1], price = data.price[n-1], mean = data.mean[n-1], m1sd = data.m1sd[n-1];
+  var zoneColor = (m1sd !== null && pct <= m1sd) ? "#10b981" : "#e8eef5";
+  var vsMean = mean !== null ? pct - mean : null;
+  var fmtUsd = function(v) {{ return "$ " + Math.round(v).toLocaleString("pt-BR"); }};
+  var boxes = [
+    ["Preço Atual (BTC)", fmtUsd(price), "#e8eef5"],
+    ["LTH % Supply em Lucro", pct.toFixed(1) + "%", zoneColor],
+    ["Média Histórica", mean !== null ? mean.toFixed(1) + "%" : "—", "#7d90a8"],
+    ["Banda -1σ (zona de fundo)", m1sd !== null ? m1sd.toFixed(1) + "%" : "—", "#10b981"],
+    ["Distância vs. Média", vsMean !== null ? (vsMean >= 0 ? "+" : "") + vsMean.toFixed(1) + "pp" : "—",
+      vsMean !== null && vsMean < 0 ? "#f43f5e" : "#e8eef5"],
+  ];
+  var html = "";
+  boxes.forEach(function(b) {{
+    html += '<div class="stat-box"><div class="stat-lbl">' + b[0] + '</div><div class="stat-val" style="color:' + b[2] + '">' + b[1] + '</div></div>';
+  }});
+  el.innerHTML = html;
+}}
+
+function btcLthProfitChart(divId, data) {{
+  if (!data || !data.dates || !data.dates.length) {{
+    document.getElementById(divId).innerHTML = '<p style="color:#7d90a8;padding:20px;text-align:center">Aguardando dados — clique em Atualizar.</p>';
+    return;
+  }}
+  var traces = [
+    {{ type:"scatter", mode:"lines", name:"Preço BTC", x:data.dates, y:data.price,
+       line:{{color:"#c9a227", width:1.6}}, yaxis:"y",
+       hovertemplate:"<b>%{{x}}</b><br>Preço: $%{{y:,.0f}}<extra></extra>" }},
+    {{ type:"scatter", mode:"lines", name:"LTH % Supply em Lucro", x:data.dates, y:data.pct,
+       line:{{color:"#00bfff", width:2}}, yaxis:"y2",
+       hovertemplate:"<b>%{{x}}</b><br>LTH em lucro: %{{y:.1f}}%<extra></extra>" }},
+    {{ type:"scatter", mode:"lines", name:"Média", x:data.dates, y:data.mean,
+       line:{{color:"#7d90a8", width:1, dash:"dash"}}, yaxis:"y2",
+       hovertemplate:"<b>%{{x}}</b><br>Média: %{{y:.1f}}%<extra></extra>" }},
+    {{ type:"scatter", mode:"lines", name:"Média +1σ", x:data.dates, y:data.p1sd,
+       line:{{color:"#f43f5e", width:1, dash:"dot"}}, yaxis:"y2",
+       hovertemplate:"<b>%{{x}}</b><br>+1σ: %{{y:.1f}}%<extra></extra>" }},
+    {{ type:"scatter", mode:"lines", name:"Média -1σ", x:data.dates, y:data.m1sd,
+       line:{{color:"#10b981", width:1, dash:"dot"}}, yaxis:"y2",
+       hovertemplate:"<b>%{{x}}</b><br>-1σ: %{{y:.1f}}%<extra></extra>" }},
+  ];
+  var layout = Object.assign({{}}, LAYOUT_BASE, {{
+    margin:{{ t:14, b:40, l:64, r:56 }},
+    yaxis: Object.assign({{}}, LAYOUT_BASE.yaxis, {{ type:"log", title:"USD (log)" }}),
+    yaxis2: {{ overlaying:"y", side:"right", title:"% Supply em Lucro", range:[30,105],
+               gridcolor:"rgba(255,255,255,0.04)", color:"#7d90a8" }},
+    hovermode:"x unified",
+    legend:{{ x:0.01, y:0.98, bgcolor:"rgba(0,0,0,0.3)", font:{{color:"#e8eef5",size:11}} }},
+  }});
+  Plotly.newPlot(divId, traces, layout, CFG_Z);
+}}
+
 // ─── Embed data ───────────────────────────────────────────────────────
 var DATA = {{
   cpi:    {kw['cpi_hist']},
@@ -2195,6 +2298,7 @@ var DATA = {{
   btcCycle: {kw['btc_cycle']},
   btcStats: {kw['btc_stats']},
   btcProdCost: {kw.get('btc_prodcost','null')},
+  btcLthProfit: {kw.get('btc_lth_profit','null')},
   nfpFP:    {kw['nfp_fp_json']},
   wageGrowth: {kw['wage_json']},
 }};
@@ -2259,6 +2363,8 @@ function renderCharts(tab) {{
     renderCotWeeklyTable("btc", 12);
     renderBtcProdCostStats(DATA.btcProdCost);
     btcProdCostChart("ch-btc-prodcost", DATA.btcProdCost);
+    renderBtcLthProfitStats(DATA.btcLthProfit);
+    btcLthProfitChart("ch-btc-lth-profit", DATA.btcLthProfit);
   }}
 }}
 
