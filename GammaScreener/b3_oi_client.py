@@ -154,3 +154,20 @@ def build_universe(index, top_n=30):
             "oi_total": oi_total,
         })
     return universe
+
+
+def count_active_strikes(index, root):
+    """Numero de strikes distintos com OI>0 pro root, direto do indice de
+    build_root_index -- nao depende da OpLab. Proxy de profundidade real da
+    cadeia: uma cadeia com poucos strikes ativos nao sustenta um sweep de
+    spot hipotetico +-30% confiavel (o Gamma Flip fica sensivel a cada ponto
+    faltando em vez de suavizado por dezenas de strikes). Achado em
+    03/ago/2026 comparando contra financial_volume/iv_current da OpLab: ativos
+    com <30 strikes ativos quase sempre tambem tinham iv_current=0 (cadeia
+    morta) ou volume do papel-base minusculo -- os tres sinais concordam.
+    """
+    strikes = set()
+    for e in index.get(root, []):
+        if (e.get("posTo") or 0) > 0:
+            strikes.add(e.get("prEx"))
+    return len(strikes)

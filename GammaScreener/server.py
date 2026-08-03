@@ -20,7 +20,22 @@ app = Flask(__name__, static_folder=str(BASE_DIR), static_url_path="")
 
 DEFAULT_TICKER = "BOVA11"
 DEFAULT_ROOT = "BOVA"
-UNIVERSE_SIZE = 60
+
+# Filtro de qualidade do mercado de GEX, substituindo o corte fixo por rank
+# de OI (validado em 03/ago/2026 contra os 168 ativos classificaveis do
+# universo -- ver memoria do projeto). Rank de OI sozinho deixa passar
+# ativos com mercado de opcoes degenerado: ex. CVCB3 tinha OI alto (rank 39)
+# mas IV implicita de 169% e so R$3mi/dia no papel-base -- sinal classico de
+# preco de opcao sem negociacao real por tras. RAIZ4/ONCO3/PCAR3/MILS3/HBOR3
+# tinham OI decente mas iv_current=0 (OpLab sem cotacao viva de opcao), caso
+# em que o motor de GEX cairia no fallback de IV fixa (17.5%) e fabricaria
+# um numero. Um ativo so entra na lista se passar em TODOS os criterios:
+CANDIDATE_POOL_SIZE = 200      # avalia todo o universo classificavel real (~168) antes do filtro
+MIN_ACTIVE_STRIKES = 30        # profundidade minima de cadeia p/ sweep +-30% confiavel (via B3, sem custo de API)
+MIN_OI_TOTAL = 1_000_000       # piso de OI agregado (via B3, sem custo de API)
+MIN_FINANCIAL_VOLUME = 10_000_000  # liquidez minima do papel-base, R$/dia (via OpLab)
+# iv_current > 0 (cotacao viva de opcao na OpLab) tambem e exigido, checado
+# direto em _passes_quality_filter -- sem constante numerica, e booleano.
 
 OI_TTL_SECONDS = 6 * 60 * 60  # arquivo da B3 so muda uma vez por dia
 ASSET_TTL_SECONDS = 5 * 60    # spot/IV mudam intraday
@@ -68,6 +83,9 @@ def _compute_asset_payload(ticker, root, oi_index, ref_date):
     payload["source_label"] = f"Open Interest oficial B3 ({ref_date.strftime('%d/%m/%Y')})"
     payload["oi_reference_date"] = ref_date.strftime("%Y-%m-%d")
     payload["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+    # Campos usados pelo filtro de qualidade do screener (_passes_quality_filter)
+    payload["financial_volume"] = stock.get("financial_volume") or 0
+    payload["iv_current_raw"] = stock.get("iv_current") or 0
 
     # Registra o ponto de hoje no historico com IV real (ao vivo) -- so o
     # backfill do passado usa proxy de volatilidade realizada. Upsert por
@@ -127,6 +145,9 @@ def _row_for_asset(asset, oi_index, ref_date, force):
             "regime": p["regime"],
             "gex_net_total": p["gex_net_total"],
             "oi_total": asset["oi_total"],
+            "n_active_strikes": asset["n_active_strikes"],
+            "financial_volume": p["financial_volume"],
+            "iv_current": p["iv_current_raw"],
         }
     except Exception as asset_err:
         traceback.print_exc()
@@ -134,23 +155,57 @@ def _row_for_asset(asset, oi_index, ref_date, force):
                 "error": str(asset_err)}
 
 
+def _passes_quality_filter(row):
+    """Segunda etapa do filtro (depende de dado da OpLab, ja calculado em
+    _row_for_asset). Ver constantes no topo do arquivo pro racional de cada
+    criterio."""
+    if "error" in row:
+        return False
+    return (
+        (row.get("iv_current") or 0) > 0
+        and (row.get("financial_volume") or 0) >= MIN_FINANCIAL_VOLUME
+    )
+
+
 def _refresh_screener(force=False):
-    """Recalcula o screener inteiro. As chamadas por ativo na OpLab sao a
-    parte lenta (I/O de rede, uma por ativo) -- paralelizadas com um thread
-    pool em vez de sequenciais, senao 60 ativos x ~300-500ms cada vira
-    15-25s de espera. O arquivo de OI da B3 continua buscado 1x so (dentro
-    de _get_oi_index, TTL proprio), nunca por ativo.
+    """Recalcula o screener inteiro com filtro de qualidade em 2 etapas:
+
+    1) Pre-filtro barato (OI total + numero de strikes ativos), calculado
+       direto do arquivo da B3 sem nenhuma chamada de API -- descarta a
+       maior parte dos candidatos claramente ilíquidos antes de gastar
+       requisicao na OpLab.
+    2) Filtro caro (IV implicita viva + volume financeiro do papel-base),
+       que so roda pros sobreviventes da etapa 1. As chamadas por ativo na
+       OpLab sao a parte lenta (I/O de rede) -- paralelizadas com thread
+       pool, senao dezenas de ativos x ~300-500ms cada vira 15-25s+ de
+       espera. O arquivo de OI da B3 continua buscado 1x so (dentro de
+       _get_oi_index, TTL proprio), nunca por ativo.
+
+    Achado em 03/ago/2026: rank de OI puro deixava passar ativos com mercado
+    de opcoes degenerado (IV implicita absurda por falta de negociacao real,
+    ou nenhuma cotacao viva de opcao) -- ver constantes no topo do arquivo.
     """
     oi_index, ref_date = _get_oi_index(force=force)
-    universe = b3_oi_client.build_universe(oi_index, top_n=UNIVERSE_SIZE)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=12) as pool:
+    candidates = b3_oi_client.build_universe(oi_index, top_n=CANDIDATE_POOL_SIZE)
+    for c in candidates:
+        c["n_active_strikes"] = b3_oi_client.count_active_strikes(oi_index, c["root"])
+    prefiltered = [
+        c for c in candidates
+        if c["oi_total"] >= MIN_OI_TOTAL and c["n_active_strikes"] >= MIN_ACTIVE_STRIKES
+    ]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
         rows = list(pool.map(
-            lambda asset: _row_for_asset(asset, oi_index, ref_date, force), universe
+            lambda asset: _row_for_asset(asset, oi_index, ref_date, force), prefiltered
         ))
+    kept_rows = [r for r in rows if _passes_quality_filter(r)]
+    kept_rows.sort(key=lambda r: -(r.get("oi_total") or 0))
     payload = {
-        "rows": rows,
+        "rows": kept_rows,
         "oi_reference_date": ref_date.strftime("%Y-%m-%d"),
         "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "universe_candidates": len(candidates),
+        "universe_prefiltered": len(prefiltered),
+        "universe_kept": len(kept_rows),
     }
     _screener_cache["payload"] = payload
     _screener_cache["fetched_at"] = time.time()

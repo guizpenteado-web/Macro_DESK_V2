@@ -34,14 +34,21 @@ def get_token(force=False):
     return _token_cache["token"]
 
 
-def _get(path, params=None):
+def _get(path, params=None, retries=4):
     token = get_token()
-    r = requests.get(f"{BASE_URL}{path}", params=params, headers={"Access-Token": token}, timeout=60)
-    if r.status_code == 401:
-        token = get_token(force=True)
+    for attempt in range(retries):
         r = requests.get(f"{BASE_URL}{path}", params=params, headers={"Access-Token": token}, timeout=60)
-    r.raise_for_status()
-    return r.json()
+        if r.status_code == 401:
+            token = get_token(force=True)
+            r = requests.get(f"{BASE_URL}{path}", params=params, headers={"Access-Token": token}, timeout=60)
+        # 503 e a API sobrecarregada (achado em 03/ago/2026 varrendo ~90
+        # tickers em paralelo pro filtro de qualidade do GammaScreener) --
+        # backoff curto e reduz drasticamente as falhas sem esperar demais.
+        if r.status_code == 503 and attempt < retries - 1:
+            time.sleep(1.5 * (attempt + 1))
+            continue
+        r.raise_for_status()
+        return r.json()
 
 
 def get_stock(symbol):

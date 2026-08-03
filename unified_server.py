@@ -917,7 +917,7 @@ _SHELL = """<!DOCTYPE html>
     <span>📅 Calendário Econômico</span>
     <div class="cal-hdr-right">
       <button class="cimp-dot H active" data-imp="H" onclick="toggleImpFilter('H',this)" title="Alto impacto"></button>
-      <button class="cimp-dot M active" data-imp="M" onclick="toggleImpFilter('M',this)" title="Médio impacto"></button>
+      <button class="cimp-dot M" data-imp="M" onclick="toggleImpFilter('M',this)" title="Médio impacto"></button>
       <button class="cal-close" onclick="toggleCal()">✕</button>
     </div>
   </div>
@@ -1137,7 +1137,7 @@ _SHELL = """<!DOCTYPE html>
   var _calOpen = false;
   var _calDays = 3;
   var _calData = {};
-  var _impFilter = { H: true, M: true };
+  var _impFilter = { H: true, M: false };
 
   function toggleImpFilter(imp, btn) {
     var activeCount = (_impFilter.H ? 1 : 0) + (_impFilter.M ? 1 : 0);

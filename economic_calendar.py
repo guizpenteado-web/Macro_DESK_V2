@@ -252,6 +252,14 @@ class EconomicCalendar:
         "mba 30-year mortgage rate":                   ("Medium", "Taxa de Hipoteca 30 Anos (MBA)"),
     }
 
+    # Discursos de dirigentes do Fed vêm no TE como "Fed <Nome> Speech" (um
+    # nome por dirigente - Cook, Musalem, Barkin, Waller, etc.), impraticável
+    # de listar um por um na whitelist (e sempre ficaria incompleto quando
+    # trocasse o titular). Casado via regex em vez de entrada fixa - achado
+    # em 03/ago/2026 comparando contra investing.com: 3 speeches sumidos na
+    # mesma semana (Cook, Musalem, Barkin) por não estarem na whitelist.
+    _FED_SPEECH_RE = re.compile(r"^Fed (.+?) (Speech|Testimony|Remarks)$", re.IGNORECASE)
+
     # ── scraper genérico do calendário público do TradingEconomics ────────
     @classmethod
     def _scrape_te_calendar(cls, url: str, whitelist: dict, country: str, currency: str) -> list[dict]:
@@ -269,7 +277,13 @@ class EconomicCalendar:
                 ev_link = row.find("a", class_="calendar-event")
                 if not ev_link or not current_date:
                     continue
-                whitelisted = whitelist.get(ev_link.get_text(strip=True).lower())
+                raw_name = ev_link.get_text(strip=True)
+                whitelisted = whitelist.get(raw_name.lower())
+                if not whitelisted and country == "United States":
+                    fed_m = cls._FED_SPEECH_RE.match(raw_name)
+                    if fed_m:
+                        kind = {"speech": "Discurso", "testimony": "Depoimento", "remarks": "Declarações"}[fed_m.group(2).lower()]
+                        whitelisted = ("Medium", f"{kind} do Fed — {fed_m.group(1)}")
                 if not whitelisted:
                     continue
                 impact, pt_name = whitelisted
