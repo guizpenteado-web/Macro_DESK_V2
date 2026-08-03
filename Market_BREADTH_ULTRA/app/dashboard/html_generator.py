@@ -182,6 +182,38 @@ def _load_ibov() -> tuple[list[str], list[float]]:
     return df["date"].dt.strftime("%Y-%m-%d").tolist(), df["close"].round(0).tolist()
 
 
+def _load_frequency_universe() -> pd.DataFrame:
+    """Top 20 ativos mais liquidos do IBOV (peso B3) para a aba Frequency."""
+    return pd.read_sql(
+        "SELECT ticker, name, weight FROM assets WHERE is_active = 1 "
+        "ORDER BY weight DESC LIMIT 20",
+        engine,
+    )
+
+
+def _load_ohlc_map(tickers: list[str]) -> dict:
+    """{ticker: {dates, open, high, low, close}} para o candlestick da aba Frequency."""
+    if not tickers:
+        return {}
+    placeholders = ",".join(f"'{t}'" for t in tickers)
+    df = pd.read_sql(
+        f"SELECT ticker, date, open, high, low, close FROM prices "
+        f"WHERE ticker IN ({placeholders}) ORDER BY ticker, date",
+        engine,
+    )
+    result = {}
+    for ticker, g in df.groupby("ticker"):
+        g = g.sort_values("date")
+        result[ticker] = {
+            "dates": g["date"].astype(str).tolist(),
+            "open":  _safe_list(g["open"], 2),
+            "high":  _safe_list(g["high"], 2),
+            "low":   _safe_list(g["low"], 2),
+            "close": _safe_list(g["close"], 2),
+        }
+    return result
+
+
 def _load_index_breadth() -> dict:
     """Retorna {index_code: {dates, sma200, sma50, sma21, rsi, rsi_overbought}} para o JS."""
     try:
@@ -260,6 +292,16 @@ def generate_dashboard() -> Path:
     rsi_oversold_y   = b_chart["pct_rsi_oversold"].fillna(0).round(1).tolist()
     rsi_overbought_y = b_chart["pct_rsi_overbought"].fillna(0).round(1).tolist()
     ibov_dates, ibov_prices = _load_ibov()
+
+    freq_universe = _load_frequency_universe()
+    freq_tickers  = freq_universe["ticker"].tolist()
+    freq_ohlc     = _load_ohlc_map(freq_tickers)
+    freq_meta     = freq_universe.fillna("").to_dict("records")
+    default_freq_ticker = freq_tickers[0] if freq_tickers else ""
+    freq_chips_html = "".join(
+        f'<button class="fbtn{" active" if i == 0 else ""}" id="fc-{t}" onclick="_freqSelect(\'{t}\')">{t}</button>'
+        for i, t in enumerate(freq_tickers)
+    )
 
     p21  = float(latest["pct_sma21"])
     p50  = float(latest["pct_sma50"])
@@ -430,6 +472,8 @@ def generate_dashboard() -> Path:
     ibov_prices_json  = json.dumps(ibov_prices)
     dates_json        = json.dumps(dates_str)
     idx_breadth_json  = json.dumps(idx_breadth)
+    freq_ohlc_json    = json.dumps(freq_ohlc)
+    freq_meta_json    = json.dumps(freq_meta)
 
     html = f"""<!DOCTYPE html>
 <html lang="pt-BR">
@@ -493,6 +537,9 @@ body{{
 .tab-btn.tab-idx{{color:#5a3a8a}}
 .tab-btn.tab-idx:hover{{color:#a87ef8}}
 .tab-btn.tab-idx.active{{color:#a87ef8;border-bottom-color:#7c3aed}}
+.tab-btn.tab-freq{{color:#0e7c86}}
+.tab-btn.tab-freq:hover{{color:#2dd4bf}}
+.tab-btn.tab-freq.active{{color:#2dd4bf;border-bottom-color:#0d9488}}
 .tab-btn.tab-gamma{{color:#b8860b;text-decoration:none;display:inline-flex;align-items:center}}
 .tab-btn.tab-gamma:hover{{color:#f0b429}}
 .tab-content{{display:none}}
@@ -681,6 +728,7 @@ tr:hover td{{
   <button class="tab-btn active" onclick="showTab('sma',this)">Medias Moveis</button>
   <button class="tab-btn tab-rsi" onclick="showTab('rsi',this)">RSI Breadth</button>
   <button class="tab-btn tab-idx" onclick="showTab('idx',this)">Amplitude por Indices</button>
+  <button class="tab-btn tab-freq" onclick="showTab('freq',this)">Frequency</button>
   <button class="tab-btn tab-gamma" onclick="showTab('gamma',this)">Gamma Screener</button>
 </div>
 
@@ -828,6 +876,44 @@ tr:hover td{{
 
 </div>
 
+<!-- ═══════════════════════════════════════════ TAB FREQUENCY -->
+<div id="tab-freq" class="tab-content">
+
+  <div class="section" style="padding-top:16px"><h2>Frequency &mdash; Cotacao &amp; Distance from SMA (Top 20 mais liquidos do IBOV)</h2></div>
+
+  <div class="filter-bar" style="position:relative;z-index:15">
+    <div style="position:relative;flex:1;max-width:340px">
+      <input id="freq-search" type="text" placeholder="Buscar ativo (ex: PETR4, VALE3...)" autocomplete="off"
+        value="{default_freq_ticker}"
+        style="width:100%;padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.09);background:#0a1420;color:#d4e8f8;font-size:12.5px;font-family:'DM Mono',monospace"
+        oninput="_freqFilterDropdown(this.value)" onfocus="_freqFilterDropdown(this.value)">
+      <div id="freq-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#0b1520;border:1px solid rgba(255,255,255,0.09);border-radius:8px;max-height:280px;overflow-y:auto;z-index:20;box-shadow:0 8px 24px rgba(0,0,0,.5)"></div>
+    </div>
+    <div style="width:1px;background:#30363d;height:20px;margin:0 2px"></div>
+    <div class="filter-group">
+      <span class="filter-label">SMA</span>
+      <button class="fbtn" onclick="setFreqLen(20,this)">20</button>
+      <button class="fbtn active" onclick="setFreqLen(48,this)">48</button>
+      <button class="fbtn" onclick="setFreqLen(50,this)">50</button>
+      <button class="fbtn" onclick="setFreqLen(100,this)">100</button>
+      <button class="fbtn" onclick="setFreqLen(200,this)">200</button>
+    </div>
+    <div id="freq-current" style="margin-left:auto;font-size:12px;color:#6a8099"></div>
+  </div>
+
+  <div class="filter-bar" style="border-top:1px solid rgba(255,255,255,0.03);padding-top:6px;padding-bottom:6px">
+    <span class="filter-label">Top 20 liquidez</span>
+    <div class="filter-group" id="freq-chips">{freq_chips_html}</div>
+  </div>
+
+  <div class="chart-area">
+    <div class="y-scale-handle y-left" onmousedown="startYScale(event,'chart-freq','y')" title="Arraste: escala Distance from SMA">&#9650;<br>&#9632;<br>&#9660;</div>
+    <div id="chart-freq" class="chart-box" style="height:460px"></div>
+    <div class="y-scale-handle y-right" onmousedown="startYScale(event,'chart-freq','y2')" title="Arraste: escala Preco">&#9650;<br>&#9632;<br>&#9660;</div>
+  </div>
+
+</div>
+
 <div id="tab-gamma" class="tab-content">
   <iframe id="gamma-iframe" src="" style="width:100%;height:calc(100vh - 210px);border:none;display:block;background:#0d1117"></iframe>
 </div>
@@ -842,6 +928,8 @@ var rsiOverbought = {rsi_overbought_json};
 var ibovDates     = {ibov_dates_json};
 var ibovPrices   = {ibov_prices_json};
 var idxBreadth   = {idx_breadth_json};
+var freqOhlc     = {freq_ohlc_json};
+var freqMeta     = {freq_meta_json};
 var chartsMade   = {{}};
 
 // Configuracao Plotly: scroll do mouse = zoom proporcional em X e Y
@@ -1066,6 +1154,8 @@ function showTab(id, btn){{
       buildRsiChart();
     }} else if(id==="idx"){{
       buildIdxChart();
+    }} else if(id==="freq"){{
+      buildFreqChart();
     }} else if(id==="gamma"){{
       document.getElementById("gamma-iframe").src = "../gamma/";
     }}
@@ -1221,6 +1311,137 @@ function _buildIdxCards(metric) {{
           + '</div>';
   }});
   container.innerHTML = html;
+}}
+
+// ── Frequency — busca + candlestick + Distance from SMA ──────
+var _freqTicker = freqMeta.length ? freqMeta[0].ticker : null;
+var _freqLen = 48;
+
+function _freqFilterDropdown(q) {{
+  var dd = document.getElementById("freq-dropdown");
+  q = (q || "").toUpperCase().trim();
+  var matches = freqMeta.filter(function(m) {{
+    return !q || m.ticker.indexOf(q) !== -1 || (m.name || "").toUpperCase().indexOf(q) !== -1;
+  }});
+  if (!matches.length) {{ dd.style.display = "none"; return; }}
+  dd.innerHTML = matches.map(function(m) {{
+    return '<div onclick="_freqSelect(\\'' + m.ticker + '\\')" '
+         + 'style="padding:8px 14px;cursor:pointer;display:flex;justify-content:space-between;gap:10px" '
+         + 'onmouseover="this.style.background=\\'rgba(45,123,191,0.12)\\'" onmouseout="this.style.background=\\'\\'">'
+         + '<b style="font-family:\\'DM Mono\\',monospace;color:#d4e8f8">' + m.ticker + '</b>'
+         + '<span style="color:#6a8099;font-size:11px">' + (m.name || '') + '</span></div>';
+  }}).join("");
+  dd.style.display = "block";
+}}
+
+function _freqSelect(ticker) {{
+  _freqTicker = ticker;
+  var box = document.getElementById("freq-search");
+  if (box) box.value = ticker;
+  var dd = document.getElementById("freq-dropdown");
+  if (dd) dd.style.display = "none";
+  document.querySelectorAll("#freq-chips .fbtn").forEach(function(b) {{ b.classList.remove("active"); }});
+  var chip = document.getElementById("fc-" + ticker);
+  if (chip) chip.classList.add("active");
+  buildFreqChart();
+}}
+
+document.addEventListener("click", function(e) {{
+  var dd = document.getElementById("freq-dropdown");
+  var box = document.getElementById("freq-search");
+  if (dd && box && e.target !== box && !dd.contains(e.target)) dd.style.display = "none";
+}});
+
+function setFreqLen(len, btn) {{
+  _freqLen = len;
+  var group = btn.closest(".filter-group");
+  group.querySelectorAll(".fbtn").forEach(function(b) {{ b.classList.remove("active"); }});
+  btn.classList.add("active");
+  buildFreqChart();
+}}
+
+// (close/ma - 1) * 100, mesma formula do Pine "Distance From SMA %"
+function _distFromSma(closes, len) {{
+  var out = new Array(closes.length).fill(null);
+  var sum = 0, count = 0;
+  for (var i = 0; i < closes.length; i++) {{
+    var c = closes[i];
+    if (c !== null && c !== undefined) {{ sum += c; count++; }}
+    if (i >= len) {{
+      var old = closes[i - len];
+      if (old !== null && old !== undefined) {{ sum -= old; count--; }}
+    }}
+    if (i >= len - 1 && count === len) {{
+      var sma = sum / len;
+      out[i] = sma ? ((c / sma) - 1) * 100 : null;
+    }}
+  }}
+  return out;
+}}
+
+function buildFreqChart() {{
+  var box = document.getElementById("chart-freq");
+  var lbl = document.getElementById("freq-current");
+  var d = _freqTicker ? freqOhlc[_freqTicker] : null;
+  if (!d || !d.dates.length) {{
+    box.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#484f58">'
+                   + 'Sem dados para ' + (_freqTicker || "-") + '</div>';
+    return;
+  }}
+  var meta = freqMeta.find(function(m) {{ return m.ticker === _freqTicker; }});
+  if (lbl) {{
+    lbl.textContent = _freqTicker + (meta && meta.name ? " — " + meta.name : "") + " · SMA(" + _freqLen + ")";
+  }}
+
+  var candle = {{
+    x: d.dates, open: d.open, high: d.high, low: d.low, close: d.close,
+    type: "candlestick", name: _freqTicker,
+    increasing: {{line: {{color: "#22c55e"}}, fillcolor: "rgba(34,197,94,.55)"}},
+    decreasing: {{line: {{color: "#f05a5a"}}, fillcolor: "rgba(240,90,90,.55)"}},
+    yaxis: "y2", xaxis: "x"
+  }};
+
+  var dist = _distFromSma(d.close, _freqLen);
+  var colors = dist.map(function(v) {{ return v === null ? "rgba(0,0,0,0)" : (v >= 0 ? "#22c55e" : "#f05a5a"); }});
+  var distTrace = {{
+    x: d.dates, y: dist,
+    type: "bar", name: "Dist. SMA(" + _freqLen + ") %",
+    marker: {{color: colors}},
+    yaxis: "y", xaxis: "x",
+    hovertemplate: "%{{x}}<br>Dist. SMA" + _freqLen + ": %{{y:.2f}}%<extra></extra>"
+  }};
+
+  var layout = {{
+    paper_bgcolor: "#0b1520", plot_bgcolor: "#070d14",
+    font: {{color: "#6a8099", size: 11, family: "Inter,sans-serif"}},
+    margin: {{t: 10, r: 60, b: 40, l: 55}},
+    xaxis: {{
+      gridcolor: "rgba(255,255,255,0.04)", linecolor: "rgba(255,255,255,0.07)",
+      rangeslider: {{visible: false}}, domain: [0, 1], anchor: "y"
+    }},
+    // Painel inferior — Distance from SMA (30% da altura)
+    yaxis: {{
+      domain: [0, 0.30],
+      gridcolor: "rgba(255,255,255,0.04)", linecolor: "rgba(255,255,255,0.07)",
+      ticksuffix: "%", fixedrange: false, zeroline: true, zerolinecolor: "rgba(255,255,255,0.15)",
+      title: {{text: "Dist. SMA" + _freqLen, font: {{size: 10, color: "#3a5060"}}}}
+    }},
+    // Painel superior — candlestick de preco (67% da altura)
+    yaxis2: {{
+      domain: [0.35, 1.0],
+      gridcolor: "rgba(255,255,255,0.04)", linecolor: "rgba(255,255,255,0.07)",
+      anchor: "x", fixedrange: false, tickformat: ",.2f",
+      title: {{text: _freqTicker, font: {{size: 10, color: "#3a5060"}}}}
+    }},
+    legend: {{bgcolor: "rgba(0,0,0,0)", bordercolor: "rgba(255,255,255,0.07)", borderwidth: 1}},
+    hovermode: "x unified",
+    dragmode: "pan",
+    shapes: [{{type: "line", xref: "paper", yref: "y", x0: 0, x1: 1, y0: 0, y1: 0,
+              line: {{color: "rgba(255,255,255,0.2)", width: 1, dash: "dot"}}}}]
+  }};
+
+  Plotly.newPlot("chart-freq", [candle, distTrace], layout, plotConfig)
+    .then(function() {{ _addCtrlZoom("chart-freq"); }});
 }}
 
 // ── Y-axis scale handles (esquerdo=breadth %, direito=IBOV) ──
