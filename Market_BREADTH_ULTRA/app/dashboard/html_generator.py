@@ -910,8 +910,10 @@ tr:hover td{{
     <div style="position:relative;flex:1;max-width:340px">
       <input id="freq-search" type="text" placeholder="Buscar ativo (ex: PETR4, VALE3...)" autocomplete="off"
         value="{default_freq_ticker}"
-        style="width:100%;padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.09);background:#0a1420;color:#d4e8f8;font-size:12.5px;font-family:'DM Mono',monospace"
+        style="width:100%;padding:8px 30px 8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.09);background:#0a1420;color:#d4e8f8;font-size:12.5px;font-family:'DM Mono',monospace"
         oninput="_freqFilterDropdown(this.value)" onfocus="_freqFilterDropdown(this.value)">
+      <button type="button" id="freq-search-clear" title="Limpar busca" onclick="_freqClearSearch()"
+        style="display:{'flex' if default_freq_ticker else 'none'};position:absolute;right:6px;top:50%;transform:translateY(-50%);width:20px;height:20px;border-radius:50%;border:none;background:rgba(255,255,255,0.09);color:#8fa3b8;font-size:0.75rem;line-height:1;cursor:pointer;align-items:center;justify-content:center">&times;</button>
       <div id="freq-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#0b1520;border:1px solid rgba(255,255,255,0.09);border-radius:8px;max-height:280px;overflow-y:auto;z-index:20;box-shadow:0 8px 24px rgba(0,0,0,.5)"></div>
     </div>
     <div style="width:1px;background:#30363d;height:20px;margin:0 2px"></div>
@@ -1362,6 +1364,8 @@ var _freqDragging  = null;
 
 function _freqFilterDropdown(q) {{
   var dd = document.getElementById("freq-dropdown");
+  var clearBtn = document.getElementById("freq-search-clear");
+  if (clearBtn) clearBtn.style.display = (q && q.length > 0) ? "flex" : "none";
   q = (q || "").toUpperCase().trim();
   var matches = freqMeta.filter(function(m) {{
     return !q || m.ticker.indexOf(q) !== -1 || (m.name || "").toUpperCase().indexOf(q) !== -1;
@@ -1381,12 +1385,23 @@ function _freqSelect(ticker) {{
   _freqTicker = ticker;
   var box = document.getElementById("freq-search");
   if (box) box.value = ticker;
+  var clearBtn = document.getElementById("freq-search-clear");
+  if (clearBtn) clearBtn.style.display = "flex";
   var dd = document.getElementById("freq-dropdown");
   if (dd) dd.style.display = "none";
   document.querySelectorAll("#freq-chips .fbtn").forEach(function(b) {{ b.classList.remove("active"); }});
   var chip = document.getElementById("fc-" + ticker);
   if (chip) chip.classList.add("active");
   buildFreqChart();
+}}
+
+function _freqClearSearch() {{
+  var box = document.getElementById("freq-search");
+  if (box) box.value = "";
+  var clearBtn = document.getElementById("freq-search-clear");
+  if (clearBtn) clearBtn.style.display = "none";
+  document.getElementById("freq-dropdown").style.display = "none";
+  if (box) box.focus();
 }}
 
 document.addEventListener("click", function(e) {{
@@ -1621,7 +1636,7 @@ function _freqBuildShapes() {{
   var user = _freqLines.map(function(l) {{
     var sel = l.id === _freqSelectedLineId;
     return {{type: "line", xref: "paper", yref: l.axis, x0: 0, x1: 1, y0: l.y, y1: l.y,
-             line: {{color: sel ? "#7dd3fc" : "#38bdf8", width: sel ? 3 : 1.5, dash: "solid"}}}};
+             line: {{color: sel ? "#7dd3fc" : "#38bdf8", width: sel ? 2.5 : 1.1, dash: "solid"}}}};
   }});
   return [zero].concat(user);
 }}
@@ -1668,11 +1683,25 @@ function _freqRemoveLine(id) {{
 
 // Arrasta a linha selecionada verticalmente (mousedown nela + mousemove) —
 // so muda o Y, no proprio eixo (preco fica preco, indicador fica indicador).
+// O mousemove pode disparar bem mais rapido que a tela consegue redesenhar
+// (Plotly.relayout nao e barato), entao so aplica 1x por frame via rAF —
+// sem isso o arraste fica com lag visivel, sempre alguns eventos atrasado.
+var _freqDragRaf = null;
+var _freqDragPendingClientY = null;
+
 function _freqOnDragMove(e) {{
+  if (!_freqDragging) return;
+  _freqDragPendingClientY = e.clientY;
+  if (_freqDragRaf !== null) return;
+  _freqDragRaf = requestAnimationFrame(_freqFlushDragMove);
+}}
+
+function _freqFlushDragMove() {{
+  _freqDragRaf = null;
   if (!_freqDragging) return;
   var gd = document.getElementById("chart-freq");
   if (!gd) return;
-  var v = _freqPixelToDataOnAxis(gd, _freqDragging.axis, e.clientY);
+  var v = _freqPixelToDataOnAxis(gd, _freqDragging.axis, _freqDragPendingClientY);
   if (v === null) return;
   var line = _freqLines.find(function(l) {{ return l.id === _freqDragging.id; }});
   if (line) {{ line.y = v; _freqApplyLines(gd); }}
@@ -1680,6 +1709,7 @@ function _freqOnDragMove(e) {{
 
 function _freqOnDragEnd() {{
   if (!_freqDragging) return;
+  if (_freqDragRaf !== null) {{ cancelAnimationFrame(_freqDragRaf); _freqDragRaf = null; }}
   var gd = document.getElementById("chart-freq");
   if (gd) {{
     Plotly.relayout(gd, {{dragmode: _freqDragging.prevDragmode || "pan"}});
