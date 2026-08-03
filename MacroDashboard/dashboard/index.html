@@ -1169,7 +1169,9 @@ td.num { text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
   </div>
   <div class="source-note">Fonte: CFTC TFF Report. Bitcoin CME Futures (código 133741). <b style="color:#f59e0b">Leveraged Funds</b> net longo em BTC = hedge funds com viés bullish. Correlacionar com ciclo do halving — especuladores tendem a acumular long antes de topos de ciclo.</div>
 
-  <div class="section-title">Bitcoin — Custo de Produção (Modelo Capriole)</div>
+  <div class="section-title">Bitcoin — Custo de Produção (Modelo Capriole)
+    <span class="help-btn" onclick="openHelp('prodCost')" title="Como usar este indicador">?</span>
+  </div>
   <div id="btc-prodcost-stats" class="btc-stats"></div>
   <div class="chart-box" style="margin-bottom:20px">
     <div class="chart-title">Preço vs. Custo Elétrico de Produção</div>
@@ -1907,6 +1909,19 @@ function btcLthProfitChart(divId, data) {
 
 // ─── Modal de ajuda (botão "?" em títulos de seção) ────────────────────
 var HELP_CONTENT = {
+  prodCost: {
+    title: "Custo de Produção (Modelo Capriole) — como usar",
+    html:
+      '<p>Estima quanto custa, em dólares, <b>minerar 1 Bitcoin</b> hoje — o gasto de eletricidade das mineradoras (piso) mais os demais custos (equipamento, mão de obra, etc.). É uma referência de "quanto o Bitcoin custou pra ser criado", não o preço de mercado.</p>' +
+      '<p><b>Como ler o gráfico:</b></p>' +
+      '<ul>' +
+        '<li><b>Preço acima do custo (linha dourada acima da azul):</b> mineradoras estão lucrando — normal na maior parte do tempo, mostra a margem do setor.</li>' +
+        '<li><b>Preço perto ou abaixo do custo elétrico:</b> mineradoras menos eficientes começam a operar no prejuízo e tendem a desligar máquinas — historicamente essa aproximação/cruzamento aparece perto de fundos de mercado, porque é o ponto em que fica economicamente insustentável continuar minerando.</li>' +
+        '<li><b>Linhas verticais pontilhadas:</b> marcam os halvings (queda de 50% na recompensa por bloco) — o custo de produção costuma dar um salto logo depois, porque a mesma eletricidade passa a gerar metade dos Bitcoins.</li>' +
+      '</ul>' +
+      '<p><b>Como usar com responsabilidade:</b> é uma <b>referência de piso estrutural</b> de longo prazo, não um gatilho de compra/venda de curto prazo — o preço pode ficar abaixo do custo de produção por períodos longos em bear markets fortes. Combine sempre com outros indicadores e com o seu próprio horizonte de investimento.</p>' +
+      '<p style="color:var(--muted);font-size:11px">Fonte: metodologia Capriole Investments, hashrate via blockchain.info. Ver nota de fonte abaixo do gráfico para detalhes das premissas.</p>',
+  },
   lthProfit: {
     title: "LTH % Supply em Lucro — como usar",
     html:
