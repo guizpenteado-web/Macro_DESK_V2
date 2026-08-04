@@ -591,35 +591,11 @@ function renderStockChart(data) {
     }
 
     // Várias calls no mesmo pregão (comum em dia de resultado) cairiam exatamente
-    // em cima uma da outra — agrupa por dia e espalha os marcadores lado a lado.
+    // em cima uma da outra — agrupa por dia.
     const dayGroups = {};
     currentCalls.forEach((call, idx) => {
         const di = resolveIndex(call);
         (dayGroups[di] = dayGroups[di] || []).push(idx);
-    });
-
-    const annotations = {};
-    currentCalls.forEach((call, idx) => {
-        const di = resolveIndex(call);
-        const group = dayGroups[di];
-        const posInGroup = group.indexOf(idx);
-        const xOffset = (posInGroup - (group.length - 1) / 2) * 18;
-        const bc = BANK_COLORS[call.bank] || '#58a6ff';
-        annotations[`c${idx}`] = {
-            type: 'point', xValue: labels[di], yValue: prices[di],
-            xAdjust: xOffset,
-            backgroundColor: bc, borderColor: '#0d1117', borderWidth: 2,
-            radius: 8, pointStyle: 'rectRounded',
-            label: {
-                display: true, content: call.bank, position: 'start',
-                xAdjust: xOffset, yAdjust: -16 - (posInGroup % 2) * 14,
-                backgroundColor: bc, color: '#0d1117',
-                font: { size: 9, weight: 'bold' },
-                padding: { top: 3, bottom: 3, left: 5, right: 5 }, borderRadius: 3
-            },
-            enter(actx) { showCallTooltip(call, actx.element.x, actx.element.y); return true; },
-            leave() { hideCallTooltip(); return true; }
-        };
     });
 
     if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
@@ -658,7 +634,7 @@ function renderStockChart(data) {
                     }
                 },
                 annotation: {
-                    annotations,
+                    annotations: {},
                     click: (ctx) => {
                         const id = ctx.elementId;
                         if (id && id.startsWith('c')) {
@@ -687,6 +663,91 @@ function renderStockChart(data) {
             }
         }
     });
+
+    // O gap entre clusters de dias só pode ser calculado depois que o Chart.js já
+    // sabe quantos pixels cada dia ocupa no eixo X (escala 'category', espaçamento
+    // uniforme) — usado só para decidir quando dois dias próximos devem compartilhar
+    // a mesma pilha vertical.
+    const xScale = chartInstance.scales.x;
+    const pxPerDay = labels.length > 1
+        ? Math.abs(xScale.getPixelForValue(labels[1]) - xScale.getPixelForValue(labels[0]))
+        : 40;
+
+    const dayIndices = Object.keys(dayGroups).map(Number).sort((a, b) => a - b);
+    const clusters = [];
+    let cluster = [];
+    dayIndices.forEach((di, i) => {
+        if (i === 0) { cluster = [di]; return; }
+        const prev = dayIndices[i - 1];
+        // Dias a menos de ~30px um do outro entram na mesma pilha vertical.
+        if ((di - prev) * pxPerDay < 30) {
+            cluster.push(di);
+        } else {
+            clusters.push(cluster);
+            cluster = [di];
+        }
+    });
+    if (cluster.length) clusters.push(cluster);
+
+    // Cada marcador fica sempre exatamente em cima do seu dia real (sem deslocamento
+    // horizontal — nunca "vaza" para o dia vizinho). Calls próximas no tempo se
+    // distinguem empilhando verticalmente (yAdjust por linha), com espaçamento maior
+    // que o próprio marcador (raio 8 + borda) para que as áreas de hover nunca se
+    // toquem — antes disso, quadrados vizinhos se sobrepunham fisicamente e o mouse
+    // acionava o tooltip de vários ao mesmo tempo.
+    const MAX_ROW_HEIGHT = 24;
+    const MIN_ROW_HEIGHT = 16; // abaixo disso o próprio marcador (raio 8 + borda) volta a se tocar
+    const chartArea = chartInstance.chartArea;
+    const yScale = chartInstance.scales.y;
+
+    const annotations = {};
+    clusters.forEach(clusterDis => {
+        const totalCount = clusterDis.reduce((s, di) => s + dayGroups[di].length, 0);
+        // Referência: o dia de maior preço no cluster é o pior caso pra empilhar pra
+        // cima (menos espaço até o topo do gráfico); o de menor preço, pra baixo.
+        const highestDi = clusterDis.reduce((b, di) => (prices[di] > prices[b] ? di : b), clusterDis[0]);
+        const lowestDi = clusterDis.reduce((b, di) => (prices[di] < prices[b] ? di : b), clusterDis[0]);
+        const roomAbove = yScale.getPixelForValue(prices[highestDi]) - chartArea.top - 24;
+        const roomBelow = chartArea.bottom - yScale.getPixelForValue(prices[lowestDi]) - 8;
+        // Cresce pra cima por padrão (mais legível, rótulo acima do preço); só troca
+        // de direção se realmente não couber. Comprime o espaçamento entre linhas
+        // até o mínimo antes de deixar vazar pra fora da área do gráfico.
+        const needed = (totalCount - 1) * MAX_ROW_HEIGHT;
+        const direction = (roomAbove >= needed || roomAbove >= roomBelow) ? -1 : 1;
+        const available = direction === -1 ? roomAbove : roomBelow;
+        const rowHeight = totalCount > 1
+            ? Math.max(MIN_ROW_HEIGHT, Math.min(MAX_ROW_HEIGHT, available / (totalCount - 1)))
+            : MAX_ROW_HEIGHT;
+
+        let row = 0;
+        clusterDis.forEach(di => {
+            const group = dayGroups[di];
+            group.forEach((idx) => {
+                const call = currentCalls[idx];
+                const bc = BANK_COLORS[call.bank] || '#58a6ff';
+                const yStack = row * rowHeight * direction;
+                annotations[`c${idx}`] = {
+                    type: 'point', xValue: labels[di], yValue: prices[di],
+                    xAdjust: 0, yAdjust: yStack,
+                    backgroundColor: bc, borderColor: '#0d1117', borderWidth: 2,
+                    radius: 8, pointStyle: 'rectRounded',
+                    label: {
+                        display: true, content: call.bank, position: 'start',
+                        xAdjust: 0, yAdjust: yStack + 16 * direction,
+                        backgroundColor: bc, color: '#0d1117',
+                        font: { size: 9, weight: 'bold' },
+                        padding: { top: 3, bottom: 3, left: 5, right: 5 }, borderRadius: 3
+                    },
+                    enter(actx) { showCallTooltip(call, actx.element.x, actx.element.y); return true; },
+                    leave() { hideCallTooltip(); return true; }
+                };
+                row++;
+            });
+        });
+    });
+
+    chartInstance.options.plugins.annotation.annotations = annotations;
+    chartInstance.update('none');
 }
 
 document.getElementById('rangeControls').addEventListener('click', (e) => {
