@@ -254,7 +254,15 @@ def _background_warmer():
         time.sleep(max(30, SCREENER_TTL_SECONDS - 30))
 
 
-threading.Thread(target=_background_warmer, daemon=True).start()
+# GAMMA_WARMER_DISABLED=1 no .env pausa o polling automatico na OpLab (fica
+# so sob demanda, quando alguem realmente abre a tela). Pedido 04/ago/2026
+# pra investigar se o padrao de rajada a cada ~4,5min, 24h/dia, pode ter
+# disparado algum rate-limit/bloqueio silencioso do lado da OpLab no login
+# (endpoint de auth parou de responder, ver oplab_client.py). Nao mexe no
+# refresh de OI (_get_oi_index) -- esse usa o arquivo publico da B3, nunca
+# tocou na OpLab, nao faz parte da hipotese.
+if os.environ.get("GAMMA_WARMER_DISABLED") != "1":
+    threading.Thread(target=_background_warmer, daemon=True).start()
 
 
 if __name__ == "__main__":
