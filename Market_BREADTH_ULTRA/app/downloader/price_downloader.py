@@ -3,6 +3,7 @@ Download incremental de precos OHLCV via yfinance.
 So baixa datas novas (apos o ultimo registro no banco).
 """
 from __future__ import annotations
+import math
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, timedelta
 from typing import Optional
@@ -29,8 +30,17 @@ def _download_one(ticker: str) -> tuple[str, pd.DataFrame]:
     if start > today:
         return ticker, pd.DataFrame()
     try:
+        # auto_adjust=False (achado 04/ago/2026, mesmo bug ja corrigido em
+        # RRGCOMPLETO/app/downloader/price_downloader.py em 15/jul/2026) —
+        # com True (default do yfinance moderno) o OHLC vem retroativamente
+        # ajustado por dividendo/split, nao e o preco realmente negociado no
+        # pregao. Ativo que paga provento regular cria um "degrau" toda vez
+        # que o historico e reajustado pra tras, divergindo cada vez mais do
+        # candle bruto que qualquer plataforma (home broker, TradingView)
+        # mostra por padrao — era a causa do "parecido mas nao identico"
+        # reportado na aba Frequency do Market Breadth.
         df = yf.download(_to_yf(ticker), start=start, end=today,
-                         progress=False, auto_adjust=True, actions=False)
+                         progress=False, auto_adjust=False, actions=False)
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
         return ticker, df
@@ -38,18 +48,41 @@ def _download_one(ticker: str) -> tuple[str, pd.DataFrame]:
         logger.error(f"{ticker} download error: {e}")
         return ticker, pd.DataFrame()
 
+def _is_missing(v) -> bool:
+    return v is None or (isinstance(v, float) and math.isnan(v))
+
 def _df_to_rows(ticker: str, df: pd.DataFrame) -> list[dict]:
     rows = []
     for idx, row in df.iterrows():
         d = idx.date() if hasattr(idx,"date") else idx
-        close = float(row.get("Close", 0) or 0)
+        close_raw = row.get("Close")
+        # Close vem NaN (nao 0) no pregao mais recente quando o Yahoo ainda
+        # nao fechou o candle oficialmente (achado 04/ago/2026, ex: EMBJ3
+        # 03/ago com Open/High/Low/Volume validos mas Close=NaN) — o check
+        # antigo "close <= 0" nao pega NaN (comparacao com NaN e sempre
+        # False), o que deixava close=NaN entrar no INSERT e estourar a
+        # constraint NOT NULL. Pula o dia, o proximo update pega ele pronto.
+        if _is_missing(close_raw):
+            continue
+        close = float(close_raw)
         if close <= 0:
             continue
+        # Yahoo as vezes devolve Open/High/Low = 0 ou NaN (glitch de feed) num
+        # pregao com Close valido — guardar null ali quebra o candle no
+        # grafico (achado 04/ago/2026, ~78/202 tickers em datas pontuais).
+        # Preenche com o close do dia (candle "doji" honesto) em vez de
+        # deixar nulo.
+        def _val(col: str) -> float:
+            v = row.get(col)
+            if _is_missing(v) or float(v) == 0:
+                return close
+            return float(v)
+        open_, high_, low_ = _val("Open"), _val("High"), _val("Low")
         rows.append({
             "ticker": ticker, "date": d,
-            "open":   float(row.get("Open",  0) or 0) or None,
-            "high":   float(row.get("High",  0) or 0) or None,
-            "low":    float(row.get("Low",   0) or 0) or None,
+            "open":   open_,
+            "high":   high_,
+            "low":    low_,
             "close":  close,
             "volume": float(row.get("Volume",0) or 0) or None,
             "adj_close": close,
