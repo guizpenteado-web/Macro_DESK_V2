@@ -1,6 +1,6 @@
 {
   "_instrucoes": "Atualizar manualmente quando os bancos revisarem targets. Verificar fontes listadas abaixo.",
-  "last_updated": "2026-08-03",
+  "last_updated": "2026-08-04",
 
   "macro_snapshot": {
     "fed_rate": {
@@ -14,7 +14,7 @@
       "fomc_probability_cut": 0.0,
       "source": "Federal Reserve / CME FedWatch",
       "chair": "Kevin Warsh",
-      "note": "DECISÃO DE 29/jul: FOMC manteve a faixa em 3,50%-3,75% por votação 9-3 — divisão interna rara ('cliffhanger meeting'). As 3 dissidências (Hammack/Cleveland, Kashkari/Minneapolis, Logan/Dallas) pediram ALTA de 25bps, não corte, citando inflação persistente acima da meta de 2% há mais de 5 anos. Warsh chamou o debate interno de 'good family fight'. Mercado reagiu vendendo risco no dia (S&P -1,52%, Ibovespa -1,52% no mesmo pregão) e depois recuperou forte em 30/jul (S&P +1,7% a 7.437,64) com o dólar enfraquecendo. Próxima reunião: 15-16/set/2026 (com novo dot plot/SEP). CME FedWatch pós-decisão (29-30/jul) precifica agora MAIORIA de chance de ALTA em setembro: hold 29,8% | alta 25bps 50,6% | alta 50bps 19,6% — ou seja, ~70% de chance de pelo menos uma alta de juros na próxima reunião, um giro hawkish relevante frente à leitura de hold ampla que prevalecia antes da decisão. ATUALIZAÇÃO 03/ago: JPMorgan revisou pra ver 1 alta em dez/2026 (ver fed_rate_views); Goldman reafirmou HOLD em 02/ago. Vale monitorar: o Brent, que tinha estourado US$100/bbl em 23-24/jul (driver do giro hawkish via choque de energia), recuou forte pra ~US$83/bbl até 03/ago — pode esfriar a narrativa de choque inflacionário que sustentava as apostas de alta em setembro. Próximos catalisadores: NFP 07/ago, CPI 12/ago, Jackson Hole 27-29/ago."
+      "note": "DECISÃO DE 29/jul: FOMC manteve a faixa em 3,50%-3,75% por votação 9-3 — divisão interna rara ('cliffhanger meeting'). As 3 dissidências (Hammack/Cleveland, Kashkari/Minneapolis, Logan/Dallas) pediram ALTA de 25bps, não corte, citando inflação persistente acima da meta de 2% há mais de 5 anos. Warsh chamou o debate interno de 'good family fight'. Mercado reagiu vendendo risco no dia (S&P -1,52%, Ibovespa -1,52% no mesmo pregão) e depois recuperou forte em 30/jul (S&P +1,7% a 7.437,64) com o dólar enfraquecendo. Próxima reunião: 15-16/set/2026 (com novo dot plot/SEP). CME FedWatch pós-decisão (29-30/jul) precifica agora MAIORIA de chance de ALTA em setembro: hold 29,8% | alta 25bps 50,6% | alta 50bps 19,6% — ou seja, ~70% de chance de pelo menos uma alta de juros na próxima reunião, um giro hawkish relevante frente à leitura de hold ampla que prevalecia antes da decisão. ATUALIZAÇÃO 03/ago: JPMorgan revisou pra ver 1 alta em dez/2026 (ver fed_rate_views); Goldman reafirmou HOLD em 02/ago. ATUALIZAÇÃO 04/ago: sem declaração nova de Warsh/FOMC nem revisão adicional de banco — Warsh segue sem sinalizar rumo pré-Jackson Hole (27-29/ago). S&P 500 fechou em 7.600,50 (+1,48%, 04/ago), a 0,1% do recorde histórico (7.609,78, jun/2026), puxado por otimismo com possível acordo EUA-Irã no Estreito de Ormuz. O WTI, que tinha estourado US$100/bbl em 23-24/jul, continuou caindo e já está em ~US$76,66/bbl (04/ago) — a narrativa de choque inflacionário via petróleo que sustentava as apostas de alta em setembro perdeu força ainda mais. Próximos catalisadores: NFP 07/ago, CPI 12/ago, Jackson Hole 27-29/ago."
     },
     "cpi": {
       "yoy": 3.5,
@@ -215,8 +215,8 @@
         "selic_label": "13.75%",
         "movimento": "2 cortes",
         "view": "DOVE",
-        "rationale": "ATUALIZADO 03/ago/2026 (última leitura antes da decisão do Copom de 4-5/ago): mediana do Focus cortou Selic fim-2026 de 14,00% para 13,75% e IPCA fim-2026 de 5,12% para 5,03% (5ª queda semanal seguida). Selic 2027 estável em 12,00% há 7 semanas. PIB 2026 caiu de 1,99% (fim-jul) para 1,57%. Precificação de mercado (opções de Copom na B3, véspera da decisão): ~75-80% de probabilidade de corte de 25bps (14,25%→14,00%) nesta reunião, ~21% de manutenção — decisão sai na quarta 05/ago após o fechamento.",
-        "date_published": "2026-08-03"
+        "rationale": "ATUALIZADO 03/ago/2026 (última leitura antes da decisão do Copom de 4-5/ago): mediana do Focus cortou Selic fim-2026 de 14,00% para 13,75% e IPCA fim-2026 de 5,12% para 5,03% (5ª queda semanal seguida). Selic 2027 estável em 12,00% há 7 semanas. PIB 2026 caiu de 1,99% (fim-jul) para 1,57%. Precificação de mercado (opções de Copom na B3, véspera da decisão): ~75-80% de probabilidade de corte de 25bps (14,25%→14,00%) nesta reunião, ~21% de manutenção — decisão sai na quarta 05/ago após o fechamento. CONFIRMADO 04/ago: reunião do Copom começou hoje conforme previsto, sem vazamento; precificação de mercado (~75,5% corte 25bps, ~21% manutenção, ~2,3% corte 50bps) segue igual a 03/ago; DI futuro 360d 13,77% | 720d 13,90% | 1080d 14,08%.",
+        "date_published": "2026-08-04"
       },
       {
         "bank": "Itaú BBA",
@@ -370,11 +370,11 @@
   ],
 
   "commodity_targets": {
-    "_nota": "Atualizado 03/ago/2026 via hierarquia TIER-1→TIER-2→TIER-3. TIER-1: jpmorgan.com/insights. TIER-2: Kitco (spot + research BofA/GS), TradingEconomics/EIA (WTI), Westmetall (LME copper). TIER-3 (confirmação): Reuters/TradingView, Mining Weekly, Rigzone/Bloomberg, BNN Bloomberg, goldsilver.com, BigGo Finance, Yahoo Finance. Bancos rechecados nesta rodada: nenhuma revisão nova de target encontrada desde 31/jul (BofA e Morgan Stanley copper seguem sem revisão pública há ~1 ano — tratar como limite real de cobertura, não falha de busca; Morgan Stanley/Citi WTI seguem no dado de fim-jun, sem revisão pós-pico de Hormuz de 23-27/jul encontrada). Só preços spot atualizados nesta rodada.",
-    "_precos_referencia": "Ouro ~$4.045/oz (Yahoo/CNBC, 03/ago) | Prata ~$58,5/oz (Yahoo Finance, 03/ago, +1,5% no dia) | WTI ~$79,62/bbl (Forbes Advisor, 03/ago, -5,97% no dia após Trump pausar ataque planejado ao Irã e retomar conversas de paz — abriu em $86,21) | Cobre COMEX ~$6,50/lb / LME ~$14.330/ton (TradingEconomics, 03/ago) | USD/BRL ~R$5,08 (03/ago).",
+    "_nota": "Atualizado 04/ago/2026 via hierarquia TIER-1→TIER-2→TIER-3. TIER-1: jpmorgan.com/insights. TIER-2: Kitco (spot + research BofA/GS), TradingEconomics/EIA (WTI), Westmetall (LME copper). TIER-3 (confirmação): Reuters/TradingView, Mining Weekly, Rigzone/Bloomberg, BNN Bloomberg, goldsilver.com, BigGo Finance, Yahoo Finance, Fortune. Bancos rechecados nesta rodada (04/ago): nenhuma revisão nova de target encontrada desde 31/jul/03-ago (BofA e Morgan Stanley copper seguem sem revisão pública há ~1 ano — 3ª checagem confirma, tratar como limite real de cobertura, não falha de busca; Morgan Stanley/Citi WTI seguem no dado de meados-jun, sem revisão pós-pico de Hormuz de 23-27/jul encontrada apesar de busca dedicada). Só preços spot atualizados nesta rodada — WTI caiu mais ~4% no dia continuando a correção pós-pico de Hormuz.",
+    "_precos_referencia": "Ouro ~$4.100/oz (Yahoo Finance/Fortune, 04/ago, variação intradiária $4.070-4.136 com tensão Irã no radar) | Prata ~$58,9/oz (Yahoo Finance, 04/ago, faixa $58,4-59,5) | WTI ~$76,66/bbl (TradingEconomics, 04/ago, -4,58% no dia, correção pós-pico de Hormuz continua) | Cobre COMEX ~$6,52/lb / LME ~$13.953/ton (TradingEconomics/Business Recorder, 04/ago) | USD/BRL ~R$5,08 (04/ago, estável vs 03/ago) | S&P 500 ~7.600,50 pts (+1,48%, 04/ago, perto do recorde histórico) | Ibovespa ~178.000 pts (04/ago, estável vs 03/ago).",
     "ouro": {
       "unit": "USD/oz",
-      "preco_atual": 4045,
+      "preco_atual": 4100,
       "bank_targets": [
         {"bank": "Goldman Sachs", "target": 4900, "view": "BULL",    "rationale": "Cortou de $5.400→$4.900 (20/jun/26). Fade de ETF flows asiáticos + remoção de cortes do Fed em 2026. Suporte: BCs emergentes comprando +1.000 ton/ano. Reconfirmado 31/jul — sem revisão desde jun/26.", "date": "2026-06"},
         {"bank": "JP Morgan",     "target": 4500, "view": "BULL",    "rationale": "CORRIGIDO 31/jul: banco cortou o target de Q4/26 em 25%, de $6.000 (09/jun/26) para $4.500 (03/jul/26) — Q3/26 média revisada para $4.300. Recalibração por demanda mais fraca dos setores compradores-chave; banco quantifica queda de ~$20/oz do ouro pra cada 1bps de alta nos yields reais de 10 anos desde final de fev/26. Tese de longo prazo (compras de bancos centrais + demanda física estrutural) mantida intacta pra 2027. O valor de $6.000 usado nesta ficha até 29/jul estava desatualizado — sempre checar a data de publicação antes de usar um target de banco.", "date": "2026-07-03"},
@@ -385,7 +385,7 @@
     },
     "prata": {
       "unit": "USD/oz",
-      "preco_atual": 58.5,
+      "preco_atual": 58.9,
       "bank_targets": [
         {"bank": "JP Morgan",     "target": 85, "view": "BULL", "rationale": "Q4/26: $85/oz | Q1: $84 | Q2: $75 | Q3: $80. Média anual 2026: $81 (+102% vs 2025 avg $40). Demanda solar + déficit físico. Confirmado por 2 buscas independentes em 29/jul — sem revisão desde fev/26.", "date": "2026-02"},
         {"bank": "BofA",          "target": 86, "view": "BULL", "rationale": "Média 2026: $85,93/oz (+15% vs est. anterior de $75). Demanda solar e EV sustentam déficit estrutural de oferta. Reconfirmado 29/jul, sem revisão nova desde 01/mai/26.", "date": "2026-05-01"},
@@ -394,7 +394,7 @@
     },
     "petroleo_wti": {
       "unit": "USD/barril",
-      "preco_atual": 79.62,
+      "preco_atual": 76.66,
       "bank_targets": [
         {"bank": "Goldman Sachs", "target": 76, "view": "NEUTRAL", "rationale": "CORRIGIDO 29/jul: caso-base reafirmado em 23/jul é Brent $80/WTI $76 pro Q4/26 (tanker traffic no Estreito de Hormuz normalizando até fim de jul) — o cenário bull de WTI $116 mostrado antes era um risco condicional a Hormuz seguir bloqueado, que NÃO se confirmou (trégua 24-26/jul, petróleo caiu 6-9% em 27/jul). BOE Report, 23/jul/26.", "date": "2026-07-23"},
         {"bank": "JP Morgan",     "target": 76, "view": "NEUTRAL", "rationale": "Brent Q3/26 $86 | Q4/26 $80 | saída-2026 $78 (sem WTI próprio publicado — conversão aprox. via spread de ~$4 usado pelo próprio Goldman). Verificado direto em jpmorgan.com/insights/global-research/commodities/oil-prices (fetch 29/jul, página atualizada 16/jul/26 — já reflete o período pós-pico Houthi). Corte por demanda mais fraca (EVs na China).", "date": "2026-07-16"},
@@ -404,7 +404,7 @@
     },
     "cobre": {
       "unit": "USD/lb (COMEX)",
-      "preco_atual": 6.50,
+      "preco_atual": 6.52,
       "bank_targets": [
         {"bank": "Citi",          "target": 6.80, "view": "BULL",    "rationale": "LME $15.000/ton (~$6.80/lb) pro fim de 2026 — reconfirmado em Mining Weekly de 28/jul/26 (dado mais fresco de toda a pesquisa), banco mantém 'supply under much greater pressure'. Near-term (0-3m): $14.500/ton.", "date": "2026-07-28"},
         {"bank": "Goldman Sachs", "target": 6.23, "view": "NEUTRAL", "rationale": "Year-end LME $13.735/ton (~$6.23/lb, elevado de $12.465 em 01/jun/26). Oferta mais apertada (Grasberg + Kamoa-Kakula). Reconfirmado 29/jul, sem revisão nova.", "date": "2026-06-01"},
@@ -417,7 +417,7 @@
 
   "pesquisas_eleitorais_2026": {
     "_nota": "Eleição presidencial brasileira — outubro 2026. Fontes: Datafolha (TIER-1) e Quaest (TIER-1). Atualizado jul/2026.",
-    "_nivel_atual": "Ibovespa: ~177.300 pts (03/ago/2026, leve queda no dia — pressionado por queda do petróleo em meio a expectativa de acordo de paz no Oriente Médio, PETR4 e VALE3 em queda; recorde histórico do ano segue em 198.657,33 pts de 14/abr) | S&P 500: 7.605-7.607 pts (03/ago/2026, +1,5-1,6% no dia, puxado por big techs e alívio no petróleo) | USD/BRL: ~R$ 5,08 (03/ago/2026) | Contexto: Fed manteve juros em 29/jul por 9-3 com dissidência hawkish (ver macro_snapshot.fed_rate); Copom decide Selic em 05/ago (mercado precifica ~75-80% de corte de 25bps); convenção do PL oficializou candidatura de Flávio Bolsonaro em 25/jul, registro no TSE previsto pra 02/ago.",
+    "_nivel_atual": "Ibovespa: ~178.000 pts (04/ago/2026, estável/leve alta vs 03/ago; máxima intradiária 180.679, mínima 176.783; Embraer +3,1% no dia com financiamento BNDES aprovado, Vale -3,19% com minério em queda; recorde histórico do ano segue em 198.657,33 pts de 14/abr) | S&P 500: 7.600,50 pts (04/ago/2026, +1,48% no dia, a 0,1% do recorde histórico de 7.609,78) | USD/BRL: ~R$ 5,08 (04/ago/2026, estável) | Contexto: Fed manteve juros em 29/jul por 9-3 com dissidência hawkish (ver macro_snapshot.fed_rate); Copom iniciou reunião hoje 04/ago, decisão sai amanhã 05/ago à noite após o fechamento (mercado segue precificando ~75-80% de corte de 25bps, sem mudança desde 03/ago); Lula (PT) e Flávio Bolsonaro (PL) protocolaram candidatura no TSE em 02/ago — vice de Flávio ainda em aberto, prazo final 15/ago.",
     "institutos": [
       {
         "instituto": "Datafolha",
