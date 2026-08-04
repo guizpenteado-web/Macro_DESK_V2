@@ -283,8 +283,14 @@ def index():
 # ~4,5min, 24h/dia -- suspeita de que esse padrao de rajada continua tenha
 # disparado rate-limit/bloqueio silencioso do lado da OpLab (login parou de
 # responder, tanto na nossa API quanto no proprio app.oplab.com.br do
-# usuario). 3 horarios fixos por dia reduz de ~320 ciclos/dia pra 3.
-SCHEDULED_REFRESH_TIMES_BRT = [(9, 0), (14, 0), (16, 0)]
+# usuario). Ajustado no mesmo dia pra de hora em hora durante o pregao
+# (09h-17h) -- usuario pediu mais frequencia intradiaria depois de validar
+# que o endpoint em lote reduziu tanto o consumo que da pra dar mais
+# atualizacoes sem voltar ao padrao que causou o bloqueio: 9 ciclos/dia
+# (9 logins + 9 chamadas em lote = 18 requisicoes/dia) continua uma fracao
+# minuscula do volume anterior (~320 ciclos/dia, ate 9 logins simultaneos
+# cada um por causa do bug de concorrencia ja corrigido).
+SCHEDULED_REFRESH_TIMES_BRT = [(9, 0), (10, 0), (11, 0), (12, 0), (13, 0), (14, 0), (15, 0), (16, 0), (17, 0)]
 BR_TZ = ZoneInfo("America/Sao_Paulo")
 
 
