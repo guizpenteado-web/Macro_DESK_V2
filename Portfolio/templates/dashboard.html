@@ -256,7 +256,11 @@
   .aloc-root .sub-total .v{ font-size: 11.5px; font-weight: 600; color: var(--text-dim); }
   .aloc-root .sub-total .p{ font-size: 10px; color: var(--text-faint); }
   .aloc-root .asset-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap: 6px; }
-  .aloc-root .asset{ display:flex; align-items:center; gap: 8px; background: var(--panel-2); border: 1px solid var(--line-soft); border-radius: 7px; padding: 7px 8px; }
+  .aloc-root .asset{ display:flex; align-items:center; gap: 8px; background: var(--panel-2); border: 1px solid var(--line-soft); border-radius: 7px; padding: 7px 8px; cursor: grab; transition: opacity .12s ease, border-color .12s ease; }
+  .aloc-root .asset:active{ cursor: grabbing; }
+  .aloc-root .asset.dragging{ opacity: .35; border-color: var(--gold); }
+  .aloc-root .sub{ border-radius: 8px; transition: background .12s ease, outline-color .12s ease; outline: 2px dashed transparent; outline-offset: 3px; }
+  .aloc-root .sub.drag-over{ outline-color: var(--gold); background: rgba(212,175,55,0.06); }
   /* Contorno por regime: verde = ativo se beneficia do regime macro
      selecionado (categoria_heatmap com score >=1 no Asset Playbook), vermelho
      = e ferido (score <=-1). Sem categoria mapeada ou score 0 fica neutro
@@ -1019,7 +1023,7 @@ tickClock(); setInterval(tickClock, 1000);
     var score = regimeScoreForAsset(a);
     var regimeClass = score >= 1 ? ' regime-benef' : (score <= -1 ? ' regime-hurt' : '');
     return '' +
-      '<li class="asset'+regimeClass+'" data-id="'+a.id+'" title="'+(score!=null?('Asset Playbook · '+state.regime+': '+fmtScore(score)):'')+'">' +
+      '<li class="asset'+regimeClass+'" draggable="true" data-id="'+a.id+'" title="'+(score!=null?('Asset Playbook · '+state.regime+': '+fmtScore(score)):'Arraste para mover de painel')+'">' +
         '<div class="asset-main">' +
           '<span class="asset-name">'+esc(a.name)+'</span>' +
           (a.tag ? '<span class="asset-tag">'+esc(a.tag)+'</span>' : '') +
@@ -1057,7 +1061,7 @@ tickClock(); setInterval(tickClock, 1000);
       : '<button class="add-toggle" data-action="open-form" data-key="'+formKey+'">+ adicionar ativo</button>';
 
     return '' +
-      '<div class="sub">' +
+      '<div class="sub" data-group="'+group.key+'" data-sub="'+sub+'">' +
         '<div class="sub-head">' +
           '<div class="sub-label">'+(sub === "RF" ? "Renda Fixa" : "Renda Variável")+'</div>' +
           '<div class="sub-total"><span class="v num">'+fmtBRL(subT)+'</span><span class="p num">'+fmtPct(pct(subT,total))+'</span></div>' +
@@ -1614,6 +1618,58 @@ tickClock(); setInterval(tickClock, 1000);
     if(!name || isNaN(value) || value < 0) return;
     state.assets.push({ id: uid(), group: form.getAttribute("data-group"), sub: form.getAttribute("data-sub"), name: name, tag: tag, value: value });
     delete state.openForms[form.getAttribute("data-group") + ":" + form.getAttribute("data-sub")];
+    persist(); renderAll();
+  });
+
+  // ---------- drag & drop: mover ativo entre paineis (horizontal) ----------
+  var dragSourceId = null;
+
+  app.addEventListener("dragstart", function(e){
+    var el = e.target.closest(".asset");
+    if(!el) return;
+    dragSourceId = el.getAttribute("data-id");
+    el.classList.add("dragging");
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", dragSourceId);
+  });
+
+  app.addEventListener("dragend", function(e){
+    var el = e.target.closest(".asset");
+    if(el) el.classList.remove("dragging");
+    var zones = app.querySelectorAll(".sub.drag-over");
+    for(var i=0;i<zones.length;i++){ zones[i].classList.remove("drag-over"); }
+    dragSourceId = null;
+  });
+
+  app.addEventListener("dragover", function(e){
+    var zone = e.target.closest(".sub");
+    if(!zone) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    zone.classList.add("drag-over");
+  });
+
+  app.addEventListener("dragleave", function(e){
+    var zone = e.target.closest(".sub");
+    if(!zone) return;
+    if(e.relatedTarget && zone.contains(e.relatedTarget)) return;
+    zone.classList.remove("drag-over");
+  });
+
+  app.addEventListener("drop", function(e){
+    var zone = e.target.closest(".sub");
+    if(!zone) return;
+    e.preventDefault();
+    zone.classList.remove("drag-over");
+    var id = (e.dataTransfer && e.dataTransfer.getData("text/plain")) || dragSourceId;
+    if(!id) return;
+    var asset = state.assets.filter(function(a){ return a.id === id; })[0];
+    if(!asset) return;
+    var newGroup = zone.getAttribute("data-group");
+    var newSub = zone.getAttribute("data-sub");
+    if(asset.group === newGroup && asset.sub === newSub) return;
+    asset.group = newGroup;
+    asset.sub = newSub;
     persist(); renderAll();
   });
 
