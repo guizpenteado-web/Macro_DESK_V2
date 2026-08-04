@@ -30,7 +30,7 @@ class Settings:
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
 
     # Scheduler
-    scheduler_time: str = os.getenv("SCHEDULER_TIME", "18:30")
+    scheduler_time: str = os.getenv("SCHEDULER_TIME", "17:00")
 
     # Indicadores
     sma_periods: list[int] = [21, 50, 200]

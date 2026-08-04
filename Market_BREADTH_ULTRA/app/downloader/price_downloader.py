@@ -94,6 +94,15 @@ def update_prices(tickers: Optional[list[str]] = None) -> dict[str, int]:
     if tickers is None:
         with get_session() as s:
             tickers = AssetRepository(s).get_active_tickers()
+        # A aba Frequency busca em 196 tickers (_FREQ_UNIVERSE), superset do
+        # universo "ativo" (~78, usado pelos indicadores de breadth). Sem
+        # isso, update_prices() sem argumento (chamado todo dia pelo
+        # scheduler) nunca atualiza a maior parte do universo do Frequency —
+        # o candle fica com o preco desatualizado (achado 04/ago/2026, o
+        # rebackfill manual corrigiu o historico mas o pipeline diario
+        # continuava so cobrindo os ~78 nucleo, causa do "continua errado").
+        from app.dashboard.html_generator import _FREQ_UNIVERSE
+        tickers = sorted(set(tickers) | set(_FREQ_UNIVERSE))
     if not tickers:
         logger.warning("Nenhum ativo no banco. Sincronize os componentes primeiro.")
         return {}
