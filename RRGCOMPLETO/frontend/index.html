@@ -103,6 +103,22 @@ tr.sector-row .company{color:#79b8ff}
 #tooltip .tt-quad{display:inline-block;padding:1px 7px;border-radius:9px;font-size:10px;font-weight:700;color:#0d1117}
 
 .empty-state{padding:40px;text-align:center;color:#484f58;font-size:13px}
+
+/* ── Momentum Score (seção adicional, autocontida) ── */
+.momentum-section{border-bottom:1px solid #21262d}
+.momentum-header{padding:12px 20px 0;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.momentum-title{font-size:14px;font-weight:700;color:#fff}
+.momentum-sub{font-size:11px;color:#8b949e}
+.momentum-wrap{padding:10px 20px 6px;max-height:520px;overflow-y:auto}
+.mom-row{display:flex;align-items:center;gap:10px;margin-bottom:5px}
+.mom-ticker{width:150px;flex-shrink:0;overflow:hidden}
+.mom-ticker .tk{font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.mom-ticker .co{display:block;font-size:9px;color:#8b949e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mom-bar-track{flex:1;background:#161b22;border-radius:3px;height:18px;position:relative;min-width:80px}
+.mom-bar-fill{height:100%;border-radius:3px}
+.mom-score{width:34px;text-align:right;font-weight:700;font-size:12px;flex-shrink:0}
+.mom-legend{display:flex;gap:16px;font-size:10px;color:#8b949e;padding:2px 20px 12px;flex-wrap:wrap}
+.mom-legend .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:middle}
 </style>
 </head>
 <body>
@@ -163,6 +179,22 @@ tr.sector-row .company{color:#79b8ff}
   <button class="btn" data-hl="rs_gain">Maior ganho de RS</button>
   <button class="btn" data-hl="rs_loss">Maior perda de RS</button>
 </div>
+
+<section class="momentum-section" id="momentum-section">
+  <div class="momentum-header">
+    <span class="momentum-title">Momentum Score — Ibovespa</span>
+    <span class="momentum-sub">força de tendência por ativo (0–5), baseado no Score de Rotação já calculado pelo RRG</span>
+    <button class="btn" id="btn-momentum-toggle" style="margin-left:auto">Ocultar</button>
+  </div>
+  <div class="momentum-wrap" id="momentum-wrap"></div>
+  <div class="mom-legend">
+    <span><span class="sw" style="background:#ef4444"></span>0–1 downtrend forte</span>
+    <span><span class="sw" style="background:#f0806c"></span>1–2 downtrend fraco</span>
+    <span><span class="sw" style="background:#eab308"></span>2–3 neutro / lateral</span>
+    <span><span class="sw" style="background:#86efac"></span>3–4 uptrend fraco</span>
+    <span><span class="sw" style="background:#22c55e"></span>4–5 uptrend forte</span>
+  </div>
+</section>
 
 <div class="status-bar">
   <span id="lbl-status">Carregando...</span>
@@ -233,6 +265,7 @@ async function loadMatrix() {
     const res = await fetch(`${API}/api/matrix`);
     payload = await res.json();
     render();
+    renderMomentum();
     document.getElementById("lbl-status").textContent =
       `Atualizado: ${new Date(payload.generated_at).toLocaleString("pt-BR")}`;
   } catch (e) {
@@ -337,6 +370,50 @@ function rowHTML(ticker, name, weekly, weeks, extraClass, isIbov) {
   return html;
 }
 
+// ── Momentum Score (0–5), reescala o rotation_score (0–100) já calculado
+// pelo motor RRG — nenhum dado novo, só uma leitura diferente do que já existe.
+function momentumColor(score) {
+  if (score < 1) return "#ef4444";
+  if (score < 2) return "#f0806c";
+  if (score < 3) return "#eab308";
+  if (score < 4) return "#86efac";
+  return "#22c55e";
+}
+
+function renderMomentum() {
+  const wrap = document.getElementById("momentum-wrap");
+  if (!wrap || !payload) return;
+
+  let assets = payload.assets.filter(a => a.is_ibov).map(normalizeAsset);
+  assets = assets.filter(a => a.weekly && a.weekly.length);
+
+  const rows = assets.map(a => {
+    const last = a.weekly[a.weekly.length - 1];
+    const score = Math.max(0, Math.min(5, last.rotation_score / 20));
+    return { ticker: a.ticker, name: a.name, score };
+  }).sort((x, y) => y.score - x.score);
+
+  wrap.innerHTML = rows.map(r => {
+    const color = momentumColor(r.score);
+    const pct = (r.score / 5 * 100).toFixed(1);
+    return `<div class="mom-row">
+      <div class="mom-ticker"><span class="tk">${r.ticker}</span><span class="co">${r.name || ""}</span></div>
+      <div class="mom-bar-track"><div class="mom-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      <div class="mom-score" style="color:${color}">${r.score.toFixed(1)}</div>
+    </div>`;
+  }).join("");
+}
+
+document.getElementById("btn-momentum-toggle").addEventListener("click", () => {
+  const wrap = document.getElementById("momentum-wrap");
+  const legend = document.querySelector(".mom-legend");
+  const btn = document.getElementById("btn-momentum-toggle");
+  const hidden = wrap.style.display === "none";
+  wrap.style.display = hidden ? "" : "none";
+  legend.style.display = hidden ? "" : "none";
+  btn.textContent = hidden ? "Ocultar" : "Mostrar";
+});
+
 function render() {
   let assets = getFilteredAssets();
   assets = applyHighlight(assets);
@@ -417,6 +494,7 @@ document.getElementById("btn-timeframe").addEventListener("click", () => {
   btn.classList.toggle("active", activeTimeframe === "daily");
   updatePeriodSelect();
   render();
+  renderMomentum();
 });
 document.querySelectorAll(".index-bar .btn").forEach(btn => {
   btn.addEventListener("click", () => {
