@@ -3,7 +3,9 @@ import os
 import threading
 import time
 import traceback
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from flask import Flask, jsonify, request, send_from_directory
 from dotenv import load_dotenv
@@ -214,19 +216,22 @@ def _refresh_screener(force=False):
 
 @app.route("/api/screener")
 def api_screener():
-    force = request.args.get("force") == "1"
-    now = time.time()
-    if force or _screener_cache["payload"] is None or now - _screener_cache["fetched_at"] > SCREENER_TTL_SECONDS:
+    # Achado 04/ago/2026: a coleta na OpLab (via _refresh_screener) foi
+    # limitada a 3x/dia (ver _scheduled_warmer) por suspeita de rate-limit/
+    # bloqueio causado por polling agressivo demais. Pra essa mudanca fazer
+    # sentido, o endpoint sob demanda NAO pode mais disparar coleta nova por
+    # TTL nem por "?force=1" do botao de atualizar -- sempre serve o cache
+    # do ultimo horario agendado. Unica excecao: processo acabou de subir e
+    # ainda nao tem NENHUM cache (bootstrap unico, nao repete).
+    if _screener_cache["payload"] is None:
         try:
-            return jsonify(_refresh_screener(force=force))
+            return jsonify(_refresh_screener(force=False))
         except Exception as e:
             traceback.print_exc()
-            if _screener_cache["payload"] is not None:
-                stale = dict(_screener_cache["payload"])
-                stale["fetch_error"] = str(e)
-                return jsonify(stale)
             return jsonify({"error": str(e)}), 502
-    return jsonify(_screener_cache["payload"])
+    payload = dict(_screener_cache["payload"])
+    payload["next_scheduled_refresh"] = _next_scheduled_refresh_label()
+    return jsonify(payload)
 
 
 @app.route("/api/gex-history")
@@ -240,29 +245,57 @@ def index():
     return send_from_directory(str(BASE_DIR), "index.html")
 
 
-def _background_warmer():
-    """Mantem o cache do screener sempre quente, pra quem clicar no botao
-    nunca cair no caminho frio (~15-25s). Roda um pouco antes do TTL vencer,
-    em background, sem depender de nenhum clique de usuario pra disparar.
+# Horarios fixos de coleta na OpLab, horario de Brasilia (pedido do usuario
+# 04/ago/2026, ver historico abaixo). Antes disso o warmer rodava a cada
+# ~4,5min, 24h/dia -- suspeita de que esse padrao de rajada continua tenha
+# disparado rate-limit/bloqueio silencioso do lado da OpLab (login parou de
+# responder, tanto na nossa API quanto no proprio app.oplab.com.br do
+# usuario). 3 horarios fixos por dia reduz de ~320 ciclos/dia pra 3.
+SCHEDULED_REFRESH_TIMES_BRT = [(9, 0), (14, 0), (16, 0)]
+BR_TZ = ZoneInfo("America/Sao_Paulo")
+
+
+def _next_scheduled_refresh_label() -> str:
+    now = datetime.now(BR_TZ)
+    today_slots = [now.replace(hour=h, minute=m, second=0, microsecond=0) for h, m in SCHEDULED_REFRESH_TIMES_BRT]
+    upcoming = [s for s in today_slots if s > now]
+    nxt = min(upcoming) if upcoming else min(today_slots)  # nenhum sobrou hoje -> primeiro de amanha (so pro rotulo)
+    return nxt.strftime("%H:%M") + " (BRT)"
+
+
+def _scheduled_warmer():
+    """Atualiza o cache do screener so nos horarios fixos definidos em
+    SCHEDULED_REFRESH_TIMES_BRT, em vez de continuamente. Faz 1 atualizacao
+    de bootstrap ao subir (se ainda nao tiver cache nenhum) pra tela nao
+    ficar vazia ate o proximo horario agendado.
     """
     time.sleep(5)  # da tempo do processo terminar de subir
-    while True:
+    if _screener_cache["payload"] is None:
         try:
             _refresh_screener(force=False)
         except Exception:
             traceback.print_exc()
-        time.sleep(max(30, SCREENER_TTL_SECONDS - 30))
+
+    last_run_key = None
+    while True:
+        now = datetime.now(BR_TZ)
+        run_key = now.strftime("%Y-%m-%d %H:%M")
+        if (now.hour, now.minute) in SCHEDULED_REFRESH_TIMES_BRT and run_key != last_run_key:
+            try:
+                _refresh_screener(force=True)
+            except Exception:
+                traceback.print_exc()
+            last_run_key = run_key
+        time.sleep(30)
 
 
-# GAMMA_WARMER_DISABLED=1 no .env pausa o polling automatico na OpLab (fica
-# so sob demanda, quando alguem realmente abre a tela). Pedido 04/ago/2026
-# pra investigar se o padrao de rajada a cada ~4,5min, 24h/dia, pode ter
-# disparado algum rate-limit/bloqueio silencioso do lado da OpLab no login
-# (endpoint de auth parou de responder, ver oplab_client.py). Nao mexe no
-# refresh de OI (_get_oi_index) -- esse usa o arquivo publico da B3, nunca
-# tocou na OpLab, nao faz parte da hipotese.
+# GAMMA_WARMER_DISABLED=1 no .env pausa a coleta agendada por completo (fica
+# 100% manual/parada). Usado 04/ago/2026 como pausa de emergencia enquanto
+# investigava o bloqueio da OpLab -- manter como valvula de escape caso
+# aconteca de novo. Nao mexe no refresh de OI (_get_oi_index) -- esse usa o
+# arquivo publico da B3, nunca tocou na OpLab, fora do escopo dessa questao.
 if os.environ.get("GAMMA_WARMER_DISABLED") != "1":
-    threading.Thread(target=_background_warmer, daemon=True).start()
+    threading.Thread(target=_scheduled_warmer, daemon=True).start()
 
 
 if __name__ == "__main__":
