@@ -13,40 +13,109 @@ defasagem (normalmente D-1 ou D-2 em relacao a data corrente), entao sempre
 tentamos as ultimas datas ate achar a mais recente disponivel.
 """
 
+import json
+import os
+import tempfile
 import requests
 from collections import Counter, defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from pathlib import Path
+from zoneinfo import ZoneInfo
 
 URL_TEMPLATE = "https://www.b3.com.br/json/{d}/Posicoes/Empresa/SI_C_OPCPOSABEMP.json"
 
 TMERC_CATEGORY = {"70": "CALL", "80": "PUT"}
 
+BR_TZ = ZoneInfo("America/Sao_Paulo")
+
+# Cache em disco (~10MB) do ultimo arquivo baixado com sucesso -- achado
+# 04/ago/2026: a propria B3 pode ficar lenta/sem responder pro arquivo
+# especifico de posicoes (mesmo com o site principal deles no ar), derrubando
+# o screener inteiro sem nenhuma rede de seguranca (o cache anterior era so
+# em memoria, sumia a cada restart do processo). Serve como ultimo recurso
+# quando TODAS as tentativas de fetch_oi_near falham -- dado pode ficar mais
+# velho que o normal (D-1/D-2), mas real, nao inventado.
+CACHE_PATH = Path(__file__).resolve().parent / "b3_oi_cache.json"
+
+
+def _save_cache(data, ref_date):
+    payload = {"ref_date": ref_date.isoformat(), "data": data}
+    fd, tmp_path = tempfile.mkstemp(dir=CACHE_PATH.parent, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(payload, f)
+        os.replace(tmp_path, CACHE_PATH)
+    except Exception:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+        raise
+
+
+def _load_cache():
+    if not CACHE_PATH.exists():
+        return None
+    try:
+        payload = json.loads(CACHE_PATH.read_text(encoding="utf-8"))
+        return payload["data"], date.fromisoformat(payload["ref_date"])
+    except Exception:
+        return None
+
 
 def _try_fetch(d):
+    """Retorna (data, transient_error). data=None + transient_error=False
+    significa "essa data nao tem arquivo publicado" (404/302 normal, segue
+    o loop pro dia anterior). transient_error=True significa que a
+    REQUISICAO em si falhou (timeout/conexao) -- sinal de que a B3 esta com
+    problema agora mesmo, nao que essa data especifica nao existe."""
     url = URL_TEMPLATE.format(d=d.strftime("%Y%m%d"))
-    r = requests.get(url, timeout=60, allow_redirects=False)
+    try:
+        r = requests.get(url, timeout=60, allow_redirects=False)
+    except requests.exceptions.RequestException:
+        return None, True
     if r.status_code == 200:
-        return r.json()
-    return None
+        return r.json(), False
+    return None, False
 
 
 def fetch_oi_near(target_date, max_days_back=10):
     """Retorna (data_json, data_referencia) do arquivo disponivel mais proximo
     de target_date, andando pra tras (fins de semana/feriados nao publicam
-    arquivo -- so tenta o dia anterior ate achar um pregao real).
+    arquivo -- so tenta o dia anterior ate achar um pregao real). Se TODAS as
+    tentativas falharem (B3 fora do ar/instavel), cai pro ultimo arquivo
+    salvo em disco em vez de quebrar o screener inteiro.
+
+    Achado 04/ago/2026: um timeout de conexao (B3 travada) e tratado
+    diferente de um 404 limpo (data sem arquivo) -- continuar andando pra
+    tras dia a dia num timeout real levaria ate max_days_back x 60s (10min)
+    pra desistir; ao primeiro timeout, para de tentar outras datas e cai
+    direto pro cache (muito mais rapido, e datas anteriores tendem a falhar
+    do mesmo jeito quando o problema e o servidor da B3, nao a data).
     """
     d = target_date
     for _ in range(max_days_back):
-        data = _try_fetch(d)
+        data, transient = _try_fetch(d)
         if data is not None:
+            _save_cache(data, d)
             return data, d
+        if transient:
+            break
         d -= timedelta(days=1)
+    cached = _load_cache()
+    if cached is not None:
+        return cached
     raise RuntimeError(f"Nao encontrei arquivo de posicoes em aberto da B3 perto de {target_date}")
 
 
 def fetch_latest_oi(max_days_back=10):
-    """Retorna (data_json, data_referencia) do dia mais recente disponivel."""
-    return fetch_oi_near(date.today(), max_days_back=max_days_back)
+    """Retorna (data_json, data_referencia) do dia mais recente disponivel.
+
+    Usa a data de HOJE em horario de Brasilia, nao a data local do servidor
+    (achado 04/ago/2026: VPS roda em UTC, entao date.today() adiantava um
+    dia inteiro entre ~21h e meia-noite BRT, sempre desperdicando a primeira
+    tentativa numa data que a B3 nunca vai ter publicado).
+    """
+    today_brt = datetime.now(BR_TZ).date()
+    return fetch_oi_near(today_brt, max_days_back=max_days_back)
 
 
 def build_root_index(data):

@@ -20,6 +20,10 @@ server_err.txt
 # Cache de preço ao vivo (yfinance) — regenerado a cada fetch, diferente por ambiente
 MacroDashboard/data/price_cache.json
 
+# Cache de reserva do arquivo de OI da B3 (GammaScreener) — regenerado a
+# cada fetch bem-sucedido, ~10MB, diferente por ambiente
+GammaScreener/b3_oi_cache.json
+
 # Dados da Biblioteca (posts reais do usuário, mídias e chave de API) — nunca no git
 biblioteca/data/
 
