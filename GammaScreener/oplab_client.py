@@ -79,6 +79,18 @@ def get_stock(symbol):
     return _get(f"/market/stocks/{symbol}")
 
 
+def get_all_stocks():
+    """/market/stocks (sem symbol) retorna TODOS os ativos (~240) numa unica
+    chamada -- mesmos campos de get_stock() (bid, close, iv_current,
+    financial_volume, name, etc), achado 04/ago/2026. O screener usava
+    get_stock() por ticker, um por um (ate ~98 chamadas por atualizacao);
+    trocar pra essa chamada em lote reduz o consumo da API de ~98
+    requisicoes por ciclo pra 1 -- pedido explicito do usuario apos suspeita
+    de bloqueio por padrao de acesso agressivo (ver server.py, historico do
+    _scheduled_warmer)."""
+    return _get("/market/stocks")
+
+
 def get_historical_options(spot_ticker, date_from, date_to):
     """Historico REAL de opcoes (IV/gregas/spot por opcao/dia), endpoint
     /market/historical/options/{spot}/{from}/{to} -- achado por engenharia

@@ -63,8 +63,36 @@ def _get_oi_index(force=False):
     return _oi_cache["index"], _oi_cache["ref_date"]
 
 
+_stocks_bulk_cache = {"by_symbol": {}, "fetched_at": 0}
+
+
+def _get_stocks_bulk(force=False):
+    """Busca TODOS os ativos da OpLab numa unica chamada (/market/stocks,
+    sem symbol -- achado 04/ago/2026, tem os mesmos campos de get_stock()
+    pra ~240 ativos de uma vez) e cacheia por symbol. So refaz a chamada se
+    force=True ou se ainda nao tiver dado nenhum (bootstrap) -- fora isso,
+    serve o que ja tem ate o proximo _scheduled_warmer atualizar (mesma
+    filosofia do _screener_cache: coleta so nos horarios fixos, nao por
+    TTL). Troca ~98 chamadas por ciclo (1 por ticker) por exatamente 1.
+    """
+    if not force and _stocks_bulk_cache["by_symbol"]:
+        return _stocks_bulk_cache["by_symbol"]
+    stocks = oplab_client.get_all_stocks()
+    by_symbol = {s["symbol"]: s for s in stocks if s.get("symbol")}
+    _stocks_bulk_cache["by_symbol"] = by_symbol
+    _stocks_bulk_cache["fetched_at"] = time.time()
+    return by_symbol
+
+
+def _get_stock_cached(ticker):
+    stock = _get_stocks_bulk().get(ticker)
+    if stock is None:
+        raise RuntimeError(f"Ativo {ticker} nao encontrado no lote da OpLab")
+    return stock
+
+
 def _compute_asset_payload(ticker, root, oi_index, ref_date):
-    stock = oplab_client.get_stock(ticker)
+    stock = _get_stock_cached(ticker)
     spot = stock.get("bid") or stock.get("close")
     iv = (stock.get("iv_current") or 17.5) / 100.0
 
@@ -188,6 +216,11 @@ def _refresh_screener(force=False):
     ou nenhuma cotacao viva de opcao) -- ver constantes no topo do arquivo.
     """
     oi_index, ref_date = _get_oi_index(force=force)
+    # 1 chamada em lote pra OpLab (todos os ativos de uma vez) no INICIO de
+    # cada ciclo de refresh -- _refresh_screener so roda nos 3 horarios
+    # fixos do _scheduled_warmer (+ bootstrap), entao forcar aqui e seguro:
+    # nunca gera mais de 1 chamada em lote por ciclo real de atualizacao.
+    _get_stocks_bulk(force=True)
     candidates = b3_oi_client.build_universe(oi_index, top_n=CANDIDATE_POOL_SIZE)
     for c in candidates:
         c["n_active_strikes"] = b3_oi_client.count_active_strikes(oi_index, c["root"])
