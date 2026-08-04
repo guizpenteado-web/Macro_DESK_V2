@@ -1,37 +1,61 @@
 """Cliente minimo para a API da OpLab (autenticacao + dados de opcoes da B3)."""
 
 import os
+import threading
 import time
 import requests
 
 BASE_URL = "https://api.oplab.com.br/v3"
 
 _token_cache = {"token": None, "expires_at": 0}
+_token_lock = threading.Lock()
 TOKEN_TTL_SECONDS = 20 * 60
 
 
 def _login():
     email = os.environ["OPLAB_EMAIL"]
     password = os.environ["OPLAB_PASSWORD"]
-    r = requests.post(
-        f"{BASE_URL}/domain/users/authenticate",
-        data={"email": email, "password": password},
-        timeout=30,
-    )
-    r.raise_for_status()
-    data = r.json()
-    token = data.get("access-token")
-    if not token:
-        raise RuntimeError("Login na OpLab falhou: sem access-token na resposta")
-    return token
+    last_exc = None
+    for attempt in range(2):
+        try:
+            r = requests.post(
+                f"{BASE_URL}/domain/users/authenticate",
+                data={"email": email, "password": password},
+                timeout=30,
+            )
+            r.raise_for_status()
+            data = r.json()
+            token = data.get("access-token")
+            if not token:
+                raise RuntimeError("Login na OpLab falhou: sem access-token na resposta")
+            return token
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as exc:
+            last_exc = exc
+    raise last_exc
 
 
 def get_token(force=False):
+    # Fast path sem lock — caso comum (token valido), evita contencao entre
+    # as 8 threads do screener numa chamada que so le o cache.
     now = time.time()
-    if force or _token_cache["token"] is None or now >= _token_cache["expires_at"]:
+    if not force and _token_cache["token"] is not None and now < _token_cache["expires_at"]:
+        return _token_cache["token"]
+
+    # Achado 04/ago/2026: sem lock aqui, quando o token expira as 8 threads
+    # do ThreadPoolExecutor (+ a thread de warmer em background) detectavam
+    # "expirado" ao mesmo tempo e disparavam ate 9 logins simultaneos na
+    # OpLab — o proprio endpoint de autenticacao nao aguenta essa rajada e
+    # passa a dar timeout em cascata (visto: 5000+ ReadTimeoutError no log,
+    # screener inteiro voltando com 0 linhas). Double-checked locking: so a
+    # primeira thread realmente faz login, as outras esperam o lock e reusam
+    # o token que ela acabou de cachear.
+    with _token_lock:
+        now = time.time()
+        if not force and _token_cache["token"] is not None and now < _token_cache["expires_at"]:
+            return _token_cache["token"]
         _token_cache["token"] = _login()
         _token_cache["expires_at"] = now + TOKEN_TTL_SECONDS
-    return _token_cache["token"]
+        return _token_cache["token"]
 
 
 def _get(path, params=None, retries=4):
