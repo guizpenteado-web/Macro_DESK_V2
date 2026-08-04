@@ -607,8 +607,16 @@ function plotlyLayoutBase(extra) {
     yaxis: { gridcolor: cssVar('--gridline'), zerolinecolor: cssVar('--baseline'), linecolor: cssVar('--baseline') },
     legend: { orientation: 'h', y: 1.28 },
     hovermode: 'x unified',
+    dragmode: 'pan',
   }, extra || {});
 }
+
+// Zoom com scroll do mouse + pan com clique-e-arraste — mesmo padrão livre
+// já usado nos gráficos do Macro Dashboard (CFG_Z).
+const CFG_Z = {
+  responsive: true, scrollZoom: true, displayModeBar: true, displaylogo: false,
+  modeBarButtonsToRemove: ['select2d', 'lasso2d', 'toImage', 'resetScale2d', 'hoverClosestCartesian', 'hoverCompareCartesian'],
+};
 
 // Strikes reais tem espacamento irregular (as vezes R$0,01, as vezes R$0,20
 // no mesmo ativo). Eixo numerico faz o Plotly calcular uma largura de barra
@@ -677,6 +685,7 @@ function renderCockpit() {
 
   const shapes = buildVlines([
     { x: categoryIndexFor(d.spot, strikeValues), label: `Spot R$ ${d.spot.toFixed(2)}`, color: cssVar('--text-primary') },
+    { x: categoryIndexFor(d.gamma_flip, strikeValues), label: `Gamma Flip R$ ${d.gamma_flip?.toFixed(2)}`, color: '#eab308' },
     { x: categoryIndexFor(d.zero_gamma_strike, strikeValues), label: `Zero Gamma R$ ${d.zero_gamma_strike?.toFixed(2)}`, color: call },
   ], true);
 
@@ -689,7 +698,7 @@ function renderCockpit() {
     annotations: shapes.map(s => s.annotation),
   });
 
-  Plotly.react('cockpitChart', traces, layout, { displayModeBar: false, responsive: true });
+  Plotly.react('cockpitChart', traces, layout, CFG_Z);
 
   const table = document.getElementById('cockpitTable');
   table.innerHTML = `<thead><tr>${tableCols.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${
@@ -720,7 +729,7 @@ function renderProfile() {
     annotations: shapes.map(s => s.annotation),
   });
 
-  Plotly.react('profileChart', traces, layout, { displayModeBar: false, responsive: true });
+  Plotly.react('profileChart', traces, layout, CFG_Z);
 
   const table = document.getElementById('profileTable');
   table.innerHTML = `<thead><tr><th>Spot simulado</th><th>GEX líquido</th></tr></thead><tbody>${
