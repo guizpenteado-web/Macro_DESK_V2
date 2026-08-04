@@ -183,11 +183,11 @@ tr.sector-row .company{color:#79b8ff}
 <section class="momentum-section" id="momentum-section">
   <div class="momentum-header">
     <span class="momentum-title">Momentum Score — Ibovespa</span>
+    <button class="btn" id="btn-momentum-toggle">Mostrar</button>
     <span class="momentum-sub">força de tendência por ativo (0–5), baseado no Score de Rotação já calculado pelo RRG</span>
-    <button class="btn" id="btn-momentum-toggle" style="margin-left:auto">Ocultar</button>
   </div>
-  <div class="momentum-wrap" id="momentum-wrap"></div>
-  <div class="mom-legend">
+  <div class="momentum-wrap" id="momentum-wrap" style="display:none"></div>
+  <div class="mom-legend" style="display:none">
     <span><span class="sw" style="background:#ef4444"></span>0–1 downtrend forte</span>
     <span><span class="sw" style="background:#f0806c"></span>1–2 downtrend fraco</span>
     <span><span class="sw" style="background:#eab308"></span>2–3 neutro / lateral</span>
