@@ -148,11 +148,15 @@ body {
 .search-wrapper .search-input { flex: 1; }
 .consenso-cta {
     display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
-    padding: 11px 24px; border-radius: 12px; border: 1px solid #1f6feb;
-    background: #1f6feb26; color: #58a6ff; font-size: 15px; font-weight: 600;
+    padding: 11px 24px; border-radius: 12px; border: 1px solid #30363d;
+    background: #21262d; color: #c9d1d9; font-size: 15px; font-weight: 600;
     cursor: pointer; transition: all 0.2s;
 }
-.consenso-cta:hover { background: #1f6feb40; border-color: #58a6ff; }
+.consenso-cta:hover { background: #30363d; border-color: #8b949e; }
+.consenso-cta.active {
+    border: 1px solid #1f6feb; background: #1f6feb26; color: #58a6ff;
+}
+.consenso-cta.active:hover { background: #1f6feb40; border-color: #58a6ff; }
 
 .consenso-back {
     display: inline-flex; align-items: center; gap: 6px; color: #8b949e;
@@ -223,8 +227,7 @@ body {
     background: rgba(212,175,55,0.12); color: #f4d675; font-size: 15px; font-weight: 600;
     cursor: pointer; transition: all 0.2s;
 }
-.fundamentus-cta:hover:not(:disabled) { background: rgba(212,175,55,0.22); border-color: #d4af37; }
-.fundamentus-cta:disabled { opacity: 0.35; cursor: not-allowed; }
+.fundamentus-cta:hover { background: rgba(212,175,55,0.22); border-color: #d4af37; }
 
 .fundamentus-overlay {
     display: none; position: fixed; inset: 0; z-index: 500;
@@ -324,7 +327,7 @@ body {
             <div class="subtitle">Preço-alvo e recomendações por ativo</div>
         </div>
         <div style="display:flex; gap:10px;">
-            <button type="button" class="fundamentus-cta" id="fundamentusCta" disabled onclick="openFundamentus()">Fundamentus</button>
+            <button type="button" class="fundamentus-cta" id="fundamentusCta" style="display:none" onclick="openFundamentus()">Fundamentus</button>
             <button type="button" class="consenso-cta" onclick="window.location.hash='#/consenso'">Consenso Analistas</button>
         </div>
     </div>
@@ -550,13 +553,14 @@ function renderTickerGrid(tickers) {
 }
 
 function syncFundamentusCta() {
-    document.getElementById('fundamentusCta').disabled = !currentTicker;
+    document.getElementById('fundamentusCta').style.display = currentTicker ? 'inline-flex' : 'none';
 }
 
 function showList() {
     document.getElementById('listView').style.display = '';
     document.getElementById('detailView').style.display = 'none';
     document.getElementById('consensoView').style.display = 'none';
+    document.querySelector('.consenso-cta').classList.remove('active');
     currentTicker = null;
     syncFundamentusCta();
     hideCallTooltip();
@@ -566,6 +570,7 @@ function showConsenso() {
     document.getElementById('listView').style.display = 'none';
     document.getElementById('detailView').style.display = 'none';
     document.getElementById('consensoView').style.display = '';
+    document.querySelector('.consenso-cta').classList.add('active');
     currentTicker = null;
     syncFundamentusCta();
     hideCallTooltip();
@@ -577,6 +582,7 @@ async function showDetail(ticker) {
     syncFundamentusCta();
     document.getElementById('listView').style.display = 'none';
     document.getElementById('consensoView').style.display = 'none';
+    document.querySelector('.consenso-cta').classList.remove('active');
     document.getElementById('detailView').style.display = '';
     document.getElementById('detailTicker').textContent = ticker;
     const known = allTickers.find(t => t.ticker === ticker);
@@ -798,7 +804,7 @@ function renderStockChart(data) {
             annotations[`c${idx}`] = {
                 type: 'point', xValue: labels[di], yValue: prices[di],
                 backgroundColor: bc, borderColor: '#0d1117', borderWidth: 2,
-                radius: 8, pointStyle: 'rectRounded',
+                radius: 6, pointStyle: 'rectRounded',
                 enter(actx) { showCallTooltip(call, actx.element.x, actx.element.y); return true; },
                 leave() { hideCallTooltip(); return true; }
             };
@@ -807,14 +813,14 @@ function renderStockChart(data) {
             annotations[`d${di}`] = {
                 type: 'point', xValue: labels[di], yValue: prices[di],
                 backgroundColor: '#21262d', borderColor: '#8b949e', borderWidth: 2,
-                radius: 10, pointStyle: 'circle',
+                radius: 7, pointStyle: 'circle',
                 enter(actx) { showDayCallsTooltip(dayCalls, actx.element.x, actx.element.y); return true; },
                 leave() { hideCallTooltip(); return true; }
             };
             annotations[`ld${di}`] = {
-                type: 'label', xValue: labels[di], yValue: prices[di], yAdjust: -20,
-                content: [String(group.length)], color: '#f0f6fc', font: { size: 10, weight: 'bold' },
-                backgroundColor: '#21262d', padding: { top: 2, bottom: 2, left: 6, right: 6 }, borderRadius: 10
+                type: 'label', xValue: labels[di], yValue: prices[di], yAdjust: -16,
+                content: [String(group.length)], color: '#f0f6fc', font: { size: 8, weight: 'bold' },
+                backgroundColor: '#21262d', padding: { top: 1, bottom: 1, left: 4, right: 4 }, borderRadius: 8
             };
         }
     });
