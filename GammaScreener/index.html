@@ -332,19 +332,6 @@
       </div>
 
       <div class="card">
-        <div class="card-header-row" style="justify-content:flex-end">
-          <div class="info-wrap">
-            <button class="info-btn" type="button" aria-label="Gamma Flip x Zero Gamma">?</button>
-            <div class="info-tooltip">
-              <strong>Gamma Flip</strong>
-              É uma simulação de preço: recalcula o gamma de toda a cadeia (mesmo OI, mesma volatilidade de hoje) pra vários preços hipotéticos dentro de ±30% do spot. O nível onde a soma total muda de sinal é o Gamma Flip — responde "quanto o preço precisa se mover pra mudar de regime".
-              <strong>Zero Gamma (por strike)</strong>
-              É diferente: não simula preço nenhum. Pega o GEX de hoje calculado no spot atual (fixo) pra cada strike, soma acumulado do menor pro maior strike, e vê onde essa soma cruza zero. É uma estatística sobre como o book de hoje está distribuído pelos strikes, não um preço-alvo.
-              <strong>Por que dão números diferentes</strong>
-              Um varre preços simulados recalculando gamma; o outro soma valores fixos percorrendo strikes. Não há motivo pra baterem — principalmente com OI real distribuído de forma irregular. Use o Gamma Flip como o nível que importa; trate o Zero Gamma por strike como contexto.
-            </div>
-          </div>
-        </div>
         <div id="profileChart" class="plot" style="height:380px"></div>
         <span class="table-toggle" data-target="profileTable">ver tabela</span>
         <table class="data-table" id="profileTable"></table>
@@ -576,7 +563,6 @@ function render() {
   const metrics = [
     [`Spot ${d.symbol}`, fmtPrice(d.spot), null],
     ['Gamma Flip', fmtPrice(d.gamma_flip), d.gamma_flip != null ? `${((d.gamma_flip/d.spot-1)*100).toFixed(1)}%` : null],
-    ['Zero Gamma (por strike)', fmtPrice(d.zero_gamma_strike), d.zero_gamma_strike != null ? `${((d.zero_gamma_strike/d.spot-1)*100).toFixed(1)}%` : null],
     ['Call Wall', fmtPrice(d.call_wall), d.call_wall != null ? `${((d.call_wall/d.spot-1)*100).toFixed(1)}%` : null],
     ['Put Wall', fmtPrice(d.put_wall), d.put_wall != null ? `${((d.put_wall/d.spot-1)*100).toFixed(1)}%` : null],
     ['GEX líquido total', fmtBRL(d.gex_net_total), null],
@@ -686,7 +672,6 @@ function renderCockpit() {
   const shapes = buildVlines([
     { x: categoryIndexFor(d.spot, strikeValues), label: `Spot R$ ${d.spot.toFixed(2)}`, color: cssVar('--text-primary') },
     { x: categoryIndexFor(d.gamma_flip, strikeValues), label: `Gamma Flip R$ ${d.gamma_flip?.toFixed(2)}`, color: '#eab308' },
-    { x: categoryIndexFor(d.zero_gamma_strike, strikeValues), label: `Zero Gamma R$ ${d.zero_gamma_strike?.toFixed(2)}`, color: call },
   ], true);
 
   const layout = plotlyLayoutBase({
@@ -740,7 +725,7 @@ function renderProfile() {
   }</tbody>`;
 }
 
-// Cada linha de referencia (Spot, Flip, Zero Gamma) fica numa altura fixa e
+// Cada linha de referencia (Spot, Gamma Flip) fica numa altura fixa e
 // diferente das outras, pra rotulo nunca colidir mesmo quando os valores
 // (em x) estao muito proximos uns dos outros.
 const VLINE_Y_LEVELS = [1.16, 1.06, 0.96];
@@ -753,7 +738,11 @@ function buildVlines(items, preLabeled) {
       const text = preLabeled ? it.label : `${it.label} R$ ${it.x.toFixed(2)}`;
       return {
         shape: { type: 'line', x0: it.x, x1: it.x, y0: 0, y1: 1, yref: 'paper', line: { color: it.color, width: 2, dash: 'dash' } },
-        annotation: { x: it.x, y, yref: 'paper', text, showarrow: false, xanchor: 'left', font: { size: 10, color: it.color } },
+        annotation: {
+          x: it.x, y, yref: 'paper', text, showarrow: false, xanchor: 'left',
+          font: { size: 10, color: it.color },
+          bgcolor: hexToRgba(cssVar('--page'), 0.85), borderpad: 2,
+        },
       };
     });
 }
