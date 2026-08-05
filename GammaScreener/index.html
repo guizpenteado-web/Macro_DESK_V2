@@ -450,8 +450,10 @@ async function fetchData(force) {
     const params = new URLSearchParams({ ticker: currentTicker, root: currentRoot });
     if (force) params.set('force', '1');
     const r = await fetch(`api/gex?${params}`);
+    if (!r.ok) throw new Error(`servidor respondeu ${r.status} (provavelmente reiniciando, tente de novo em alguns segundos)`);
     const data = await r.json();
     if (data.error) throw new Error(data.error);
+    if (!Array.isArray(data.by_strike)) throw new Error('resposta incompleta do servidor (tente atualizar novamente)');
     currentData = data;
     render();
   } catch (e) {
@@ -472,8 +474,10 @@ async function fetchScreener(force) {
   btn.textContent = 'Atualizando...';
   try {
     const r = await fetch(`api/screener${force ? '?force=1' : ''}`);
+    if (!r.ok) throw new Error(`servidor respondeu ${r.status} (provavelmente reiniciando, tente de novo em alguns segundos)`);
     const data = await r.json();
     if (data.error) throw new Error(data.error);
+    if (!Array.isArray(data.rows)) throw new Error('resposta incompleta do servidor (tente atualizar novamente)');
     renderScreener(data);
   } catch (e) {
     document.getElementById('screenerBadges').innerHTML = `<div class="error-box">Erro ao buscar dados: ${e.message}</div>`;
@@ -792,8 +796,21 @@ document.querySelectorAll('.table-toggle').forEach(el => {
   });
 });
 
+// Retry unico automatico so no carregamento inicial: se a pagina abrir bem no
+// instante de um restart do backend, a 1a resposta pode vir incompleta (proxy
+// nao propagou ainda) -- 1 nova tentativa depois de 3s resolve sem o usuario
+// precisar notar ou clicar em "Atualizar" (achado 05/ago/2026).
+async function fetchScreenerWithRetry() {
+  await fetchScreener(false);
+  const box = document.getElementById('screenerBadges');
+  if (box && box.querySelector('.error-box')) {
+    await new Promise(res => setTimeout(res, 3000));
+    fetchScreener(false);
+  }
+}
+
 showScreener();
-fetchScreener(false);
+fetchScreenerWithRetry();
 </script>
 </body>
 </html>
