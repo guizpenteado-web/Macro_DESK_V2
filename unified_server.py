@@ -1558,24 +1558,115 @@ _LOGIN_PAGE = """<!DOCTYPE html>
 <title>Macro Desk — Login</title>
 <style>
   *{{box-sizing:border-box;margin:0;padding:0}}
-  body{{height:100vh;display:flex;align-items:center;justify-content:center;
-    background:#0d1117;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}}
-  .box{{width:340px;background:#161b22;border:1px solid #21262d;border-radius:12px;padding:32px}}
-  .logo{{font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase;
-    color:#8b949e;margin-bottom:22px}}
-  .logo span{{color:#e6edf3}}
-  label{{font-size:12px;color:#8b949e;display:block;margin-bottom:5px}}
-  input{{width:100%;padding:9px 11px;margin-bottom:16px;background:#0d1117;
-    border:1px solid #30363d;border-radius:6px;color:#e6edf3;font-size:14px}}
-  input:focus{{outline:none;border-color:#00BFFF}}
-  button{{width:100%;padding:10px;background:#00BFFF;border:none;border-radius:6px;
-    color:#04141c;font-weight:700;font-size:14px;cursor:pointer}}
-  button:hover{{background:#33cfff}}
+  html,body{{height:100%}}
+  body{{position:relative;overflow:hidden;
+    background:radial-gradient(120% 100% at 78% 45%,#050b18 0%,#03060d 60%,#020409 100%);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e6edf3}}
+
+  .decor{{position:absolute;top:0;right:0;height:100%;width:min(70vw,1100px);
+    pointer-events:none;opacity:.9}}
+
+  .hero{{position:absolute;top:56px;left:64px;max-width:640px;z-index:2}}
+  .hero h1{{font-size:clamp(24px,3.1vw,38px);font-weight:800;line-height:1.2;
+    color:#f2f5f9;white-space:nowrap}}
+  .hero .rule{{width:56px;height:3px;background:#14e0c4;margin:18px 0}}
+  .hero p{{font-size:15px;line-height:1.6;color:#93a1b3;max-width:380px}}
+
+  .brand-corner{{position:absolute;left:64px;bottom:40px;z-index:2;
+    font-size:18px;font-weight:800;letter-spacing:1.5px;color:#e6edf3}}
+
+  .box{{position:absolute;top:50%;left:min(62%,780px);transform:translate(-50%,-50%);
+    z-index:3;width:300px;background:rgba(9,14,26,.82);border:1px solid rgba(90,120,160,.28);
+    border-radius:10px;padding:26px 26px 28px;backdrop-filter:blur(6px);
+    box-shadow:0 20px 60px rgba(0,0,0,.45)}}
+  .logo{{font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+    color:#e6edf3;margin-bottom:20px}}
+  label{{font-size:12px;color:#8b98ab;display:block;margin-bottom:6px}}
+  input{{width:100%;padding:9px 11px;margin-bottom:16px;background:#050a14;
+    border:1px solid #263149;border-radius:6px;color:#e6edf3;font-size:14px}}
+  input:focus{{outline:none;border-color:#2b6bff}}
+  button{{width:100%;padding:10px;background:linear-gradient(180deg,#2b6bff,#1c4fe0);
+    border:none;border-radius:6px;color:#fff;font-weight:700;font-size:14px;cursor:pointer}}
+  button:hover{{background:linear-gradient(180deg,#3d78ff,#2456e8)}}
   .err{{color:#f85149;font-size:12.5px;margin-bottom:14px}}
+
+  @media (max-width:820px){{
+    .decor{{opacity:.5}}
+    .hero{{left:28px;top:36px;max-width:90vw}}
+    .box{{left:50%;width:88vw;max-width:340px}}
+    .brand-corner{{left:28px;bottom:20px}}
+  }}
 </style></head>
 <body>
+  <svg class="decor" viewBox="0 0 1100 900" preserveAspectRatio="xMaxYMid slice">
+    <defs>
+      <radialGradient id="globeFill" cx="42%" cy="38%" r="65%">
+        <stop offset="0%" stop-color="#0d3a66"/>
+        <stop offset="55%" stop-color="#082846"/>
+        <stop offset="100%" stop-color="#030d1c"/>
+      </radialGradient>
+      <pattern id="dots" width="14" height="14" patternUnits="userSpaceOnUse">
+        <circle cx="2" cy="2" r="1.1" fill="#2f6fb0" opacity=".55"/>
+      </pattern>
+      <clipPath id="globeClip"><circle cx="900" cy="620" r="290"/></clipPath>
+      <linearGradient id="lineGrad" x1="0" y1="1" x2="1" y2="0">
+        <stop offset="0%" stop-color="#0e6bff" stop-opacity="0"/>
+        <stop offset="100%" stop-color="#3d9bff"/>
+      </linearGradient>
+    </defs>
+
+    <circle cx="900" cy="620" r="290" fill="url(#globeFill)"/>
+    <g clip-path="url(#globeClip)">
+      <rect x="610" y="330" width="580" height="580" fill="url(#dots)"/>
+      <g stroke="#1d4f80" stroke-width="1" fill="none" opacity=".6">
+        <ellipse cx="900" cy="620" rx="290" ry="95"/>
+        <ellipse cx="900" cy="620" rx="290" ry="175"/>
+        <ellipse cx="900" cy="620" rx="290" ry="255"/>
+        <ellipse cx="900" cy="620" rx="95" ry="290"/>
+        <ellipse cx="900" cy="620" rx="175" ry="290"/>
+        <ellipse cx="900" cy="620" rx="255" ry="290"/>
+      </g>
+    </g>
+    <circle cx="900" cy="620" r="290" fill="none" stroke="#2f6fb0" stroke-width="1.5" opacity=".7"/>
+
+    <g stroke="#173355" stroke-width="1" opacity=".7">
+      <line x1="120" y1="470" x2="640" y2="470"/>
+      <line x1="120" y1="360" x2="640" y2="360"/>
+      <line x1="120" y1="250" x2="640" y2="250"/>
+    </g>
+    <g fill="#123a63" opacity=".85">
+      <rect x="140" y="410" width="30" height="60"/>
+      <rect x="185" y="365" width="30" height="105"/>
+      <rect x="230" y="320" width="30" height="150"/>
+      <rect x="275" y="350" width="30" height="120"/>
+      <rect x="320" y="290" width="30" height="180"/>
+      <rect x="365" y="245" width="30" height="225"/>
+      <rect x="410" y="275" width="30" height="195"/>
+      <rect x="455" y="215" width="30" height="255"/>
+      <rect x="500" y="185" width="30" height="285"/>
+      <rect x="545" y="155" width="30" height="315"/>
+    </g>
+    <polyline points="120,440 185,405 230,375 275,345 320,310 365,335 410,275 455,235 500,190 555,150"
+      fill="none" stroke="url(#lineGrad)" stroke-width="2.5"/>
+    <g fill="#3d9bff">
+      <circle cx="120" cy="440" r="3.5"/><circle cx="185" cy="405" r="3.5"/>
+      <circle cx="230" cy="375" r="3.5"/><circle cx="275" cy="345" r="3.5"/>
+      <circle cx="320" cy="310" r="3.5"/><circle cx="365" cy="335" r="3.5"/>
+      <circle cx="410" cy="275" r="3.5"/><circle cx="455" cy="235" r="3.5"/>
+      <circle cx="500" cy="190" r="3.5"/><circle cx="555" cy="150" r="4"/>
+    </g>
+  </svg>
+
+  <div class="hero">
+    <h1>Eleve sua análise<br>com inteligência de mercado.</h1>
+    <div class="rule"></div>
+    <p>Seu desktop global para operar o mercado brasileiro.</p>
+  </div>
+
+  <div class="brand-corner">MACRO DESK</div>
+
   <div class="box">
-    <div class="logo">&#9670; <span>Macro Desk</span></div>
+    <div class="logo">Macro Desk</div>
     {error_html}
     <form method="post" action="/api/auth/login">
       <label>Usuário</label>
