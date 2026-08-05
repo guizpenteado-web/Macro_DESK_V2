@@ -30,17 +30,15 @@ def _download_one(ticker: str) -> tuple[str, pd.DataFrame]:
     if start > today:
         return ticker, pd.DataFrame()
     try:
-        # auto_adjust=False (achado 04/ago/2026, mesmo bug ja corrigido em
-        # RRGCOMPLETO/app/downloader/price_downloader.py em 15/jul/2026) —
-        # com True (default do yfinance moderno) o OHLC vem retroativamente
-        # ajustado por dividendo/split, nao e o preco realmente negociado no
-        # pregao. Ativo que paga provento regular cria um "degrau" toda vez
-        # que o historico e reajustado pra tras, divergindo cada vez mais do
-        # candle bruto que qualquer plataforma (home broker, TradingView)
-        # mostra por padrao — era a causa do "parecido mas nao identico"
-        # reportado na aba Frequency do Market Breadth.
+        # auto_adjust=True (decisao 05/ago/2026): candle da aba Frequency
+        # deve mostrar preco total-return ajustado por dividendo/JCP/split
+        # (equivalente a "Adjustment: Dividends" do TradingView), nao o
+        # preco nominal negociado no pregao. Ativo que paga provento
+        # regular tem o historico reajustado retroativamente a cada novo
+        # provento — e o comportamento pedido, nao um bug. (Ate 04/ago o
+        # pipeline usava auto_adjust=False pelo motivo oposto; revertido.)
         df = yf.download(_to_yf(ticker), start=start, end=today,
-                         progress=False, auto_adjust=False, actions=False)
+                         progress=False, auto_adjust=True, actions=False)
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
         return ticker, df
