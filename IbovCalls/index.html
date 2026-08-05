@@ -556,36 +556,30 @@ function renderChart() {
         const orderedDis = [];
         clusterDis.forEach(di => dayGroups[di].forEach(() => orderedDis.push(di)));
 
-        // Cada marcador é ancorado no preço do seu PRÓPRIO dia — dias bem afastados
-        // no tempo (mas visualmente próximos em ranges longos, tipo 1A/2A, onde um
-        // dia vale só alguns pixels) podem ter preços bem diferentes entre si. Usar
-        // só os 2 extremos do cluster pra calcular o espaço disponível não bastava:
-        // uma linha no meio da pilha, ancorada num dia de preço bem diferente do
-        // extremo usado como referência, escapava da conta e vazava pra fora do
-        // gráfico. Aqui calculamos, pra cada linha i, o espaço realmente disponível
-        // a partir do SEU PRÓPRIO ponto de ancoragem, e usamos o pior caso.
-        function maxRowHeightFor(direction) {
-            let maxH = Infinity;
-            for (let i = 1; i < orderedDis.length; i++) {
-                const ownPixel = yScale.getPixelForValue(prices[orderedDis[i]]);
-                const room = direction === -1
-                    ? Math.max(0, ownPixel - chartArea.top - LABEL_EXTRA)
-                    : Math.max(0, chartArea.bottom - ownPixel - LABEL_EXTRA);
-                maxH = Math.min(maxH, room / i);
-            }
-            return orderedDis.length > 1 ? maxH : MAX_ROW_HEIGHT;
-        }
-        const hUp = maxRowHeightFor(-1);
-        const hDown = maxRowHeightFor(1);
-        const direction = hUp >= hDown ? -1 : 1;
-        const rowHeight = Math.min(MAX_ROW_HEIGHT, direction === -1 ? hUp : hDown);
+        // Ancorar cada marcador no preço do seu PRÓPRIO dia (abordagem anterior)
+        // parecia certo, mas quebrava o espaçamento: se um dia no meio da pilha
+        // tem preço bem diferente do dia anterior, essa diferença de pixels podia
+        // CANCELAR o incremento da pilha, fazendo dois quadrados ficarem quase
+        // exatamente em cima um do outro mesmo "empilhados" matematicamente (o
+        // efeito visual de dois quadrados grudados formando um "(" distorcido).
+        // Agora todo o cluster empilha a partir de UMA ÂNCORA ÚNICA (preço médio
+        // do cluster) — o espaçamento entre linhas fica sempre exatamente uniforme,
+        // independente de quanto o preço varia de um dia pro outro. O xValue de
+        // cada marcador continua sendo o dia real (posição horizontal correta).
+        const anchorPixel = orderedDis.reduce((s, di) => s + yScale.getPixelForValue(prices[di]), 0) / orderedDis.length;
+        const roomAbove = Math.max(0, anchorPixel - chartArea.top - LABEL_EXTRA);
+        const roomBelow = Math.max(0, chartArea.bottom - anchorPixel - LABEL_EXTRA);
+        const direction = roomAbove >= roomBelow ? -1 : 1;
+        const available = Math.max(roomAbove, roomBelow);
+        const rowHeight = orderedDis.length > 1 ? Math.min(MAX_ROW_HEIGHT, available / (orderedDis.length - 1)) : MAX_ROW_HEIGHT;
 
         let row = 0;
         clusterDis.forEach(di => {
             dayGroups[di].forEach(idx => {
                 const call = filteredCalls[idx];
                 const bc = BANK_COLORS[call.bank] || '#58a6ff';
-                const yStack = row * rowHeight * direction;
+                const ownPixel = yScale.getPixelForValue(prices[di]);
+                const yStack = (anchorPixel - ownPixel) + row * rowHeight * direction;
                 annotations[`c${idx}`] = {
                     type: 'point',
                     xValue: labels[di], yValue: prices[di],
