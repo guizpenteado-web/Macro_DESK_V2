@@ -468,13 +468,17 @@ function renderChart() {
                             return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
                         },
                         label: (item) => {
-                            const hoverDate = item.label;
-                            const near = allCalls.filter(c => {
-                                const diff = Math.abs(new Date(c.date + 'T12:00:00') - new Date(hoverDate + 'T12:00:00'));
-                                return diff <= 3 * 86400000;
-                            });
+                            // Só lista calls que realmente têm um quadradinho desenhado nesse
+                            // dia exato (mesmo dayGroups usado pra posicionar os marcadores) —
+                            // antes buscava numa janela de ±3 dias em allCalls (sem filtro de
+                            // banco e sem checar se existia marcador ali), fazendo o tooltip
+                            // "citar" bancos em dias sem nenhum quadrado visível no gráfico.
+                            const onThisDay = dayGroups[item.dataIndex] || [];
                             const lines = [`Ibovespa: ${fmtPrice(item.raw)}`];
-                            near.slice(0, 3).forEach(c => lines.push(`${c.bank}: ${c.title}`));
+                            onThisDay.slice(0, 3).forEach(idx => {
+                                const c = filteredCalls[idx];
+                                lines.push(`${c.bank}: ${c.title}`);
+                            });
                             return lines;
                         }
                     }
@@ -541,23 +545,43 @@ function renderChart() {
     // empilhando verticalmente, com espaçamento maior que o próprio marcador (raio 8
     // + borda) pra que as áreas de hover nunca se toquem e disparem tooltip errado.
     const MAX_ROW_HEIGHT = 24;
+    // Reserva de espaço pro rótulo do banco além do último quadrado da pilha: 16px de
+    // xAdjust/yAdjust extra + ~metade da altura da caixa do rótulo (fonte 9px + padding
+    // 6px + borda). Sem essa folga o rótulo do último item de clusters grandes ficava
+    // fora da área do gráfico (invisível), mesmo com o quadrado dentro dos limites.
+    const LABEL_EXTRA = 34;
     const chartArea = chartInstance.chartArea;
     const yScale = chartInstance.scales.y;
 
     const annotations = {};
     clusters.forEach(clusterDis => {
-        const totalCount = clusterDis.reduce((s, di) => s + dayGroups[di].length, 0);
-        const highestDi = clusterDis.reduce((b, di) => (prices[di] > prices[b] ? di : b), clusterDis[0]);
-        const lowestDi = clusterDis.reduce((b, di) => (prices[di] < prices[b] ? di : b), clusterDis[0]);
-        const roomAbove = Math.max(0, yScale.getPixelForValue(prices[highestDi]) - chartArea.top - 24);
-        const roomBelow = Math.max(0, chartArea.bottom - yScale.getPixelForValue(prices[lowestDi]) - 8);
-        // Escolhe sempre o lado com mais espaço real e nunca ultrapassa esse espaço —
-        // um "piso" mínimo de altura por linha empurrava marcadores pra fora do
-        // canvas quando havia calls demais (ex.: 8 no mesmo dia), tornando-os
-        // impossíveis de hover porque ficavam fisicamente fora da área do gráfico.
-        const direction = roomAbove >= roomBelow ? -1 : 1;
-        const available = Math.max(roomAbove, roomBelow);
-        const rowHeight = totalCount > 1 ? Math.min(MAX_ROW_HEIGHT, available / (totalCount - 1)) : MAX_ROW_HEIGHT;
+        // Ordem real de empilhamento (mesma usada abaixo pra atribuir as linhas).
+        const orderedDis = [];
+        clusterDis.forEach(di => dayGroups[di].forEach(() => orderedDis.push(di)));
+
+        // Cada marcador é ancorado no preço do seu PRÓPRIO dia — dias bem afastados
+        // no tempo (mas visualmente próximos em ranges longos, tipo 1A/2A, onde um
+        // dia vale só alguns pixels) podem ter preços bem diferentes entre si. Usar
+        // só os 2 extremos do cluster pra calcular o espaço disponível não bastava:
+        // uma linha no meio da pilha, ancorada num dia de preço bem diferente do
+        // extremo usado como referência, escapava da conta e vazava pra fora do
+        // gráfico. Aqui calculamos, pra cada linha i, o espaço realmente disponível
+        // a partir do SEU PRÓPRIO ponto de ancoragem, e usamos o pior caso.
+        function maxRowHeightFor(direction) {
+            let maxH = Infinity;
+            for (let i = 1; i < orderedDis.length; i++) {
+                const ownPixel = yScale.getPixelForValue(prices[orderedDis[i]]);
+                const room = direction === -1
+                    ? Math.max(0, ownPixel - chartArea.top - LABEL_EXTRA)
+                    : Math.max(0, chartArea.bottom - ownPixel - LABEL_EXTRA);
+                maxH = Math.min(maxH, room / i);
+            }
+            return orderedDis.length > 1 ? maxH : MAX_ROW_HEIGHT;
+        }
+        const hUp = maxRowHeightFor(-1);
+        const hDown = maxRowHeightFor(1);
+        const direction = hUp >= hDown ? -1 : 1;
+        const rowHeight = Math.min(MAX_ROW_HEIGHT, direction === -1 ? hUp : hDown);
 
         let row = 0;
         clusterDis.forEach(di => {
