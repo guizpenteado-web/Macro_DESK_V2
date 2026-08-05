@@ -146,6 +146,15 @@ body {
     font-size: 13px; font-weight: 500; transition: all 0.2s;
 }
 .modal .source-link:hover { background: #1f6feb55; }
+.modal .day-list { display: flex; flex-direction: column; gap: 10px; max-height: 60vh; overflow-y: auto; }
+.modal .day-list-item {
+    padding: 12px 14px; background: #0d1117; border: 1px solid #21262d;
+    border-radius: 8px; cursor: pointer; transition: border-color 0.15s;
+}
+.modal .day-list-item:hover { border-color: #484f58; }
+.modal .day-list-item .bank-name { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.modal .day-list-item .title { font-size: 14px; font-weight: 600; color: #f0f6fc; margin-bottom: 4px; }
+.modal .day-list-item .summary { font-size: 12px; color: #8b949e; line-height: 1.5; }
 
 .loading {
     text-align: center; padding: 80px 20px; color: #8b949e;
@@ -234,6 +243,7 @@ body {
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
             Ver fonte original
         </a>
+        <div class="day-list" id="modalDayList" style="display:none"></div>
     </div>
 </div>
 
@@ -296,11 +306,50 @@ function setupRangeControls() {
 function openModal(call) {
     const bc = BANK_COLORS[call.bank] || '#58a6ff';
     const mb = document.getElementById('modalBankBadge');
+    mb.style.display = '';
     mb.textContent = call.bank; mb.style.background = bc + '33'; mb.style.color = bc;
+    document.getElementById('modalDate').style.display = '';
     document.getElementById('modalDate').textContent = fmtDate(call.date);
+    document.getElementById('modalTitle').style.display = '';
     document.getElementById('modalTitle').textContent = call.title;
+    document.getElementById('modalSummary').style.display = '';
     document.getElementById('modalSummary').textContent = call.summary;
-    document.getElementById('modalLink').href = call.url;
+    const link = document.getElementById('modalLink');
+    link.style.display = '';
+    link.href = call.url;
+    document.getElementById('modalDayList').style.display = 'none';
+    document.getElementById('modalOverlay').classList.add('active');
+}
+
+// Dia com várias calls (marcador único com contador) — clicar abre a lista
+// inteira desse dia em vez de uma call só.
+function openDayModal(dayCalls) {
+    document.getElementById('modalBankBadge').style.display = 'none';
+    document.getElementById('modalTitle').style.display = 'none';
+    document.getElementById('modalSummary').style.display = 'none';
+    document.getElementById('modalLink').style.display = 'none';
+    const dateEl = document.getElementById('modalDate');
+    dateEl.style.display = '';
+    dateEl.textContent = `${fmtDate(dayCalls[0].date)} — ${dayCalls.length} calls`;
+    const list = document.getElementById('modalDayList');
+    list.innerHTML = '';
+    dayCalls.forEach(call => {
+        const bc = BANK_COLORS[call.bank] || '#58a6ff';
+        const item = document.createElement('div');
+        item.className = 'day-list-item';
+        item.style.borderLeft = `3px solid ${bc}`;
+        item.innerHTML = `
+            <div class="bank-name" style="color:${bc}"></div>
+            <div class="title"></div>
+            <div class="summary"></div>
+        `;
+        item.querySelector('.bank-name').textContent = call.bank;
+        item.querySelector('.title').textContent = call.title;
+        item.querySelector('.summary').textContent = call.summary.substring(0, 150) + '...';
+        item.onclick = () => openModal(call);
+        list.appendChild(item);
+    });
+    list.style.display = '';
     document.getElementById('modalOverlay').classList.add('active');
 }
 
@@ -470,9 +519,14 @@ function renderChart() {
                             // antes buscava numa janela de ±3 dias em allCalls (sem filtro de
                             // banco e sem checar se existia marcador ali), fazendo o tooltip
                             // "citar" bancos em dias sem nenhum quadrado visível no gráfico.
+                            // Lista TODAS as calls do dia (não só as 3 primeiras) — o clique
+                            // nos marcadores pra abrir a lista completa não é confiável nessa
+                            // versão do plugin de anotação (mesmo bug de detecção de clique
+                            // que afeta os marcadores individuais), então o hover é a única
+                            // forma consistente de ver o dia inteiro por enquanto.
                             const onThisDay = dayGroups[item.dataIndex] || [];
                             const lines = [`Ibovespa: ${fmtPrice(item.raw)}`];
-                            onThisDay.slice(0, 3).forEach(idx => {
+                            onThisDay.forEach(idx => {
                                 const c = filteredCalls[idx];
                                 lines.push(`${c.bank}: ${c.title}`);
                             });
@@ -487,6 +541,9 @@ function renderChart() {
                         if (id && id.startsWith('c')) {
                             const idx = parseInt(id.substring(1));
                             openModal(filteredCalls[idx]);
+                        } else if (id && id.startsWith('d')) {
+                            const di = parseInt(id.substring(1));
+                            openDayModal(dayGroups[di].map(idx => filteredCalls[idx]));
                         }
                     }
                 }
@@ -514,100 +571,48 @@ function renderChart() {
         }
     });
 
-    // O gap entre clusters de dias só pode ser calculado depois que o Chart.js já
-    // sabe quantos pixels cada dia ocupa no eixo X (escala 'category', espaçamento
-    // uniforme) — usado só pra decidir quando dois dias próximos compartilham pilha.
-    const xScale = chartInstance.scales.x;
-    const pxPerDay = labels.length > 1
-        ? Math.abs(xScale.getPixelForValue(labels[1]) - xScale.getPixelForValue(labels[0]))
-        : 40;
-
-    const dayIndices = Object.keys(dayGroups).map(Number).sort((a, b) => a - b);
-    const clusters = [];
-    let cluster = [];
-    dayIndices.forEach((di, i) => {
-        if (i === 0) { cluster = [di]; return; }
-        const prev = dayIndices[i - 1];
-        if ((di - prev) * pxPerDay < 30) {
-            cluster.push(di);
-        } else {
-            clusters.push(cluster);
-            cluster = [di];
-        }
-    });
-    if (cluster.length) clusters.push(cluster);
-
-    // Cada marcador fica sempre exatamente em cima do seu dia real (sem deslocamento
-    // horizontal — nunca "vaza" pro dia vizinho). Calls próximas se distinguem
-    // empilhando verticalmente, com espaçamento maior que o próprio marcador (raio 8
-    // + borda) pra que as áreas de hover nunca se toquem e disparem tooltip errado.
-    const MAX_ROW_HEIGHT = 24;
-    // Reserva de espaço pro rótulo do banco além do último quadrado da pilha: 16px de
-    // xAdjust/yAdjust extra + ~metade da altura da caixa do rótulo (fonte 9px + padding
-    // 6px + borda). Sem essa folga o rótulo do último item de clusters grandes ficava
-    // fora da área do gráfico (invisível), mesmo com o quadrado dentro dos limites.
-    const LABEL_EXTRA = 34;
-    const chartArea = chartInstance.chartArea;
-    const yScale = chartInstance.scales.y;
-
+    // Um marcador por dia, sempre exatamente em cima da linha de preço real — nunca
+    // empilhado/deslocado pra longe dela. Dia com 1 call: quadrado colorido do banco.
+    // Dia com várias calls: um marcador neutro com um contador (ex.: "5"); clicar
+    // abre a lista completa. Isso evita tanto a sobreposição entre quadrados quanto
+    // o problema anterior de pilhas verticais altas que afastavam os marcadores da
+    // cotação real.
+    //
+    // O texto (nome do banco / contador) é uma anotação type:'label' SEPARADA, não o
+    // sub-campo "label" de type:'point' — essa combinação de versões do Chart.js +
+    // chartjs-plugin-annotation simplesmente não renderiza texto dentro do label
+    // aninhado de um point (bug confirmado isolando em HTML mínimo); type:'label'
+    // como anotação própria funciona normalmente.
     const annotations = {};
-    clusters.forEach(clusterDis => {
-        // Ordem real de empilhamento (mesma usada abaixo pra atribuir as linhas).
-        const orderedDis = [];
-        clusterDis.forEach(di => dayGroups[di].forEach(() => orderedDis.push(di)));
-
-        // Ancorar cada marcador no preço do seu PRÓPRIO dia (abordagem anterior)
-        // parecia certo, mas quebrava o espaçamento: se um dia no meio da pilha
-        // tem preço bem diferente do dia anterior, essa diferença de pixels podia
-        // CANCELAR o incremento da pilha, fazendo dois quadrados ficarem quase
-        // exatamente em cima um do outro mesmo "empilhados" matematicamente (o
-        // efeito visual de dois quadrados grudados formando um "(" distorcido).
-        // Agora todo o cluster empilha a partir de UMA ÂNCORA ÚNICA (preço médio
-        // do cluster) — o espaçamento entre linhas fica sempre exatamente uniforme,
-        // independente de quanto o preço varia de um dia pro outro. O xValue de
-        // cada marcador continua sendo o dia real (posição horizontal correta).
-        const anchorPixel = orderedDis.reduce((s, di) => s + yScale.getPixelForValue(prices[di]), 0) / orderedDis.length;
-        const roomAbove = Math.max(0, anchorPixel - chartArea.top - LABEL_EXTRA);
-        const roomBelow = Math.max(0, chartArea.bottom - anchorPixel - LABEL_EXTRA);
-        const direction = roomAbove >= roomBelow ? -1 : 1;
-        const available = Math.max(roomAbove, roomBelow);
-        const rowHeight = orderedDis.length > 1 ? Math.min(MAX_ROW_HEIGHT, available / (orderedDis.length - 1)) : MAX_ROW_HEIGHT;
-
-        let row = 0;
-        clusterDis.forEach(di => {
-            dayGroups[di].forEach(idx => {
-                const call = filteredCalls[idx];
-                const bc = BANK_COLORS[call.bank] || '#58a6ff';
-                const ownPixel = yScale.getPixelForValue(prices[di]);
-                const yStack = (anchorPixel - ownPixel) + row * rowHeight * direction;
-                annotations[`c${idx}`] = {
-                    type: 'point',
-                    xValue: labels[di], yValue: prices[di],
-                    xAdjust: 0, yAdjust: yStack,
-                    backgroundColor: bc,
-                    borderColor: '#0d1117',
-                    borderWidth: 2,
-                    radius: 8,
-                    pointStyle: 'rectRounded',
-                    label: {
-                        display: true,
-                        content: call.bank,
-                        position: 'start',
-                        xAdjust: 0, yAdjust: yStack + 16 * direction,
-                        backgroundColor: bc,
-                        color: '#0d1117',
-                        font: { size: 9, weight: 'bold' },
-                        padding: { top: 3, bottom: 3, left: 5, right: 5 },
-                        borderRadius: 3
-                    }
-                    // Sem enter/leave aqui de propósito: o tooltip nativo do preço (acima)
-                    // já mostra a mesma info de forma precisa. Um segundo tooltip fixo
-                    // (#chartCallTooltip, sempre no rodapé, sem seguir o mouse) duplicava
-                    // a mensagem e parecia "pertencer" ao quadrado errado.
-                };
-                row++;
-            });
-        });
+    Object.keys(dayGroups).forEach(diStr => {
+        const di = Number(diStr);
+        const group = dayGroups[di];
+        if (group.length === 1) {
+            const idx = group[0];
+            const call = filteredCalls[idx];
+            const bc = BANK_COLORS[call.bank] || '#58a6ff';
+            annotations[`c${idx}`] = {
+                type: 'point', xValue: labels[di], yValue: prices[di],
+                backgroundColor: bc, borderColor: '#0d1117', borderWidth: 2,
+                radius: 8, pointStyle: 'rectRounded'
+            };
+            annotations[`lc${idx}`] = {
+                type: 'label', xValue: labels[di], yValue: prices[di], yAdjust: -18,
+                content: [call.bank], color: '#0d1117', font: { size: 9, weight: 'bold' },
+                backgroundColor: bc, padding: { top: 3, bottom: 3, left: 5, right: 5 }, borderRadius: 3
+            };
+        } else {
+            annotations[`d${di}`] = {
+                type: 'point', xValue: labels[di], yValue: prices[di],
+                backgroundColor: '#21262d', borderColor: '#8b949e', borderWidth: 2,
+                radius: 10, pointStyle: 'circle'
+            };
+            annotations[`ld${di}`] = {
+                type: 'label', xValue: labels[di], yValue: prices[di], yAdjust: -20,
+                content: [String(group.length)], color: '#f0f6fc', font: { size: 10, weight: 'bold' },
+                backgroundColor: '#21262d', padding: { top: 2, bottom: 2, left: 6, right: 6 }, borderRadius: 10
+            };
+        }
     });
 
     chartInstance.options.plugins.annotation.annotations = annotations;

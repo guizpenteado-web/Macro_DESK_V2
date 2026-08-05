@@ -678,6 +678,15 @@ function hideCallTooltip() {
     document.getElementById('callTooltip').style.display = 'none';
 }
 
+function showDayCallsTooltip(dayCalls, canvasX, canvasY) {
+    const canvas = document.getElementById('stockChart');
+    const tooltip = document.getElementById('callTooltip');
+    tooltip.innerHTML = dayCalls.map(c => `<div class="title">${csEsc(c.bank)}: ${csEsc(c.title)}</div>`).join('');
+    tooltip.style.left = (canvas.offsetLeft + canvasX) + 'px';
+    tooltip.style.top = (canvas.offsetTop + canvasY) + 'px';
+    tooltip.style.display = 'block';
+}
+
 function renderStockChart(data) {
     hideCallTooltip();
     if (!data || data.length === 0) return;
@@ -745,6 +754,9 @@ function renderStockChart(data) {
                             const idx = parseInt(id.substring(1));
                             const call = currentCalls[idx];
                             if (call && call.url) window.open(call.url, '_blank');
+                        } else if (id && id.startsWith('d')) {
+                            const di = parseInt(id.substring(1));
+                            showDayCallsTooltip(dayGroups[di].map(idx => currentCalls[idx]), ctx.element.x, ctx.element.y);
                         }
                     }
                 }
@@ -768,95 +780,48 @@ function renderStockChart(data) {
         }
     });
 
-    // O gap entre clusters de dias só pode ser calculado depois que o Chart.js já
-    // sabe quantos pixels cada dia ocupa no eixo X (escala 'category', espaçamento
-    // uniforme) — usado só para decidir quando dois dias próximos devem compartilhar
-    // a mesma pilha vertical.
-    const xScale = chartInstance.scales.x;
-    const pxPerDay = labels.length > 1
-        ? Math.abs(xScale.getPixelForValue(labels[1]) - xScale.getPixelForValue(labels[0]))
-        : 40;
-
-    const dayIndices = Object.keys(dayGroups).map(Number).sort((a, b) => a - b);
-    const clusters = [];
-    let cluster = [];
-    dayIndices.forEach((di, i) => {
-        if (i === 0) { cluster = [di]; return; }
-        const prev = dayIndices[i - 1];
-        // Dias a menos de ~30px um do outro entram na mesma pilha vertical.
-        if ((di - prev) * pxPerDay < 30) {
-            cluster.push(di);
-        } else {
-            clusters.push(cluster);
-            cluster = [di];
-        }
-    });
-    if (cluster.length) clusters.push(cluster);
-
-    // Cada marcador fica sempre exatamente em cima do seu dia real (sem deslocamento
-    // horizontal — nunca "vaza" para o dia vizinho). Calls próximas no tempo se
-    // distinguem empilhando verticalmente (yAdjust por linha), com espaçamento maior
-    // que o próprio marcador (raio 8 + borda) para que as áreas de hover nunca se
-    // toquem — antes disso, quadrados vizinhos se sobrepunham fisicamente e o mouse
-    // acionava o tooltip de vários ao mesmo tempo.
-    const MAX_ROW_HEIGHT = 24;
-    // Reserva de espaço pro rótulo do banco além do último quadrado da pilha: 16px de
-    // xAdjust/yAdjust extra + ~metade da altura da caixa do rótulo (fonte 9px + padding
-    // 6px + borda). Sem essa folga o rótulo do último item de clusters grandes ficava
-    // fora da área do gráfico (invisível), mesmo com o quadrado dentro dos limites.
-    const LABEL_EXTRA = 34;
-    const chartArea = chartInstance.chartArea;
-    const yScale = chartInstance.scales.y;
-
+    // Um marcador por dia, sempre exatamente em cima da linha de preço real — nunca
+    // empilhado/deslocado pra longe dela. Dia com 1 call: quadrado colorido do banco.
+    // Dia com várias calls: marcador neutro com um contador (ex.: "5"); hover mostra
+    // a lista completa. O texto é uma anotação type:'label' SEPARADA, não o sub-campo
+    // "label" de type:'point' — essa combinação de Chart.js + chartjs-plugin-annotation
+    // não renderiza texto dentro do label aninhado de um point (bug confirmado
+    // isolando em HTML mínimo); type:'label' como anotação própria funciona normal.
     const annotations = {};
-    clusters.forEach(clusterDis => {
-        // Ordem real de empilhamento (mesma usada abaixo pra atribuir as linhas).
-        const orderedDis = [];
-        clusterDis.forEach(di => dayGroups[di].forEach(() => orderedDis.push(di)));
-
-        // Ancorar cada marcador no preço do seu PRÓPRIO dia (abordagem anterior)
-        // parecia certo, mas quebrava o espaçamento: se um dia no meio da pilha
-        // tem preço bem diferente do dia anterior, essa diferença de pixels podia
-        // CANCELAR o incremento da pilha, fazendo dois quadrados ficarem quase
-        // exatamente em cima um do outro mesmo "empilhados" matematicamente (o
-        // efeito visual de dois quadrados grudados formando um "(" distorcido).
-        // Agora todo o cluster empilha a partir de UMA ÂNCORA ÚNICA (preço médio
-        // do cluster) — o espaçamento entre linhas fica sempre exatamente uniforme,
-        // independente de quanto o preço varia de um dia pro outro. O xValue de
-        // cada marcador continua sendo o dia real (posição horizontal correta).
-        const anchorPixel = orderedDis.reduce((s, di) => s + yScale.getPixelForValue(prices[di]), 0) / orderedDis.length;
-        const roomAbove = Math.max(0, anchorPixel - chartArea.top - LABEL_EXTRA);
-        const roomBelow = Math.max(0, chartArea.bottom - anchorPixel - LABEL_EXTRA);
-        const direction = roomAbove >= roomBelow ? -1 : 1;
-        const available = Math.max(roomAbove, roomBelow);
-        const rowHeight = orderedDis.length > 1 ? Math.min(MAX_ROW_HEIGHT, available / (orderedDis.length - 1)) : MAX_ROW_HEIGHT;
-
-        let row = 0;
-        clusterDis.forEach(di => {
-            const group = dayGroups[di];
-            group.forEach((idx) => {
-                const call = currentCalls[idx];
-                const bc = BANK_COLORS[call.bank] || '#58a6ff';
-                const ownPixel = yScale.getPixelForValue(prices[di]);
-                const yStack = (anchorPixel - ownPixel) + row * rowHeight * direction;
-                annotations[`c${idx}`] = {
-                    type: 'point', xValue: labels[di], yValue: prices[di],
-                    xAdjust: 0, yAdjust: yStack,
-                    backgroundColor: bc, borderColor: '#0d1117', borderWidth: 2,
-                    radius: 8, pointStyle: 'rectRounded',
-                    label: {
-                        display: true, content: call.bank, position: 'start',
-                        xAdjust: 0, yAdjust: yStack + 16 * direction,
-                        backgroundColor: bc, color: '#0d1117',
-                        font: { size: 9, weight: 'bold' },
-                        padding: { top: 3, bottom: 3, left: 5, right: 5 }, borderRadius: 3
-                    },
-                    enter(actx) { showCallTooltip(call, actx.element.x, actx.element.y); return true; },
-                    leave() { hideCallTooltip(); return true; }
-                };
-                row++;
-            });
-        });
+    Object.keys(dayGroups).forEach(diStr => {
+        const di = Number(diStr);
+        const group = dayGroups[di];
+        if (group.length === 1) {
+            const idx = group[0];
+            const call = currentCalls[idx];
+            const bc = BANK_COLORS[call.bank] || '#58a6ff';
+            annotations[`c${idx}`] = {
+                type: 'point', xValue: labels[di], yValue: prices[di],
+                backgroundColor: bc, borderColor: '#0d1117', borderWidth: 2,
+                radius: 8, pointStyle: 'rectRounded',
+                enter(actx) { showCallTooltip(call, actx.element.x, actx.element.y); return true; },
+                leave() { hideCallTooltip(); return true; }
+            };
+            annotations[`lc${idx}`] = {
+                type: 'label', xValue: labels[di], yValue: prices[di], yAdjust: -18,
+                content: [call.bank], color: '#0d1117', font: { size: 9, weight: 'bold' },
+                backgroundColor: bc, padding: { top: 3, bottom: 3, left: 5, right: 5 }, borderRadius: 3
+            };
+        } else {
+            const dayCalls = group.map(idx => currentCalls[idx]);
+            annotations[`d${di}`] = {
+                type: 'point', xValue: labels[di], yValue: prices[di],
+                backgroundColor: '#21262d', borderColor: '#8b949e', borderWidth: 2,
+                radius: 10, pointStyle: 'circle',
+                enter(actx) { showDayCallsTooltip(dayCalls, actx.element.x, actx.element.y); return true; },
+                leave() { hideCallTooltip(); return true; }
+            };
+            annotations[`ld${di}`] = {
+                type: 'label', xValue: labels[di], yValue: prices[di], yAdjust: -20,
+                content: [String(group.length)], color: '#f0f6fc', font: { size: 10, weight: 'bold' },
+                backgroundColor: '#21262d', padding: { top: 2, bottom: 2, left: 6, right: 6 }, borderRadius: 10
+            };
+        }
     });
 
     chartInstance.options.plugins.annotation.annotations = annotations;
