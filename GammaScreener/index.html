@@ -71,7 +71,7 @@
   .refresh-btn:hover { border-color: var(--text-muted); }
   .refresh-btn:disabled { opacity: 0.5; cursor: default; }
 
-  .search-wrapper { margin: 4px 0 0; position: relative; max-width: 320px; }
+  .search-wrapper { margin: 0; position: relative; max-width: 320px; flex: 1 1 260px; }
   .search-input {
     width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px;
     border: 1px solid var(--border); background: var(--surface);
@@ -245,18 +245,18 @@
         <h1>Gamma Flip — Ibovespa</h1>
       </div>
       <div>
-        <div style="display:flex; align-items:center; justify-content:flex-end; gap:10px; flex-wrap:wrap">
-          <span class="badge" id="screenerOiBadge"></span>
-          <button class="refresh-btn" id="screenerRefreshBtn">Atualizar</button>
-        </div>
+        <button class="refresh-btn" id="screenerRefreshBtn">Atualizar</button>
         <div class="updated" id="screenerUpdatedAt" style="text-align:right; margin-top:4px"></div>
       </div>
     </header>
-    <div class="search-wrapper" id="screenerSearchWrapper">
-      <input type="text" class="search-input" id="screenerSearchInput" placeholder="Buscar por ativo (ex: PETR4, Vale, Itaú)...">
-      <button type="button" class="search-clear-btn" id="screenerSearchClearBtn" title="Limpar busca">&times;</button>
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin: 10px 0">
+      <div class="search-wrapper" id="screenerSearchWrapper">
+        <input type="text" class="search-input" id="screenerSearchInput" placeholder="Buscar por ativo (ex: PETR4, Vale, Itaú)...">
+        <button type="button" class="search-clear-btn" id="screenerSearchClearBtn" title="Limpar busca">&times;</button>
+      </div>
+      <span class="badge" id="screenerOiBadge"></span>
     </div>
-    <div class="badges" id="screenerBadges" style="margin: 10px 0"></div>
+    <div class="badges" id="screenerBadges" style="margin: 0 0 10px"></div>
     <div class="card">
       <div style="overflow-x:auto">
         <table class="screener-table" id="screenerTable">
