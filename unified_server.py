@@ -1649,13 +1649,13 @@ _LOGIN_PAGE = """<!DOCTYPE html>
 </script>
 </body></html>"""
 
-_LOGIN_BG_JPG = BASE / "static" / "login-bg.jpg"
+_LOGIN_BG_IMG = BASE / "static" / "login-bg.png"
 
 
 @app.get("/login-bg")
 async def login_bg() -> Response:
-    if _LOGIN_BG_JPG.exists():
-        return Response(_LOGIN_BG_JPG.read_bytes(), media_type="image/jpeg",
+    if _LOGIN_BG_IMG.exists():
+        return Response(_LOGIN_BG_IMG.read_bytes(), media_type="image/png",
                         headers={"Cache-Control": "public, max-age=86400"})
     return Response("", status_code=404)
 
