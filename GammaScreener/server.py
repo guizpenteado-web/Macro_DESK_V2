@@ -16,7 +16,7 @@ load_dotenv(BASE_DIR / ".env")
 import oplab_client
 import b3_oi_client
 import history_store
-from gex_engine import build_gex_payload, flatten_legs_from_oi
+from gex_engine import build_gex_payload, flatten_legs_from_oi, SELIC_RATE
 
 app = Flask(__name__, static_folder=str(BASE_DIR), static_url_path="")
 
@@ -91,10 +91,26 @@ def _get_stock_cached(ticker):
     return stock
 
 
-def _compute_asset_payload(ticker, root, oi_index, ref_date):
+def _compute_asset_payload(ticker, root, oi_index, ref_date, use_atm_iv=True):
     stock = _get_stock_cached(ticker)
     spot = stock.get("bid") or stock.get("close")
-    iv = (stock.get("iv_current") or 17.5) / 100.0
+
+    iv_current = stock.get("iv_current") or 17.5
+    iv_atm = None
+    # IV ATM real (venc. mais curto) so ajuda em acoes -- em ETF/unit (sufixo
+    # 11, ex BOVA11) o iv_current ja bate bem com o flip real (validado
+    # contra o Jumba, 05/ago/2026: aplicar ATM la piorou o resultado vs
+    # iv_current flat). So busca a serie completa (chamada pesada na OpLab)
+    # na tela de detalhe de 1 ativo -- pro screener em lote (95 ativos),
+    # use_atm_iv=False evita reintroduzir o travamento da OpLab ja visto
+    # antes (ver [[project_gammascreener_oplab_blocking_incident]]).
+    is_etf_or_unit = ticker.endswith("11")
+    if use_atm_iv and not is_etf_or_unit:
+        try:
+            iv_atm = oplab_client.get_atm_iv(ticker, spot, irate_pct=SELIC_RATE * 100)
+        except Exception:
+            iv_atm = None
+    iv = (iv_atm if iv_atm else iv_current) / 100.0
 
     oi_legs_raw = b3_oi_client.extract_legs_from_index(oi_index, root)
     legs = flatten_legs_from_oi(oi_legs_raw, ref_date)
@@ -116,6 +132,7 @@ def _compute_asset_payload(ticker, root, oi_index, ref_date):
     # Campos usados pelo filtro de qualidade do screener (_passes_quality_filter)
     payload["financial_volume"] = stock.get("financial_volume") or 0
     payload["iv_current_raw"] = stock.get("iv_current") or 0
+    payload["iv_source"] = "atm_nearest_expiry" if iv_atm else "stock_iv_current"
 
     # Registra o ponto de hoje no historico com IV real (ao vivo) -- so o
     # backfill do passado usa proxy de volatilidade realizada. Upsert por
@@ -126,7 +143,7 @@ def _compute_asset_payload(ticker, root, oi_index, ref_date):
         history_store.upsert_snapshot(
             ticker=ticker, root=root, ref_date=payload["oi_reference_date"],
             gamma_flip=payload["gamma_flip"], spot=spot, regime=payload["regime"],
-            iv_source="oplab_live", computed_at=payload["updated_at"],
+            iv_source=payload["iv_source"], computed_at=payload["updated_at"],
         )
     except Exception:
         traceback.print_exc()
@@ -134,13 +151,14 @@ def _compute_asset_payload(ticker, root, oi_index, ref_date):
     return payload
 
 
-def _get_asset_payload(ticker, root, oi_index, ref_date, force=False):
+def _get_asset_payload(ticker, root, oi_index, ref_date, force=False, use_atm_iv=True):
     now = time.time()
-    entry = _asset_cache.get(ticker)
+    cache_key = (ticker, use_atm_iv)
+    entry = _asset_cache.get(cache_key)
     if force or entry is None or now - entry["fetched_at"] > ASSET_TTL_SECONDS:
-        payload = _compute_asset_payload(ticker, root, oi_index, ref_date)
+        payload = _compute_asset_payload(ticker, root, oi_index, ref_date, use_atm_iv=use_atm_iv)
         entry = {"payload": payload, "fetched_at": now}
-        _asset_cache[ticker] = entry
+        _asset_cache[cache_key] = entry
     return entry["payload"]
 
 
@@ -154,7 +172,7 @@ def api_gex():
         return jsonify(_get_asset_payload(ticker, root, oi_index, ref_date, force=force))
     except Exception as e:
         traceback.print_exc()
-        entry = _asset_cache.get(ticker)
+        entry = _asset_cache.get((ticker, True))
         if entry is not None:
             stale = dict(entry["payload"])
             stale["fetch_error"] = str(e)
@@ -164,7 +182,12 @@ def api_gex():
 
 def _row_for_asset(asset, oi_index, ref_date, force):
     try:
-        p = _get_asset_payload(asset["ticker"], asset["root"], oi_index, ref_date, force=force)
+        # use_atm_iv=False no screener em lote (95 ativos) -- ATM real e uma
+        # chamada extra por ativo na OpLab, faria isso de novo aqui
+        # reintroduziria o travamento ja visto antes (ver comentario em
+        # _compute_asset_payload). A tela de detalhe de 1 ativo (api_gex)
+        # usa o padrao use_atm_iv=True.
+        p = _get_asset_payload(asset["ticker"], asset["root"], oi_index, ref_date, force=force, use_atm_iv=False)
         return {
             "ticker": asset["ticker"],
             "root": asset["root"],

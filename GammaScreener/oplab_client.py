@@ -91,6 +91,36 @@ def get_all_stocks():
     return _get("/market/stocks")
 
 
+def get_atm_iv(symbol, spot, irate_pct):
+    """IV real (Black-Scholes da OpLab) da opcao mais proxima do dinheiro no
+    vencimento mais curto ainda nao vencido -- e o vencimento que mais pesa
+    no gamma perto do flip, entao usar o IV dele em vez do iv_current
+    (media/suavizado do ativo) calibra melhor o sweep. So considera opcoes
+    com bid/ask>0 (com liquidez) pra nao pegar IV=0 de serie sem book."""
+    data = _get(f"/market/instruments/series/{symbol}", params={"bs": "true", "irate": irate_pct})
+    series = [e for e in data.get("series", []) if (e.get("days_to_maturity") or 0) > 0]
+    if not series:
+        return None
+    nearest = min(series, key=lambda e: e["days_to_maturity"])
+
+    best_iv, best_dist = None, None
+    for row in nearest.get("strikes", []):
+        strike = row.get("strike")
+        if strike is None:
+            continue
+        for side in ("call", "put"):
+            opt = row.get(side) or {}
+            if (opt.get("bid") or 0) <= 0 and (opt.get("ask") or 0) <= 0:
+                continue
+            iv = (opt.get("bs") or {}).get("volatility")
+            if not iv or iv <= 0:
+                continue
+            dist = abs(strike - spot)
+            if best_dist is None or dist < best_dist:
+                best_dist, best_iv = dist, iv
+    return best_iv
+
+
 def get_historical_options(spot_ticker, date_from, date_to):
     """Historico REAL de opcoes (IV/gregas/spot por opcao/dia), endpoint
     /market/historical/options/{spot}/{from}/{to} -- achado por engenharia
