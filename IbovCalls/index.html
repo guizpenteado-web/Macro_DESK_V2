@@ -61,13 +61,6 @@ body {
 .range-btn:hover { background: #1c2128; color: #e1e4e8; }
 .range-btn.active { background: #1f6feb33; border-color: #1f6feb; color: #58a6ff; }
 .chart-wrapper canvas { width: 100% !important; max-height: 500px; }
-#chartCallTooltip {
-    display: none; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
-    background: #161b22; border: 1px solid #30363d; border-radius: 8px;
-    padding: 8px 14px; color: #c9d1d9; font-size: 12px; z-index: 100;
-    pointer-events: none; white-space: nowrap; max-width: 80vw; overflow: hidden;
-    text-overflow: ellipsis;
-}
 
 .legend {
     display: flex; flex-wrap: wrap; gap: 16px; padding: 12px 20px;
@@ -220,7 +213,6 @@ body {
             <p>Carregando dados do Ibovespa...</p>
         </div>
         <canvas id="ibovChart"></canvas>
-        <div id="chartCallTooltip"></div>
     </div>
 
     <div class="legend" id="legend"></div>
@@ -409,7 +401,6 @@ function renderChart() {
     const prices = data.map(d => d.close);
     const filteredCalls = getFilteredCalls();
 
-    const MAX_TITLE_LEN = 50;
     // Calls no mesmo dia (ou dias muito próximos) do índice caem exatamente em cima
     // umas das outras — agrupa por dia resolvido pra depois espalhar em pilha.
     const dayGroups = {};
@@ -451,7 +442,13 @@ function renderChart() {
         options: {
             responsive: true,
             maintainAspectRatio: true,
-            interaction: { intersect: false, mode: 'index' },
+            // intersect:true + nearest faz o tooltip só disparar perto da própria
+            // linha renderizada (dentro do pointHitRadius de 10px do dataset) — antes
+            // era mode:'index' + intersect:false, que dispara pro dia mais próximo em
+            // QUALQUER lugar do canvas (mesmo longe da linha e do quadrado), dando a
+            // impressão de "informação aparecendo do nada" ao passar o mouse em
+            // espaço vazio do gráfico.
+            interaction: { intersect: true, mode: 'nearest' },
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -588,7 +585,6 @@ function renderChart() {
             dayGroups[di].forEach(idx => {
                 const call = filteredCalls[idx];
                 const bc = BANK_COLORS[call.bank] || '#58a6ff';
-                const shortTitle = call.title.length > MAX_TITLE_LEN ? call.title.substring(0, MAX_TITLE_LEN) + '...' : call.title;
                 const yStack = row * rowHeight * direction;
                 annotations[`c${idx}`] = {
                     type: 'point',
@@ -609,18 +605,11 @@ function renderChart() {
                         font: { size: 9, weight: 'bold' },
                         padding: { top: 3, bottom: 3, left: 5, right: 5 },
                         borderRadius: 3
-                    },
-                    enter: (ctx) => {
-                        const el = document.getElementById('chartCallTooltip');
-                        if (el) {
-                            el.innerHTML = `<strong>${call.bank}</strong> — ${shortTitle}`;
-                            el.style.display = 'block';
-                        }
-                    },
-                    leave: () => {
-                        const el = document.getElementById('chartCallTooltip');
-                        if (el) el.style.display = 'none';
                     }
+                    // Sem enter/leave aqui de propósito: o tooltip nativo do preço (acima)
+                    // já mostra a mesma info de forma precisa. Um segundo tooltip fixo
+                    // (#chartCallTooltip, sempre no rodapé, sem seguir o mouse) duplicava
+                    // a mensagem e parecia "pertencer" ao quadrado errado.
                 };
                 row++;
             });
