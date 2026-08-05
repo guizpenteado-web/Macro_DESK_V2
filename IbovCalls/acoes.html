@@ -696,28 +696,23 @@ function renderStockChart(data) {
     // toquem — antes disso, quadrados vizinhos se sobrepunham fisicamente e o mouse
     // acionava o tooltip de vários ao mesmo tempo.
     const MAX_ROW_HEIGHT = 24;
-    const MIN_ROW_HEIGHT = 16; // abaixo disso o próprio marcador (raio 8 + borda) volta a se tocar
     const chartArea = chartInstance.chartArea;
     const yScale = chartInstance.scales.y;
 
     const annotations = {};
     clusters.forEach(clusterDis => {
         const totalCount = clusterDis.reduce((s, di) => s + dayGroups[di].length, 0);
-        // Referência: o dia de maior preço no cluster é o pior caso pra empilhar pra
-        // cima (menos espaço até o topo do gráfico); o de menor preço, pra baixo.
         const highestDi = clusterDis.reduce((b, di) => (prices[di] > prices[b] ? di : b), clusterDis[0]);
         const lowestDi = clusterDis.reduce((b, di) => (prices[di] < prices[b] ? di : b), clusterDis[0]);
-        const roomAbove = yScale.getPixelForValue(prices[highestDi]) - chartArea.top - 24;
-        const roomBelow = chartArea.bottom - yScale.getPixelForValue(prices[lowestDi]) - 8;
-        // Cresce pra cima por padrão (mais legível, rótulo acima do preço); só troca
-        // de direção se realmente não couber. Comprime o espaçamento entre linhas
-        // até o mínimo antes de deixar vazar pra fora da área do gráfico.
-        const needed = (totalCount - 1) * MAX_ROW_HEIGHT;
-        const direction = (roomAbove >= needed || roomAbove >= roomBelow) ? -1 : 1;
-        const available = direction === -1 ? roomAbove : roomBelow;
-        const rowHeight = totalCount > 1
-            ? Math.max(MIN_ROW_HEIGHT, Math.min(MAX_ROW_HEIGHT, available / (totalCount - 1)))
-            : MAX_ROW_HEIGHT;
+        const roomAbove = Math.max(0, yScale.getPixelForValue(prices[highestDi]) - chartArea.top - 24);
+        const roomBelow = Math.max(0, chartArea.bottom - yScale.getPixelForValue(prices[lowestDi]) - 8);
+        // Escolhe sempre o lado com mais espaço real e nunca ultrapassa esse espaço —
+        // um "piso" mínimo de altura por linha empurrava marcadores pra fora do
+        // canvas quando havia calls demais no mesmo dia, tornando-os impossíveis de
+        // hover porque ficavam fisicamente fora da área do gráfico.
+        const direction = roomAbove >= roomBelow ? -1 : 1;
+        const available = Math.max(roomAbove, roomBelow);
+        const rowHeight = totalCount > 1 ? Math.min(MAX_ROW_HEIGHT, available / (totalCount - 1)) : MAX_ROW_HEIGHT;
 
         let row = 0;
         clusterDis.forEach(di => {

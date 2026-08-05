@@ -409,45 +409,14 @@ function renderChart() {
     const prices = data.map(d => d.close);
     const filteredCalls = getFilteredCalls();
 
-    const annotations = {};
     const MAX_TITLE_LEN = 50;
+    // Calls no mesmo dia (ou dias muito próximos) do índice caem exatamente em cima
+    // umas das outras — agrupa por dia resolvido pra depois espalhar em pilha.
+    const dayGroups = {};
     filteredCalls.forEach((call, idx) => {
         const di = labels.indexOf(call.date);
         if (di === -1) return;
-        const bc = BANK_COLORS[call.bank] || '#58a6ff';
-        const shortTitle = call.title.length > MAX_TITLE_LEN ? call.title.substring(0, MAX_TITLE_LEN) + '...' : call.title;
-        annotations[`c${idx}`] = {
-            type: 'point',
-            xValue: call.date,
-            yValue: prices[di],
-            backgroundColor: bc,
-            borderColor: '#0d1117',
-            borderWidth: 2,
-            radius: 8,
-            pointStyle: 'rectRounded',
-            label: {
-                display: true,
-                content: call.bank,
-                position: 'start',
-                yAdjust: -16,
-                backgroundColor: bc,
-                color: '#0d1117',
-                font: { size: 9, weight: 'bold' },
-                padding: { top: 3, bottom: 3, left: 5, right: 5 },
-                borderRadius: 3
-            },
-            enter: (ctx) => {
-                const el = document.getElementById('chartCallTooltip');
-                if (el) {
-                    el.innerHTML = `<strong>${call.bank}</strong> — ${shortTitle}`;
-                    el.style.display = 'block';
-                }
-            },
-            leave: () => {
-                const el = document.getElementById('chartCallTooltip');
-                if (el) el.style.display = 'none';
-            }
-        };
+        (dayGroups[di] = dayGroups[di] || []).push(idx);
     });
 
     if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
@@ -511,7 +480,7 @@ function renderChart() {
                     }
                 },
                 annotation: {
-                    annotations,
+                    annotations: {},
                     click: (ctx) => {
                         const id = ctx.elementId;
                         if (id && id.startsWith('c')) {
@@ -543,6 +512,99 @@ function renderChart() {
             }
         }
     });
+
+    // O gap entre clusters de dias só pode ser calculado depois que o Chart.js já
+    // sabe quantos pixels cada dia ocupa no eixo X (escala 'category', espaçamento
+    // uniforme) — usado só pra decidir quando dois dias próximos compartilham pilha.
+    const xScale = chartInstance.scales.x;
+    const pxPerDay = labels.length > 1
+        ? Math.abs(xScale.getPixelForValue(labels[1]) - xScale.getPixelForValue(labels[0]))
+        : 40;
+
+    const dayIndices = Object.keys(dayGroups).map(Number).sort((a, b) => a - b);
+    const clusters = [];
+    let cluster = [];
+    dayIndices.forEach((di, i) => {
+        if (i === 0) { cluster = [di]; return; }
+        const prev = dayIndices[i - 1];
+        if ((di - prev) * pxPerDay < 30) {
+            cluster.push(di);
+        } else {
+            clusters.push(cluster);
+            cluster = [di];
+        }
+    });
+    if (cluster.length) clusters.push(cluster);
+
+    // Cada marcador fica sempre exatamente em cima do seu dia real (sem deslocamento
+    // horizontal — nunca "vaza" pro dia vizinho). Calls próximas se distinguem
+    // empilhando verticalmente, com espaçamento maior que o próprio marcador (raio 8
+    // + borda) pra que as áreas de hover nunca se toquem e disparem tooltip errado.
+    const MAX_ROW_HEIGHT = 24;
+    const chartArea = chartInstance.chartArea;
+    const yScale = chartInstance.scales.y;
+
+    const annotations = {};
+    clusters.forEach(clusterDis => {
+        const totalCount = clusterDis.reduce((s, di) => s + dayGroups[di].length, 0);
+        const highestDi = clusterDis.reduce((b, di) => (prices[di] > prices[b] ? di : b), clusterDis[0]);
+        const lowestDi = clusterDis.reduce((b, di) => (prices[di] < prices[b] ? di : b), clusterDis[0]);
+        const roomAbove = Math.max(0, yScale.getPixelForValue(prices[highestDi]) - chartArea.top - 24);
+        const roomBelow = Math.max(0, chartArea.bottom - yScale.getPixelForValue(prices[lowestDi]) - 8);
+        // Escolhe sempre o lado com mais espaço real e nunca ultrapassa esse espaço —
+        // um "piso" mínimo de altura por linha empurrava marcadores pra fora do
+        // canvas quando havia calls demais (ex.: 8 no mesmo dia), tornando-os
+        // impossíveis de hover porque ficavam fisicamente fora da área do gráfico.
+        const direction = roomAbove >= roomBelow ? -1 : 1;
+        const available = Math.max(roomAbove, roomBelow);
+        const rowHeight = totalCount > 1 ? Math.min(MAX_ROW_HEIGHT, available / (totalCount - 1)) : MAX_ROW_HEIGHT;
+
+        let row = 0;
+        clusterDis.forEach(di => {
+            dayGroups[di].forEach(idx => {
+                const call = filteredCalls[idx];
+                const bc = BANK_COLORS[call.bank] || '#58a6ff';
+                const shortTitle = call.title.length > MAX_TITLE_LEN ? call.title.substring(0, MAX_TITLE_LEN) + '...' : call.title;
+                const yStack = row * rowHeight * direction;
+                annotations[`c${idx}`] = {
+                    type: 'point',
+                    xValue: labels[di], yValue: prices[di],
+                    xAdjust: 0, yAdjust: yStack,
+                    backgroundColor: bc,
+                    borderColor: '#0d1117',
+                    borderWidth: 2,
+                    radius: 8,
+                    pointStyle: 'rectRounded',
+                    label: {
+                        display: true,
+                        content: call.bank,
+                        position: 'start',
+                        xAdjust: 0, yAdjust: yStack + 16 * direction,
+                        backgroundColor: bc,
+                        color: '#0d1117',
+                        font: { size: 9, weight: 'bold' },
+                        padding: { top: 3, bottom: 3, left: 5, right: 5 },
+                        borderRadius: 3
+                    },
+                    enter: (ctx) => {
+                        const el = document.getElementById('chartCallTooltip');
+                        if (el) {
+                            el.innerHTML = `<strong>${call.bank}</strong> — ${shortTitle}`;
+                            el.style.display = 'block';
+                        }
+                    },
+                    leave: () => {
+                        const el = document.getElementById('chartCallTooltip');
+                        if (el) el.style.display = 'none';
+                    }
+                };
+                row++;
+            });
+        });
+    });
+
+    chartInstance.options.plugins.annotation.annotations = annotations;
+    chartInstance.update('none');
 }
 
 function renderTimeline(calls) {
