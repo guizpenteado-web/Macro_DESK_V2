@@ -1584,37 +1584,69 @@ _LOGIN_PAGE = """<!DOCTYPE html>
 <title>Macro Desk — Login</title>
 <style>
   *{{box-sizing:border-box;margin:0;padding:0}}
-  html,body{{height:100%}}
-  body{{display:flex;align-items:center;justify-content:center;background:#000108;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}}
-
-  /* .stage mantem a proporcao exata da imagem (1672x941) pra qualquer viewport,
-     assim os campos sobrepostos ficam sempre alinhados ao formulario desenhado nela */
-  .stage{{position:relative;width:100vw;height:calc(100vw * 941 / 1672);
-    max-height:100vh;max-width:calc(100vh * 1672 / 941)}}
-  .stage img{{width:100%;height:100%;display:block;object-fit:fill}}
-
-  .field{{position:absolute;left:41.57%;width:16.51%;background:transparent;
-    border:none;outline:none;color:#eef3fb;font-size:1.35vw;font-family:inherit;
-    padding:0 1%}}
+  html,body{{height:100%;overflow:hidden;background:#000108}}
+  #bg{{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;
+    object-position:center;z-index:0}}
+  .field{{position:fixed;background:transparent;border:none;outline:none;
+    color:#eef3fb;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    padding:0 1%;z-index:2}}
   .field::placeholder{{color:transparent}}
-  #username{{top:47.15%;height:3.6%}}
-  #password{{top:54.7%;height:3.6%}}
-  .submit{{position:absolute;left:41.57%;top:60.4%;width:16.51%;height:3.35%;
-    background:transparent;border:none;cursor:pointer}}
-  .err{{position:absolute;left:41.57%;top:41.6%;width:16.51%;
-    color:#ff6b6b;font-size:1vw;font-weight:600;text-shadow:0 0 4px #000}}
+  .submit{{position:fixed;background:transparent;border:none;cursor:pointer;z-index:2}}
+  .err{{position:fixed;color:#ff6b6b;font-weight:600;text-shadow:0 0 4px #000;z-index:2}}
 </style></head>
 <body>
-  <div class="stage">
-    <img src="/login-bg" alt="Macro Desk">
-    {error_html}
-    <form method="post" action="/api/auth/login">
-      <input id="username" class="field" type="text" name="username" autofocus required placeholder="Usuário">
-      <input id="password" class="field" type="password" name="password" required placeholder="Senha">
-      <button class="submit" type="submit" aria-label="Entrar"></button>
-    </form>
-  </div>
+  <img id="bg" src="/login-bg" alt="Macro Desk">
+  {error_html}
+  <form method="post" action="/api/auth/login">
+    <input id="username" class="field" type="text" name="username" autofocus required placeholder="Usuário">
+    <input id="password" class="field" type="password" name="password" required placeholder="Senha">
+    <button id="submitBtn" class="submit" type="submit" aria-label="Entrar"></button>
+  </form>
+<script>
+(function(){{
+  var IMG_W = 1672, IMG_H = 941;
+  /* retangulos como fracao da imagem original (left, top, width, height) —
+     calculados uma vez sobre o arquivo fonte, nao mudam com a viewport */
+  var RECTS = {{
+    username:  [0.4157, 0.4715, 0.1651, 0.0360],
+    password:  [0.4157, 0.5470, 0.1651, 0.0360],
+    submitBtn: [0.4157, 0.6040, 0.1651, 0.0335]
+  }};
+  var ERR_RECT = [0.4157, 0.4160, 0.1651, 0.0300];
+
+  function place(el, r, scale, offX, offY){{
+    var left = r[0]*IMG_W*scale - offX;
+    var top = r[1]*IMG_H*scale - offY;
+    var width = r[2]*IMG_W*scale;
+    var height = r[3]*IMG_H*scale;
+    el.style.left = left + "px";
+    el.style.top = top + "px";
+    el.style.width = width + "px";
+    el.style.height = height + "px";
+    el.style.fontSize = Math.round(height*0.5) + "px";
+  }}
+
+  function layout(){{
+    var vw = window.innerWidth, vh = window.innerHeight;
+    /* object-fit:cover: a imagem escala uniformemente pro maior fator
+       necessario pra cobrir a viewport inteira e fica centralizada —
+       reproduzimos essa mesma conta aqui pra saber onde cada ponto da
+       imagem original caiu na tela depois do corte */
+    var scale = Math.max(vw/IMG_W, vh/IMG_H);
+    var dispW = IMG_W*scale, dispH = IMG_H*scale;
+    var offX = (dispW - vw)/2, offY = (dispH - vh)/2;
+    for (var id in RECTS){{
+      var el = document.getElementById(id);
+      if (el) place(el, RECTS[id], scale, offX, offY);
+    }}
+    var err = document.getElementById("errBox");
+    if (err) place(err, ERR_RECT, scale, offX, offY);
+  }}
+
+  window.addEventListener("resize", layout);
+  layout();
+}})();
+</script>
 </body></html>"""
 
 _LOGIN_BG_JPG = BASE / "static" / "login-bg.jpg"
@@ -1630,7 +1662,7 @@ async def login_bg() -> Response:
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(erro: str = "") -> str:
-    error_html = '<div class="err">Usuário ou senha inválidos.</div>' if erro else ""
+    error_html = '<div id="errBox" class="err">Usuário ou senha inválidos.</div>' if erro else ""
     return _LOGIN_PAGE.format(error_html=error_html)
 
 
