@@ -670,8 +670,8 @@ function renderCockpit() {
   }
 
   const shapes = buildVlines([
-    { x: categoryIndexFor(d.spot, strikeValues), label: `Spot R$ ${d.spot.toFixed(2)}`, color: cssVar('--text-primary') },
-    { x: categoryIndexFor(d.gamma_flip, strikeValues), label: `Gamma Flip R$ ${d.gamma_flip?.toFixed(2)}`, color: '#eab308', xshift: -14 },
+    { x: categoryIndexFor(d.spot, strikeValues), label: `Spot R$ ${d.spot.toFixed(2)}`, color: cssVar('--text-primary'), y: 1.03 },
+    { x: categoryIndexFor(d.gamma_flip, strikeValues), label: `Gamma Flip R$ ${d.gamma_flip?.toFixed(2)}`, color: '#eab308', xshift: -42, y: 1.11 },
   ], true);
 
   const layout = plotlyLayoutBase({
@@ -703,8 +703,8 @@ function renderProfile() {
   ];
 
   const shapes = buildVlines([
-    { x: d.spot, color: cssVar('--text-primary'), label: 'Spot' },
-    { x: d.gamma_flip, color: cssVar('--call'), label: 'Gamma Flip', xshift: -14 },
+    { x: d.spot, color: cssVar('--text-primary'), label: 'Spot', y: 1.03 },
+    { x: d.gamma_flip, color: cssVar('--call'), label: 'Gamma Flip', xshift: -42, y: 1.11 },
   ]);
 
   const layout = plotlyLayoutBase({
@@ -734,7 +734,7 @@ function buildVlines(items, preLabeled) {
   return items
     .filter(it => it.x != null)
     .map((it, i) => {
-      const y = VLINE_Y_LEVELS[i] ?? VLINE_Y_LEVELS[VLINE_Y_LEVELS.length - 1];
+      const y = it.y ?? (VLINE_Y_LEVELS[i] ?? VLINE_Y_LEVELS[VLINE_Y_LEVELS.length - 1]);
       const text = preLabeled ? it.label : `${it.label} R$ ${it.x.toFixed(2)}`;
       return {
         shape: { type: 'line', x0: it.x, x1: it.x, y0: 0, y1: 1, yref: 'paper', line: { color: it.color, width: 2, dash: 'dash' } },
