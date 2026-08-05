@@ -374,6 +374,15 @@ let currentMode = 'net';
 let currentTicker = 'BOVA11';
 let currentRoot = 'BOVA';
 
+// Base absoluta calculada a partir de location.pathname em vez de fetch
+// relativo puro ('api/...') -- achado 05/ago/2026: dentro do iframe do Hub
+// (embed em /gamma/), a resolucao relativa as vezes bate em "/api/..." na
+// raiz do dominio em vez de "/gamma/api/...", gerando 404 real (nao e' cache
+// do navegador, confirmado no log de acesso do Hub). location.pathname
+// sempre reflete a URL de fato carregada, entao concatenar direto elimina
+// qualquer ambiguidade de resolucao relativa.
+const API_BASE = location.pathname.endsWith('/') ? location.pathname : location.pathname + '/';
+
 function showScreener() {
   document.getElementById('screenerView').style.display = '';
   document.getElementById('detailView').style.display = 'none';
@@ -394,7 +403,7 @@ async function renderHistory(ticker) {
   const listEl = document.getElementById('historyList');
   listEl.innerHTML = '<div class="history-empty">Carregando...</div>';
   try {
-    const r = await fetch(`api/gex-history?ticker=${encodeURIComponent(ticker)}`);
+    const r = await fetch(`${API_BASE}api/gex-history?ticker=${encodeURIComponent(ticker)}`, { cache: 'no-store' });
     const data = await r.json();
     const points = data.points || [];
     if (points.length === 0) {
@@ -449,7 +458,7 @@ async function fetchData(force) {
   try {
     const params = new URLSearchParams({ ticker: currentTicker, root: currentRoot });
     if (force) params.set('force', '1');
-    const r = await fetch(`api/gex?${params}`, { cache: 'no-store' });
+    const r = await fetch(`${API_BASE}api/gex?${params}`, { cache: 'no-store' });
     if (!r.ok) throw new Error(`servidor respondeu ${r.status} (provavelmente reiniciando, tente de novo em alguns segundos)`);
     const data = await r.json();
     if (data.error) throw new Error(data.error);
@@ -473,7 +482,7 @@ async function fetchScreener(force) {
   btn.disabled = true;
   btn.textContent = 'Atualizando...';
   try {
-    const r = await fetch(`api/screener${force ? '?force=1' : ''}`, { cache: 'no-store' });
+    const r = await fetch(`${API_BASE}api/screener${force ? '?force=1' : ''}`, { cache: 'no-store' });
     if (!r.ok) throw new Error(`servidor respondeu ${r.status} (provavelmente reiniciando, tente de novo em alguns segundos)`);
     const data = await r.json();
     if (data.error) throw new Error(data.error);
