@@ -1608,11 +1608,11 @@ _LOGIN_PAGE = """<!DOCTYPE html>
   /* retangulos como fracao da imagem original (left, top, width, height) —
      calculados uma vez sobre o arquivo fonte, nao mudam com a viewport */
   var RECTS = {{
-    username:  [0.4157, 0.4715, 0.1651, 0.0360],
-    password:  [0.4157, 0.5470, 0.1651, 0.0360],
-    submitBtn: [0.4157, 0.6040, 0.1651, 0.0335]
+    username:  [0.3888, 0.4715, 0.1651, 0.0360],
+    password:  [0.3888, 0.5470, 0.1651, 0.0360],
+    submitBtn: [0.3888, 0.6040, 0.1651, 0.0335]
   }};
-  var ERR_RECT = [0.4157, 0.4160, 0.1651, 0.0300];
+  var ERR_RECT = [0.3888, 0.4160, 0.1651, 0.0300];
 
   function place(el, r, scale, offX, offY){{
     var left = r[0]*IMG_W*scale - offX;
