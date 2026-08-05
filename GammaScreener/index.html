@@ -671,7 +671,7 @@ function renderCockpit() {
 
   const shapes = buildVlines([
     { x: categoryIndexFor(d.spot, strikeValues), label: `Spot R$ ${d.spot.toFixed(2)}`, color: cssVar('--text-primary'), y: 1.03 },
-    { x: categoryIndexFor(d.gamma_flip, strikeValues), label: `Gamma Flip R$ ${d.gamma_flip?.toFixed(2)}`, color: '#eab308', xshift: -42, y: 1.11 },
+    { x: categoryIndexFor(d.gamma_flip, strikeValues), label: `Gamma Flip R$ ${d.gamma_flip?.toFixed(2)}`, color: '#eab308', xshift: -24, y: 1.07 },
   ], true);
 
   const layout = plotlyLayoutBase({
@@ -704,7 +704,7 @@ function renderProfile() {
 
   const shapes = buildVlines([
     { x: d.spot, color: cssVar('--text-primary'), label: 'Spot', y: 1.03 },
-    { x: d.gamma_flip, color: cssVar('--call'), label: 'Gamma Flip', xshift: -42, y: 1.11 },
+    { x: d.gamma_flip, color: cssVar('--call'), label: 'Gamma Flip', xshift: -24, y: 1.07 },
   ]);
 
   const layout = plotlyLayoutBase({
