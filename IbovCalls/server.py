@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import os
 import re
 import json
+import sqlite3
 import concurrent.futures
 
 app = Flask(__name__, static_folder='.')
@@ -16,6 +17,34 @@ DEEPVAL_HTML_PATH = os.environ.get(
     os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'DeepValuationBrasil', 'consenso_analistas.html')
 )
 SNAPSHOT_SCRIPT_RE = re.compile(r'<script id="snapshot" type="application/json">(.*?)</script>', re.S)
+
+# FUNDAMENTUS_DB: mesmo padrao do DEEPVAL_HTML_PATH acima -- o projeto
+# FundamentusBR mora fora do repo do Hub, em Downloads/TestCarlao/FundamentusBR
+# (so local nesta maquina; VPS ainda nao tem essa pasta).
+FUNDAMENTUS_DB_PATH = os.environ.get(
+    'FUNDAMENTUS_DB',
+    r'C:\Users\Guilherme\Downloads\TestCarlao\FundamentusBR\data\fundamentus.sqlite3'
+)
+
+# Layout dos campos do quadro fundamentalista (copiado de FundamentusBR/fundamentus.py
+# DISPLAY_SECTIONS -- e so configuracao estatica de layout, copiar evita import cross-repo).
+FUNDAMENTUS_SECTIONS = {
+    "identity_left": ["Papel", "Tipo", "Empresa", "Setor", "Subsetor"],
+    "identity_right": ["Cotação", "Data últ cot", "Min 52 sem", "Max 52 sem", "Vol $ méd (2m)"],
+    "market_left": ["Valor de mercado", "Valor da firma"],
+    "market_right": ["Últ balanço processado", "Nro. Ações"],
+    "indicators_left": [
+        "P/L", "P/VP", "P/EBIT", "PSR", "P/Ativos", "P/Cap. Giro",
+        "P/Ativ Circ Liq", "Div. Yield", "EV / EBITDA", "EV / EBIT", "Cres. Rec (5a)",
+    ],
+    "indicators_right": [
+        "LPA", "VPA", "Marg. Bruta", "Marg. EBIT", "Marg. Líquida",
+        "EBIT / Ativo", "ROIC", "ROE", "Liquidez Corr", "Dív Líq / Patrim", "Giro Ativos",
+    ],
+    "balance_left": ["Ativo", "Disponibilidades", "Ativo Circulante"],
+    "balance_right": ["Dív. Bruta", "Dív. Líquida", "Patrim. Líq"],
+    "income": ["Receita Líquida", "EBIT", "Lucro Líquido"],
+}
 
 
 @app.after_request
@@ -53,6 +82,35 @@ def get_consenso_analistas():
         return jsonify({'error': 'snapshot de consenso malformado'}), 500
 
     return jsonify(snapshot)
+
+
+@app.route('/api/fundamentus/<ticker>')
+def get_fundamentus_asset(ticker):
+    clean_ticker = re.sub(r'[^A-Z0-9]', '', ticker.upper())
+    if not clean_ticker:
+        return jsonify({'error': 'ticker inválido'}), 400
+
+    if not os.path.exists(FUNDAMENTUS_DB_PATH):
+        return jsonify({'error': 'base de dados do Fundamentus indisponível'}), 503
+
+    try:
+        conn = sqlite3.connect(f'file:{FUNDAMENTUS_DB_PATH}?mode=ro', uri=True, timeout=10)
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            'SELECT payload, updated_at FROM assets WHERE ticker = ?', (clean_ticker,)
+        ).fetchone()
+        conn.close()
+    except sqlite3.Error:
+        return jsonify({'error': 'falha ao ler base do Fundamentus'}), 500
+
+    if not row:
+        return jsonify({'error': 'sem dados de Fundamentus para este ativo ainda'}), 404
+
+    asset = json.loads(row['payload'])
+    asset['updated_at'] = row['updated_at']
+    asset['sections'] = FUNDAMENTUS_SECTIONS
+    return jsonify(asset)
+
 
 @app.route('/api/ibov')
 def get_ibov_data():

@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Calls dos Bancos por Ação</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Share+Tech+Mono&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -213,6 +216,82 @@ body {
 .consenso-help-panel strong { color: #f0f6fc; }
 .consenso-sub { color: #8b949e; margin: 6px 0 14px; line-height: 1.55; font-size: 13px; }
 
+/* ---- Fundamentus (balão premium navy+gold, mesmo design system do Portfolio/CEU) ---- */
+.fundamentus-cta {
+    display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+    padding: 11px 24px; border-radius: 12px; border: 1px solid #8a6d22;
+    background: rgba(212,175,55,0.12); color: #f4d675; font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+}
+.fundamentus-cta:hover:not(:disabled) { background: rgba(212,175,55,0.22); border-color: #d4af37; }
+.fundamentus-cta:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.fundamentus-overlay {
+    display: none; position: fixed; inset: 0; z-index: 500;
+    background: rgba(3,6,15,0.78); backdrop-filter: blur(4px);
+    align-items: center; justify-content: center; padding: 24px;
+}
+.fundamentus-overlay.open { display: flex; }
+.fundamentus-balloon {
+    --navy-950:#03060f; --navy-900:#060b1a; --navy-800:#0a1128; --navy-700:#0f1c3d;
+    --line:#22315c; --gold:#d4af37; --gold-light:#f4d675; --gold-dim:#8a6d22;
+    --pos:#33e6a0; --neg:#ff5470; --text:#e9edf7; --text-mid:#aab3cf; --text-dim:#6c7699;
+    width: min(980px, 100%); max-height: 90vh; overflow-y: auto; border-radius: 14px;
+    background:
+        radial-gradient(ellipse at 20% -10%, rgba(212,175,55,0.10), transparent 40%),
+        linear-gradient(180deg, var(--navy-900), var(--navy-950) 60%);
+    border: 1px solid rgba(212,175,55,0.35);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+.fnd-head {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
+    padding: 22px 26px; border-bottom: 1px solid rgba(212,175,55,0.25);
+    position: sticky; top: 0; background: linear-gradient(180deg, rgba(10,17,40,0.96), rgba(6,11,26,0.9));
+    backdrop-filter: blur(6px); z-index: 2;
+}
+.fnd-head .fnd-eyebrow { color: #82ddaa; font: 600 9px 'Share Tech Mono', monospace; letter-spacing: 1.5px; }
+.fnd-head h2 { font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 26px; color: var(--gold-light); margin: 6px 0 2px; }
+.fnd-head .fnd-company { color: var(--text-mid); font-size: 13px; }
+.fnd-head .fnd-stamp { color: var(--text-dim); font: 11px 'Share Tech Mono', monospace; margin-top: 4px; }
+.fnd-close {
+    width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line);
+    background: var(--navy-800); color: var(--text-mid); cursor: pointer; font-size: 16px;
+    flex-shrink: 0; transition: all 0.2s;
+}
+.fnd-close:hover { border-color: var(--gold); color: var(--gold-light); }
+.fnd-body { padding: 22px 26px 28px; }
+.fnd-loading, .fnd-empty { text-align: center; padding: 60px 20px; color: var(--text-dim); font-size: 14px; }
+.fnd-loading .spinner {
+    width: 36px; height: 36px; border: 3px solid var(--line); border-top-color: var(--gold);
+    border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px;
+}
+
+.fnd-table { width: 100%; min-width: 640px; border-collapse: separate; border-spacing: 1px; table-layout: fixed; color: var(--text); margin-bottom: 3px; }
+.fnd-table col.fnd-label { width: 18%; } .fnd-table col.fnd-value { width: 32%; }
+.fnd-table col.fnd-swing-label { width: 10%; } .fnd-table col.fnd-swing-value { width: 11%; }
+.fnd-table col.fnd-ind-label { width: 18%; } .fnd-table col.fnd-ind-value { width: 21.5%; }
+.fnd-table th, .fnd-table td { height: 26px; padding: 4px 10px; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+.fnd-table tbody th { background: var(--navy-800); color: var(--text-mid); font-weight: 600; }
+.fnd-table tbody td { background: rgba(15,28,61,0.55); color: var(--text); font-weight: 600; }
+.fnd-table .fnd-right-pair { border-left: 2px solid var(--navy-950); }
+.fnd-table .fnd-ticker-cell { color: var(--gold-light); font-weight: 700; letter-spacing: .3px; }
+.fnd-table .fnd-quote-cell { color: var(--pos); font-size: 14px; font-weight: 700; }
+.fnd-table .fnd-spacer td { height: 5px; padding: 0; background: var(--navy-950); }
+.fnd-table thead th { text-align: center; }
+.fnd-section-title th { height: 30px; padding: 4px 10px; background: linear-gradient(180deg, var(--navy-700), var(--navy-800)); color: var(--gold-light); font: 600 13px 'Inter', sans-serif; letter-spacing: -.2px; border-top: 1px solid rgba(212,175,55,0.25); }
+.fnd-section-title th + th { border-left: 2px solid var(--navy-950); }
+.fnd-period-title th { height: 26px; padding: 4px 10px; background: var(--navy-800); color: var(--text-mid); font: 600 11px 'Inter', sans-serif; border-bottom: 1px solid rgba(212,175,55,0.15); }
+.fnd-period-title th + th { border-left: 2px solid var(--navy-950); }
+.fnd-table .fnd-change.positive { color: var(--pos); } .fnd-table .fnd-change.negative { color: var(--neg); } .fnd-table .fnd-change.neutral { color: var(--text-mid); }
+.fnd-disclaimer { text-align: right; color: var(--text-dim); font: 9px 'Share Tech Mono', monospace; margin: 10px 2px 0; }
+
+@media (max-width: 720px) {
+    .fnd-head { flex-direction: column; }
+    .fnd-body { padding: 16px; }
+    .fnd-table { min-width: 560px; }
+}
+
 @media (max-width: 900px) { .consenso-cards { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 520px) {
     .consenso-cards { grid-template-columns: 1fr; }
@@ -244,7 +323,25 @@ body {
             <h1><button class="back-btn" onclick="history.back()" title="Voltar pra página anterior">←</button><span>AÇÕES</span><a href="/" class="view-toggle-btn">IBOVESPA</a></h1>
             <div class="subtitle">Preço-alvo e recomendações por ativo</div>
         </div>
-        <button type="button" class="consenso-cta" onclick="window.location.hash='#/consenso'">Consenso Analistas</button>
+        <div style="display:flex; gap:10px;">
+            <button type="button" class="fundamentus-cta" id="fundamentusCta" disabled onclick="openFundamentus()">Fundamentus</button>
+            <button type="button" class="consenso-cta" onclick="window.location.hash='#/consenso'">Consenso Analistas</button>
+        </div>
+    </div>
+
+    <div class="fundamentus-overlay" id="fundamentusOverlay" onclick="if(event.target===this) closeFundamentus()">
+        <div class="fundamentus-balloon">
+            <div class="fnd-head">
+                <div>
+                    <div class="fnd-eyebrow">ANÁLISE FUNDAMENTALISTA</div>
+                    <h2 id="fndTicker"></h2>
+                    <div class="fnd-company" id="fndCompany"></div>
+                    <div class="fnd-stamp" id="fndStamp"></div>
+                </div>
+                <button type="button" class="fnd-close" onclick="closeFundamentus()" title="Fechar" aria-label="Fechar">✕</button>
+            </div>
+            <div class="fnd-body" id="fndBody"></div>
+        </div>
     </div>
 
     <div id="listView">
@@ -452,11 +549,16 @@ function renderTickerGrid(tickers) {
     });
 }
 
+function syncFundamentusCta() {
+    document.getElementById('fundamentusCta').disabled = !currentTicker;
+}
+
 function showList() {
     document.getElementById('listView').style.display = '';
     document.getElementById('detailView').style.display = 'none';
     document.getElementById('consensoView').style.display = 'none';
     currentTicker = null;
+    syncFundamentusCta();
     hideCallTooltip();
 }
 
@@ -465,12 +567,14 @@ function showConsenso() {
     document.getElementById('detailView').style.display = 'none';
     document.getElementById('consensoView').style.display = '';
     currentTicker = null;
+    syncFundamentusCta();
     hideCallTooltip();
     if (!consensoLoaded) fetchConsenso();
 }
 
 async function showDetail(ticker) {
     currentTicker = ticker;
+    syncFundamentusCta();
     document.getElementById('listView').style.display = 'none';
     document.getElementById('consensoView').style.display = 'none';
     document.getElementById('detailView').style.display = '';
@@ -926,6 +1030,130 @@ document.getElementById('consensoDispersionHelpBtn').addEventListener('click', (
 ['consensoSearch', 'consensoMin'].forEach(id => document.getElementById(id).addEventListener('input', renderConsensoOverview));
 document.getElementById('consensoSector').addEventListener('change', renderConsensoOverview);
 document.getElementById('consensoDispersionSearch').addEventListener('input', renderConsensoDispersion);
+
+// ---- Fundamentus ----
+const fndEsc = x => String(x ?? '—').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fndVal = (obj, key) => {
+    const v = obj ? obj[key] : null;
+    return (v === null || v === undefined || v === '' || v === '-') ? '—' : v;
+};
+const fndChangeClass = value => {
+    const numeric = Number(String(value ?? '').replace(/\./g, '').replace(',', '.').replace('%', ''));
+    if (Number.isNaN(numeric)) return 'neutral';
+    return numeric > 0 ? 'positive' : numeric < 0 ? 'negative' : 'neutral';
+};
+
+const FND_SECTIONS_FALLBACK = {
+    identity_left: ['Papel', 'Tipo', 'Empresa', 'Setor', 'Subsetor'],
+    identity_right: ['Cotação', 'Data últ cot', 'Min 52 sem', 'Max 52 sem', 'Vol $ méd (2m)'],
+    market_left: ['Valor de mercado', 'Valor da firma'],
+    market_right: ['Últ balanço processado', 'Nro. Ações'],
+    indicators_left: ['P/L', 'P/VP', 'P/EBIT', 'PSR', 'P/Ativos', 'P/Cap. Giro', 'P/Ativ Circ Liq', 'Div. Yield', 'EV / EBITDA', 'EV / EBIT', 'Cres. Rec (5a)'],
+    indicators_right: ['LPA', 'VPA', 'Marg. Bruta', 'Marg. EBIT', 'Marg. Líquida', 'EBIT / Ativo', 'ROIC', 'ROE', 'Liquidez Corr', 'Dív Líq / Patrim', 'Giro Ativos'],
+    balance_left: ['Ativo', 'Disponibilidades', 'Ativo Circulante'],
+    balance_right: ['Dív. Bruta', 'Dív. Líquida', 'Patrim. Líq'],
+    income: ['Receita Líquida', 'EBIT', 'Lucro Líquido'],
+};
+
+function fndRenderBody(asset) {
+    const sections = asset.sections || FND_SECTIONS_FALLBACK;
+    const identity = asset.identity || {};
+    const balance = asset.balance || {};
+    const indicators = asset.indicators || {};
+    const income = asset.income || {};
+    const oscillations = asset.oscillations || [];
+
+    const identityRows = sections.identity_left.map((leftKey, i) => {
+        const rightKey = sections.identity_right[i];
+        const tickerCell = leftKey === 'Papel' ? ' fnd-ticker-cell' : '';
+        const quoteCell = rightKey === 'Cotação' ? ' fnd-quote-cell' : '';
+        return `<tr><th>${fndEsc(leftKey)}</th><td class="${tickerCell}">${fndEsc(fndVal(identity, leftKey))}</td><th class="fnd-right-pair">${fndEsc(rightKey)}</th><td class="${quoteCell}">${fndEsc(fndVal(identity, rightKey))}</td></tr>`;
+    }).join('');
+    const marketRows = sections.market_left.map((leftKey, i) => {
+        const rightKey = sections.market_right[i];
+        return `<tr><th>${fndEsc(leftKey)}</th><td>${fndEsc(fndVal(identity, leftKey))}</td><th class="fnd-right-pair">${fndEsc(rightKey)}</th><td>${fndEsc(fndVal(identity, rightKey))}</td></tr>`;
+    }).join('');
+
+    const totalRows = sections.indicators_left.length;
+    const indicatorRows = Array.from({ length: totalRows }, (_, row) => {
+        const osc = oscillations[row];
+        const oscCells = osc
+            ? `<th>${fndEsc(osc.label)}</th><td class="fnd-change ${fndChangeClass(osc.value)}">${fndEsc(osc.value)}</td>`
+            : '<th></th><td></td>';
+        const leftKey = sections.indicators_left[row];
+        const rightKey = sections.indicators_right[row];
+        return `<tr>${oscCells}<th class="fnd-right-pair">${fndEsc(leftKey)}</th><td>${fndEsc(fndVal(indicators, leftKey))}</td><th>${fndEsc(rightKey)}</th><td>${fndEsc(fndVal(indicators, rightKey))}</td></tr>`;
+    }).join('');
+
+    const balanceRows = sections.balance_left.map((leftKey, i) => {
+        const rightKey = sections.balance_right[i];
+        return `<tr><th>${fndEsc(leftKey)}</th><td>${fndEsc(fndVal(balance, leftKey))}</td><th class="fnd-right-pair">${fndEsc(rightKey)}</th><td>${fndEsc(fndVal(balance, rightKey))}</td></tr>`;
+    }).join('');
+    const incomeRows = sections.income.map(key => {
+        const entry = income[key] || {};
+        return `<tr><th>${fndEsc(key)}</th><td>${fndEsc(fndVal(entry, 'Últimos 12 meses'))}</td><th class="fnd-right-pair">${fndEsc(key)}</th><td>${fndEsc(fndVal(entry, 'Últimos 3 meses'))}</td></tr>`;
+    }).join('');
+
+    return `
+        <table class="fnd-table">
+            <colgroup><col class="fnd-label"><col class="fnd-value"><col class="fnd-label"><col class="fnd-value"></colgroup>
+            <tbody>${identityRows}<tr class="fnd-spacer"><td colspan="4"></td></tr>${marketRows}<tr class="fnd-spacer"><td colspan="4"></td></tr></tbody>
+        </table>
+        <table class="fnd-table">
+            <colgroup><col class="fnd-swing-label"><col class="fnd-swing-value"><col class="fnd-ind-label"><col class="fnd-ind-value"><col class="fnd-ind-label"><col class="fnd-ind-value"></colgroup>
+            <thead><tr class="fnd-section-title"><th colspan="2">Oscilações</th><th colspan="4">Indicadores fundamentalistas</th></tr></thead>
+            <tbody>${indicatorRows}</tbody>
+        </table>
+        <table class="fnd-table">
+            <colgroup><col class="fnd-label"><col class="fnd-value"><col class="fnd-label"><col class="fnd-value"></colgroup>
+            <thead><tr class="fnd-section-title"><th colspan="4">Dados do balanço patrimonial</th></tr></thead>
+            <tbody>${balanceRows}<tr class="fnd-spacer"><td colspan="4"></td></tr></tbody>
+            <thead>
+                <tr class="fnd-section-title"><th colspan="4">Dados demonstrativos de resultados</th></tr>
+                <tr class="fnd-period-title"><th colspan="2">Últimos 12 meses</th><th colspan="2">Últimos 3 meses</th></tr>
+            </thead>
+            <tbody>${incomeRows}</tbody>
+        </table>
+        <p class="fnd-disclaimer">Dados Fundamentus, atualizados três vezes ao dia.</p>
+    `;
+}
+
+async function openFundamentus() {
+    if (!currentTicker) return;
+    const overlay = document.getElementById('fundamentusOverlay');
+    document.getElementById('fndTicker').textContent = currentTicker;
+    document.getElementById('fndCompany').textContent = '';
+    document.getElementById('fndStamp').textContent = '';
+    document.getElementById('fndBody').innerHTML = '<div class="fnd-loading"><div class="spinner"></div>Carregando fundamentos...</div>';
+    overlay.classList.add('open');
+
+    try {
+        const res = await fetch('/api/fundamentus/' + encodeURIComponent(currentTicker));
+        if (res.status === 404) {
+            document.getElementById('fndBody').innerHTML = '<div class="fnd-empty">Fundamentus ainda não coletou dados para este ativo.</div>';
+            return;
+        }
+        if (!res.ok) throw new Error('fetch failed');
+        const asset = await res.json();
+        document.getElementById('fndCompany').textContent = (asset.identity && asset.identity['Empresa']) || '';
+        if (asset.updated_at) {
+            document.getElementById('fndStamp').textContent = 'Atualizado em ' + new Date(asset.updated_at).toLocaleString('pt-BR');
+        }
+        document.getElementById('fndBody').innerHTML = fndRenderBody(asset);
+    } catch (e) {
+        document.getElementById('fndBody').innerHTML = '<div class="fnd-empty">Erro ao carregar dados do Fundamentus.</div>';
+    }
+}
+
+function closeFundamentus() {
+    document.getElementById('fundamentusOverlay').classList.remove('open');
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.getElementById('fundamentusOverlay').classList.contains('open')) {
+        closeFundamentus();
+    }
+});
 
 init();
 </script>

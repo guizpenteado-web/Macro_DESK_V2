@@ -85,6 +85,15 @@ PORTFOLIO_DIR = BASE / "Portfolio"
 # OPLAB_PASSWORD (nunca commitado, ver .gitignore).
 GAMMA_DIR = BASE / "GammaScreener"
 
+# FundamentusBR (coletor de dados fundamentalistas B3, SQLite proprio,
+# atualiza 3x/dia via scheduler embutido) -- 04/ago/2026, alimenta o botao
+# "Fundamentus" do IbovCalls/acoes.html (le o SQLite direto, ver
+# FUNDAMENTUS_DB no bloco do IbovCalls abaixo). Mora fora do repo do Hub,
+# em Downloads/TestCarlao/FundamentusBR, mesmo padrao do MACROREGIME_DIR
+# acima. Nao tem botao proprio na nav do shell nem e proxeado pelo Hub --
+# so precisa ficar rodando pra manter o SQLite atualizado.
+FUNDAMENTUS_DIR = Path(r"C:\Users\Guilherme\Downloads\TestCarlao\FundamentusBR")
+
 sys.path.insert(0, str(BASE))
 
 
@@ -106,6 +115,7 @@ PYTHON_5 = _venv_python(RRG_DIR)
 PYTHON_SM_BACKEND = _venv_python(SM_DIR / "backend")
 PYTHON_PORTFOLIO = _venv_python(PORTFOLIO_DIR)
 PYTHON_GAMMA = _venv_python(GAMMA_DIR)
+PYTHON_FUNDAMENTUS = _venv_python(FUNDAMENTUS_DIR)
 NPM_CMD = "npm.cmd" if sys.platform == "win32" else "npm"  # SmartMoneyBR frontend (Next.js)
 
 PORT_SHELL       = 8000
@@ -119,6 +129,7 @@ PORT_SMARTMONEY  = 3100         # frontend — é o que o Hub proxeia em /smartm
 PORT_MACROREGIME = 8015
 PORT_PORTFOLIO   = 8016
 PORT_GAMMA       = 8017
+PORT_FUNDAMENTUS = 8018
 
 _procs: list[subprocess.Popen] = []
 
@@ -201,8 +212,23 @@ def _start_subservers() -> None:
             # do Hub, em Downloads/TestCarlao/DeepValuationBrasil -- sem essa
             # env var, /api/consenso-analistas sempre 503 (achado 03/ago/2026).
             # Caminho so vale nesta maquina local; VPS nao tem essa pasta ainda.
+            # FUNDAMENTUS_DB: mesmo motivo -- o SQLite do FundamentusBR
+            # (processo separado abaixo) mora fora do repo do Hub.
             "env":  {**__import__("os").environ, "PORT": str(PORT_IBOV),
-                     "DEEPVAL_HTML_PATH": r"C:\Users\Guilherme\Downloads\TestCarlao\DeepValuationBrasil\consenso_analistas.html"},
+                     "DEEPVAL_HTML_PATH": r"C:\Users\Guilherme\Downloads\TestCarlao\DeepValuationBrasil\consenso_analistas.html",
+                     "FUNDAMENTUS_DB": str(FUNDAMENTUS_DIR / "data" / "fundamentus.sqlite3")},
+        },
+        {
+            # So mantem o SQLite atualizado (scheduler 11h/15h/19:30 BRT
+            # embutido em refresh.py) -- o Hub nao proxeia essa porta nem tem
+            # botao pra ela; IbovCalls/server.py le o SQLite direto (ver
+            # FUNDAMENTUS_DB acima).
+            "name": "FundamentusBR",
+            "port": PORT_FUNDAMENTUS,
+            "cmd":  [PYTHON_FUNDAMENTUS, "app.py"],
+            "cwd":  str(FUNDAMENTUS_DIR),
+            "env":  {**__import__("os").environ, "PORT": str(PORT_FUNDAMENTUS),
+                     "START_SCHEDULER": "1"},
         },
         {
             "name": "RRGCompleto",
@@ -1559,124 +1585,47 @@ _LOGIN_PAGE = """<!DOCTYPE html>
 <style>
   *{{box-sizing:border-box;margin:0;padding:0}}
   html,body{{height:100%}}
-  body{{position:relative;overflow:hidden;
-    background:radial-gradient(120% 100% at 78% 45%,#050b18 0%,#03060d 60%,#020409 100%);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e6edf3}}
+  body{{display:flex;align-items:center;justify-content:center;background:#000108;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}}
 
-  .decor{{position:absolute;top:0;right:0;height:100%;width:min(70vw,1100px);
-    pointer-events:none;opacity:.9}}
+  /* .stage mantem a proporcao exata da imagem (1672x941) pra qualquer viewport,
+     assim os campos sobrepostos ficam sempre alinhados ao formulario desenhado nela */
+  .stage{{position:relative;width:100vw;height:calc(100vw * 941 / 1672);
+    max-height:100vh;max-width:calc(100vh * 1672 / 941)}}
+  .stage img{{width:100%;height:100%;display:block;object-fit:fill}}
 
-  .hero{{position:absolute;top:56px;left:64px;max-width:640px;z-index:2}}
-  .hero h1{{font-size:clamp(24px,3.1vw,38px);font-weight:800;line-height:1.2;
-    color:#f2f5f9;white-space:nowrap}}
-  .hero .rule{{width:56px;height:3px;background:#14e0c4;margin:18px 0}}
-  .hero p{{font-size:15px;line-height:1.6;color:#93a1b3;max-width:380px}}
-
-  .brand-corner{{position:absolute;left:64px;bottom:40px;z-index:2;
-    font-size:18px;font-weight:800;letter-spacing:1.5px;color:#e6edf3}}
-
-  .box{{position:absolute;top:50%;left:min(62%,780px);transform:translate(-50%,-50%);
-    z-index:3;width:300px;background:rgba(9,14,26,.82);border:1px solid rgba(90,120,160,.28);
-    border-radius:10px;padding:26px 26px 28px;backdrop-filter:blur(6px);
-    box-shadow:0 20px 60px rgba(0,0,0,.45)}}
-  .logo{{font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
-    color:#e6edf3;margin-bottom:20px}}
-  label{{font-size:12px;color:#8b98ab;display:block;margin-bottom:6px}}
-  input{{width:100%;padding:9px 11px;margin-bottom:16px;background:#050a14;
-    border:1px solid #263149;border-radius:6px;color:#e6edf3;font-size:14px}}
-  input:focus{{outline:none;border-color:#2b6bff}}
-  button{{width:100%;padding:10px;background:linear-gradient(180deg,#2b6bff,#1c4fe0);
-    border:none;border-radius:6px;color:#fff;font-weight:700;font-size:14px;cursor:pointer}}
-  button:hover{{background:linear-gradient(180deg,#3d78ff,#2456e8)}}
-  .err{{color:#f85149;font-size:12.5px;margin-bottom:14px}}
-
-  @media (max-width:820px){{
-    .decor{{opacity:.5}}
-    .hero{{left:28px;top:36px;max-width:90vw}}
-    .box{{left:50%;width:88vw;max-width:340px}}
-    .brand-corner{{left:28px;bottom:20px}}
-  }}
+  .field{{position:absolute;left:41.57%;width:16.51%;background:transparent;
+    border:none;outline:none;color:#eef3fb;font-size:1.35vw;font-family:inherit;
+    padding:0 1%}}
+  .field::placeholder{{color:transparent}}
+  #username{{top:47.15%;height:3.6%}}
+  #password{{top:54.7%;height:3.6%}}
+  .submit{{position:absolute;left:41.57%;top:60.4%;width:16.51%;height:3.35%;
+    background:transparent;border:none;cursor:pointer}}
+  .err{{position:absolute;left:41.57%;top:41.6%;width:16.51%;
+    color:#ff6b6b;font-size:1vw;font-weight:600;text-shadow:0 0 4px #000}}
 </style></head>
 <body>
-  <svg class="decor" viewBox="0 0 1100 900" preserveAspectRatio="xMaxYMid slice">
-    <defs>
-      <radialGradient id="globeFill" cx="42%" cy="38%" r="65%">
-        <stop offset="0%" stop-color="#0d3a66"/>
-        <stop offset="55%" stop-color="#082846"/>
-        <stop offset="100%" stop-color="#030d1c"/>
-      </radialGradient>
-      <pattern id="dots" width="14" height="14" patternUnits="userSpaceOnUse">
-        <circle cx="2" cy="2" r="1.1" fill="#2f6fb0" opacity=".55"/>
-      </pattern>
-      <clipPath id="globeClip"><circle cx="900" cy="620" r="290"/></clipPath>
-      <linearGradient id="lineGrad" x1="0" y1="1" x2="1" y2="0">
-        <stop offset="0%" stop-color="#0e6bff" stop-opacity="0"/>
-        <stop offset="100%" stop-color="#3d9bff"/>
-      </linearGradient>
-    </defs>
-
-    <circle cx="900" cy="620" r="290" fill="url(#globeFill)"/>
-    <g clip-path="url(#globeClip)">
-      <rect x="610" y="330" width="580" height="580" fill="url(#dots)"/>
-      <g stroke="#1d4f80" stroke-width="1" fill="none" opacity=".6">
-        <ellipse cx="900" cy="620" rx="290" ry="95"/>
-        <ellipse cx="900" cy="620" rx="290" ry="175"/>
-        <ellipse cx="900" cy="620" rx="290" ry="255"/>
-        <ellipse cx="900" cy="620" rx="95" ry="290"/>
-        <ellipse cx="900" cy="620" rx="175" ry="290"/>
-        <ellipse cx="900" cy="620" rx="255" ry="290"/>
-      </g>
-    </g>
-    <circle cx="900" cy="620" r="290" fill="none" stroke="#2f6fb0" stroke-width="1.5" opacity=".7"/>
-
-    <g stroke="#173355" stroke-width="1" opacity=".7">
-      <line x1="120" y1="470" x2="640" y2="470"/>
-      <line x1="120" y1="360" x2="640" y2="360"/>
-      <line x1="120" y1="250" x2="640" y2="250"/>
-    </g>
-    <g fill="#123a63" opacity=".85">
-      <rect x="140" y="410" width="30" height="60"/>
-      <rect x="185" y="365" width="30" height="105"/>
-      <rect x="230" y="320" width="30" height="150"/>
-      <rect x="275" y="350" width="30" height="120"/>
-      <rect x="320" y="290" width="30" height="180"/>
-      <rect x="365" y="245" width="30" height="225"/>
-      <rect x="410" y="275" width="30" height="195"/>
-      <rect x="455" y="215" width="30" height="255"/>
-      <rect x="500" y="185" width="30" height="285"/>
-      <rect x="545" y="155" width="30" height="315"/>
-    </g>
-    <polyline points="120,440 185,405 230,375 275,345 320,310 365,335 410,275 455,235 500,190 555,150"
-      fill="none" stroke="url(#lineGrad)" stroke-width="2.5"/>
-    <g fill="#3d9bff">
-      <circle cx="120" cy="440" r="3.5"/><circle cx="185" cy="405" r="3.5"/>
-      <circle cx="230" cy="375" r="3.5"/><circle cx="275" cy="345" r="3.5"/>
-      <circle cx="320" cy="310" r="3.5"/><circle cx="365" cy="335" r="3.5"/>
-      <circle cx="410" cy="275" r="3.5"/><circle cx="455" cy="235" r="3.5"/>
-      <circle cx="500" cy="190" r="3.5"/><circle cx="555" cy="150" r="4"/>
-    </g>
-  </svg>
-
-  <div class="hero">
-    <h1>Eleve sua análise<br>com inteligência de mercado.</h1>
-    <div class="rule"></div>
-    <p>Seu desktop global para operar o mercado brasileiro.</p>
-  </div>
-
-  <div class="brand-corner">MACRO DESK</div>
-
-  <div class="box">
-    <div class="logo">Macro Desk</div>
+  <div class="stage">
+    <img src="/login-bg" alt="Macro Desk">
     {error_html}
     <form method="post" action="/api/auth/login">
-      <label>Usuário</label>
-      <input type="text" name="username" autofocus required>
-      <label>Senha</label>
-      <input type="password" name="password" required>
-      <button type="submit">Entrar</button>
+      <input id="username" class="field" type="text" name="username" autofocus required placeholder="Usuário">
+      <input id="password" class="field" type="password" name="password" required placeholder="Senha">
+      <button class="submit" type="submit" aria-label="Entrar"></button>
     </form>
   </div>
 </body></html>"""
+
+_LOGIN_BG_JPG = BASE / "static" / "login-bg.jpg"
+
+
+@app.get("/login-bg")
+async def login_bg() -> Response:
+    if _LOGIN_BG_JPG.exists():
+        return Response(_LOGIN_BG_JPG.read_bytes(), media_type="image/jpeg",
+                        headers={"Cache-Control": "public, max-age=86400"})
+    return Response("", status_code=404)
 
 
 @app.get("/login", response_class=HTMLResponse)
@@ -2689,6 +2638,7 @@ if __name__ == "__main__":
     print(f"  SmartMoney  -> http://localhost:{PORT_SMARTMONEY}")
     print(f"  MacroRegime -> http://localhost:{PORT_MACROREGIME}")
     print(f"  Gamma       -> http://localhost:{PORT_GAMMA}")
+    print(f"  Fundamentus -> http://localhost:{PORT_FUNDAMENTUS} (interno, sem proxy)")
     print("  ==========================================")
     print()
 
