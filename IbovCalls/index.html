@@ -596,11 +596,6 @@ function renderChart() {
                 backgroundColor: bc, borderColor: '#0d1117', borderWidth: 2,
                 radius: 8, pointStyle: 'rectRounded'
             };
-            annotations[`lc${idx}`] = {
-                type: 'label', xValue: labels[di], yValue: prices[di], yAdjust: -18,
-                content: [call.bank], color: '#0d1117', font: { size: 9, weight: 'bold' },
-                backgroundColor: bc, padding: { top: 3, bottom: 3, left: 5, right: 5 }, borderRadius: 3
-            };
         } else {
             annotations[`d${di}`] = {
                 type: 'point', xValue: labels[di], yValue: prices[di],
