@@ -89,11 +89,11 @@ body {
 .detail-header .ticker-company { font-size: 14px; color: #8b949e; margin-top: 4px; }
 .detail-price { text-align: left; }
 .detail-price .price { font-size: 32px; font-weight: 700; color: #f0f6fc; }
-.detail-price .change { font-size: 14px; font-weight: 500; margin-top: 2px; }
+.detail-price .change { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
 .change.positive { color: #3fb950; }
 .change.negative { color: #f85149; }
 
-.detail-tools { display: flex; gap: 8px; flex-wrap: wrap; }
+.detail-tools { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
 .tool-nav-btn {
     padding: 5px 14px; border-radius: 14px; border: 1px solid #30363d;
     background: #161b22; color: #8b949e; font-size: 12px; font-weight: 600;
@@ -106,11 +106,11 @@ body {
     padding: 10px 14px;
 }
 .detail-consenso-mini.has-data { display: block; }
-.detail-consenso-mini .dcm-title { color: #8b949e; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; text-align: right; }
-.detail-consenso-mini .dcm-row { display: flex; gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
-.detail-consenso-mini .dcm-item { text-align: right; }
-.detail-consenso-mini .dcm-item small { display: block; color: #6e7681; font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; }
-.detail-consenso-mini .dcm-item strong { display: block; font-size: 13px; color: #f0f6fc; margin-top: 2px; }
+.detail-consenso-mini .dcm-title { color: #f0f6fc; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; text-align: left; }
+.detail-consenso-mini .dcm-row { display: flex; gap: 14px; flex-wrap: wrap; justify-content: flex-start; }
+.detail-consenso-mini .dcm-item { text-align: left; }
+.detail-consenso-mini .dcm-item small { display: block; color: #6e7681; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+.detail-consenso-mini .dcm-item strong { display: block; font-size: 12px; color: #f0f6fc; margin-top: 2px; }
 .detail-consenso-mini .dcm-item strong.change.positive { color: #3fb950; }
 .detail-consenso-mini .dcm-item strong.change.negative { color: #f85149; }
 
@@ -483,15 +483,12 @@ body {
                     <div class="ticker-title" id="detailTicker"></div>
                     <div class="detail-price" id="detailPrice"></div>
                 </div>
-                <div class="ticker-company" id="detailCompany"></div>
                 <div class="detail-tools">
                     <button type="button" class="tool-nav-btn" data-target="gexSection">Gamma</button>
                     <button type="button" class="tool-nav-btn" data-target="smartmoneySection">SmartMoneyBR</button>
                     <button type="button" class="tool-nav-btn" data-target="rrgSection">RRG</button>
+                    <div class="detail-consenso-mini" id="detailConsensoMini"></div>
                 </div>
-            </div>
-            <div class="detail-header-right">
-                <div class="detail-consenso-mini" id="detailConsensoMini"></div>
             </div>
         </div>
 
@@ -748,8 +745,6 @@ async function showDetail(ticker) {
     document.querySelector('.consenso-cta').classList.remove('active');
     document.getElementById('detailView').style.display = '';
     document.getElementById('detailTicker').textContent = ticker;
-    const known = allTickers.find(t => t.ticker === ticker);
-    document.getElementById('detailCompany').textContent = known ? known.company : '';
     document.getElementById('detailPrice').innerHTML = '';
     document.getElementById('chartLoading').style.display = '';
     document.getElementById('chartLoading').textContent = 'Carregando cotação...';
@@ -832,8 +827,8 @@ async function loadQuote(ticker) {
         const cls = cur.change >= 0 ? 'positive' : 'negative';
         const sign = cur.change >= 0 ? '+' : '';
         document.getElementById('detailPrice').innerHTML = `
-            <div class="price">R$ ${fmtPrice(cur.price)}</div>
             <div class="change ${cls}">${sign}${fmtPrice(cur.change)} (${sign}${cur.changePercent}%)</div>
+            <div class="price">R$ ${fmtPrice(cur.price)}</div>
         `;
         renderStockChart(quote.data);
     } catch (e) {
@@ -1520,15 +1515,15 @@ function drawGexChart() {
             parsing: false,
             scales: {
                 x: { type: 'linear', ticks: { color: '#8b949e', maxTicksLimit: 20, callback: v => Number(v).toFixed(2) }, grid: { color: '#21262d' } },
-                y: { ticks: { color: '#8b949e' }, grid: { color: '#21262d' } },
+                y: { ticks: { color: '#8b949e', callback: v => Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 0 }) }, grid: { color: '#21262d' } },
             },
             plugins: {
                 legend: { labels: { color: '#c9d1d9' } },
                 annotation: { annotations: buildGexAnnotations(gexData) },
                 zoom: {
-                    pan: { enabled: true, mode: 'x' },
-                    zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
-                    limits: { x: { min: 'original', max: 'original' } },
+                    pan: { enabled: true, mode: 'xy' },
+                    zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' },
+                    limits: { x: { min: 'original', max: 'original' }, y: { min: 'original', max: 'original' } },
                 },
             },
         },
