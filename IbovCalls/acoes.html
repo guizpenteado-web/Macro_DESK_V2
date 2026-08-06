@@ -1491,9 +1491,15 @@ function drawGexChart() {
     // próximos. Fixando em px, toda barra fica visível independente do range.
     const BAR_W = 5;
     if (gexActiveTab === 'callput') {
+        // grouped:false -- sem isso, o Chart.js trata CALL e PUT como 2
+        // barras de um mesmo "grupo" e as desloca lado a lado (cada uma pra
+        // um lado do strike), abrindo o espaçamento estranho visto no
+        // relato do usuário. Com grouped:false as duas ficam centradas no
+        // mesmo x (strike), só abrindo pra cima/baixo -- igual ao Plotly do
+        // GammaScreener (overlay no mesmo eixo x).
         datasets = [
-            { label: 'CALL', data: strikes.map(r => ({ x: r.strike, y: r.gex_call })), backgroundColor: '#3fb950', barThickness: BAR_W, minBarLength: 1 },
-            { label: 'PUT', data: strikes.map(r => ({ x: r.strike, y: -Math.abs(r.gex_put) })), backgroundColor: '#f85149', barThickness: BAR_W, minBarLength: 1 },
+            { label: 'CALL', data: strikes.map(r => ({ x: r.strike, y: r.gex_call })), backgroundColor: '#3fb950', barThickness: BAR_W, minBarLength: 1, grouped: false },
+            { label: 'PUT', data: strikes.map(r => ({ x: r.strike, y: -Math.abs(r.gex_put) })), backgroundColor: '#f85149', barThickness: BAR_W, minBarLength: 1, grouped: false },
         ];
     } else if (gexActiveTab === 'oi') {
         datasets = [
