@@ -82,6 +82,8 @@ body {
     display: flex; justify-content: space-between; align-items: flex-start;
     margin-bottom: 20px; flex-wrap: wrap; gap: 16px;
 }
+.detail-header-left, .detail-header-right { display: flex; flex-direction: column; gap: 10px; }
+.detail-header-right { align-items: flex-end; }
 .detail-header .ticker-title { font-size: 28px; font-weight: 700; color: #f0f6fc; }
 .detail-header .ticker-company { font-size: 14px; color: #8b949e; margin-top: 4px; }
 .detail-price { text-align: right; }
@@ -89,6 +91,84 @@ body {
 .detail-price .change { font-size: 14px; font-weight: 500; margin-top: 2px; }
 .change.positive { color: #3fb950; }
 .change.negative { color: #f85149; }
+
+.detail-tools { display: flex; gap: 8px; flex-wrap: wrap; }
+.tool-nav-btn {
+    padding: 5px 14px; border-radius: 14px; border: 1px solid #30363d;
+    background: #161b22; color: #8b949e; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all 0.15s;
+}
+.tool-nav-btn:hover { background: #1c2128; color: #e1e4e8; border-color: #484f58; }
+
+.detail-consenso-mini {
+    display: none; background: #161b22; border: 1px solid #21262d; border-radius: 10px;
+    padding: 10px 14px;
+}
+.detail-consenso-mini.has-data { display: block; }
+.detail-consenso-mini .dcm-title { color: #8b949e; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; text-align: right; }
+.detail-consenso-mini .dcm-row { display: flex; gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
+.detail-consenso-mini .dcm-item { text-align: right; }
+.detail-consenso-mini .dcm-item small { display: block; color: #6e7681; font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; }
+.detail-consenso-mini .dcm-item strong { display: block; font-size: 13px; color: #f0f6fc; margin-top: 2px; }
+.detail-consenso-mini .dcm-item strong.change.positive { color: #3fb950; }
+.detail-consenso-mini .dcm-item strong.change.negative { color: #f85149; }
+
+.timeline-toggle {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    width: 100%; background: none; border: none; cursor: pointer; padding: 0; margin-bottom: 16px;
+}
+.timeline-toggle .timeline-toggle-label { font-size: 18px; color: #f0f6fc; font-weight: 600; }
+.timeline-toggle:hover .timeline-toggle-label { color: #e1e4e8; }
+.timeline-toggle-chevron { color: #8b949e; font-size: 13px; transition: transform 0.2s; }
+.timeline-toggle[aria-expanded="false"] .timeline-toggle-chevron { transform: rotate(-90deg); }
+
+.tool-section { background: #161b22; border-radius: 12px; border: 1px solid #21262d; padding: 20px; margin-bottom: 24px; }
+.tool-section-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.tool-section-head h2 { font-size: 18px; color: #f0f6fc; font-weight: 600; }
+.tool-section-sub { font-size: 12px; color: #6e7681; }
+.tool-loading, .tool-empty { text-align: center; padding: 30px; color: #8b949e; font-size: 13px; }
+.smartmoney-links { display: flex; gap: 8px; }
+.smartmoney-link-btn {
+    padding: 5px 14px; border-radius: 14px; border: 1px solid #30363d;
+    background: #0d1117; color: #58a6ff; font-size: 12px; font-weight: 600;
+    text-decoration: none; transition: all 0.15s;
+}
+.smartmoney-link-btn:hover { background: #1c2128; border-color: #484f58; }
+
+.gex-metrics { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 18px; }
+.gex-metric { background: #0d1117; border: 1px solid #21262d; border-radius: 10px; padding: 10px 12px; }
+.gex-metric small { display: block; color: #8b949e; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+.gex-metric strong { display: block; font-size: 16px; color: #f0f6fc; margin-top: 4px; }
+.gex-metric span { font-size: 10px; color: #6e7681; }
+.gex-tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+.gex-tab {
+    border: 1px solid #30363d; background: transparent; color: #8b949e;
+    padding: 5px 12px; border-radius: 14px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.gex-tab.active { background: #1f6feb33; border-color: #1f6feb; color: #58a6ff; }
+.gex-chart-wrap { position: relative; height: 320px; }
+
+.rrg-strip { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 6px; }
+.rrg-sq { width: 22px; height: 22px; border-radius: 4px; flex-shrink: 0; }
+.rrg-sq.q-Leading { background: #3fb950; }
+.rrg-sq.q-Improving { background: #58a6ff; }
+.rrg-sq.q-Weakening { background: #d29922; }
+.rrg-sq.q-Lagging { background: #f85149; }
+.rrg-legend { display: flex; gap: 14px; margin-top: 12px; font-size: 11px; color: #8b949e; flex-wrap: wrap; }
+.rrg-legend .rrg-legend-item { display: inline-flex; align-items: center; gap: 5px; }
+.rrg-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+.holders-toggle-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.holders-toggle {
+    padding: 5px 14px; border-radius: 14px; border: 1px solid #30363d;
+    background: transparent; color: #8b949e; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.holders-toggle.active { background: #1f6feb33; border-color: #1f6feb; color: #58a6ff; }
+.holders-bar-row { display: grid; grid-template-columns: 220px 1fr 90px; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 12px; }
+.holders-bar-name { color: #c9d1d9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.holders-bar-track { background: #0d1117; border-radius: 6px; height: 16px; overflow: hidden; }
+.holders-bar-fill { background: #d4af37; height: 100%; }
+.holders-bar-value { text-align: right; color: #8b949e; }
 
 .chart-wrapper {
     background: #161b22; border-radius: 12px; border: 1px solid #21262d;
@@ -359,11 +439,19 @@ body {
 
     <div id="detailView" style="display:none">
         <div class="detail-header">
-            <div>
+            <div class="detail-header-left">
                 <div class="ticker-title" id="detailTicker"></div>
                 <div class="ticker-company" id="detailCompany"></div>
+                <div class="detail-tools">
+                    <button type="button" class="tool-nav-btn" data-target="gexSection">Gamma</button>
+                    <button type="button" class="tool-nav-btn" data-target="smartmoneySection">SmartMoneyBR</button>
+                    <button type="button" class="tool-nav-btn" data-target="rrgSection">RRG</button>
+                </div>
             </div>
-            <div class="detail-price" id="detailPrice"></div>
+            <div class="detail-header-right">
+                <div class="detail-consenso-mini" id="detailConsensoMini"></div>
+                <div class="detail-price" id="detailPrice"></div>
+            </div>
         </div>
 
         <div class="chart-wrapper">
@@ -380,8 +468,38 @@ body {
         </div>
 
         <div class="timeline-section">
-            <h2>Calls sobre este ativo</h2>
+            <button type="button" id="timelineToggleBtn" class="timeline-toggle" aria-expanded="true" aria-controls="detailTimeline">
+                <span class="timeline-toggle-label">Calls sobre este ativo</span>
+                <span class="timeline-toggle-chevron" aria-hidden="true">▾</span>
+            </button>
             <div class="timeline" id="detailTimeline"></div>
+        </div>
+
+        <div class="tool-section" id="gexSection">
+            <div class="tool-section-head">
+                <h2>GEX — Gamma Exposure</h2>
+                <span class="tool-section-sub">Dados do GammaScreener</span>
+            </div>
+            <div id="gexContent"><div class="tool-loading">Carregando GEX...</div></div>
+        </div>
+
+        <div class="tool-section" id="rrgSection">
+            <div class="tool-section-head">
+                <h2>RRG — últimas 36 semanas</h2>
+                <span class="tool-section-sub">Rotação relativa vs. IBOV</span>
+            </div>
+            <div id="rrgContent"><div class="tool-loading">Carregando RRG...</div></div>
+        </div>
+
+        <div class="tool-section" id="smartmoneySection">
+            <div class="tool-section-head">
+                <h2>SmartMoneyBR — fundos posicionados</h2>
+                <div class="smartmoney-links">
+                    <a id="smartmoneyInsidersLink" class="smartmoney-link-btn" href="/smartmoney/insiders" target="_blank" rel="noopener">Insiders</a>
+                    <a id="smartmoneyBuybacksLink" class="smartmoney-link-btn" href="/smartmoney/recompras" target="_blank" rel="noopener">Recompras</a>
+                </div>
+            </div>
+            <div id="smartmoneyContent"><div class="tool-loading">Carregando posições...</div></div>
         </div>
     </div>
 
@@ -590,6 +708,16 @@ async function showDetail(ticker) {
     document.getElementById('detailPrice').innerHTML = '';
     document.getElementById('chartLoading').style.display = '';
     document.getElementById('chartLoading').textContent = 'Carregando cotação...';
+
+    document.getElementById('smartmoneyInsidersLink').href = '/smartmoney/insiders';
+    document.getElementById('smartmoneyBuybacksLink').href = '/smartmoney/recompras';
+
+    // Seções de ferramentas (GEX/RRG/SmartMoney/consenso) buscam em paralelo,
+    // cada uma com seu próprio loading/erro -- uma sem dado não trava as outras.
+    loadGex(ticker);
+    loadRrg(ticker);
+    loadSmartMoney(ticker);
+    loadDetailConsensoMini(ticker);
 
     await loadCalls(ticker);
 
@@ -813,14 +941,14 @@ function renderStockChart(data) {
             annotations[`d${di}`] = {
                 type: 'point', xValue: labels[di], yValue: prices[di],
                 backgroundColor: '#21262d', borderColor: '#8b949e', borderWidth: 2,
-                radius: 7, pointStyle: 'circle',
+                radius: 7, pointStyle: 'rectRounded',
                 enter(actx) { showDayCallsTooltip(dayCalls, actx.element.x, actx.element.y); return true; },
                 leave() { hideCallTooltip(); return true; }
             };
             annotations[`ld${di}`] = {
                 type: 'label', xValue: labels[di], yValue: prices[di], yAdjust: -16,
                 content: [String(group.length)], color: '#f0f6fc', font: { size: 8, weight: 'bold' },
-                backgroundColor: '#21262d', padding: { top: 1, bottom: 1, left: 4, right: 4 }, borderRadius: 8
+                backgroundColor: '#21262d', padding: { top: 1, bottom: 1, left: 4, right: 4 }, borderRadius: 3
             };
         }
     });
@@ -1114,6 +1242,286 @@ document.addEventListener('keydown', e => {
         closeFundamentus();
     }
 });
+
+// ---- Toggle "Calls sobre este ativo" ----
+document.getElementById('timelineToggleBtn').addEventListener('click', e => {
+    const btn = e.currentTarget;
+    const open = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', String(!open));
+    document.getElementById('detailTimeline').hidden = open;
+});
+
+// ---- Botões de navegação rápida (Gamma / SmartMoneyBR / RRG) ----
+document.querySelectorAll('.tool-nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const target = document.getElementById(btn.dataset.target);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+});
+
+// ---- Mini-widget "Consenso dos Analistas" no cabeçalho do detalhe ----
+let consensoSnapshotCache = null;
+async function getConsensoSnapshot() {
+    if (consensoSnapshotCache) return consensoSnapshotCache;
+    try {
+        const res = await fetch('/api/consenso-analistas');
+        const snap = await res.json();
+        if (snap.error) throw new Error(snap.error);
+        consensoSnapshotCache = snap;
+        return snap;
+    } catch (e) {
+        return null;
+    }
+}
+
+async function loadDetailConsensoMini(ticker) {
+    const box = document.getElementById('detailConsensoMini');
+    box.classList.remove('has-data');
+    box.innerHTML = '';
+    const snap = await getConsensoSnapshot();
+    if (!snap || currentTicker !== ticker) return;
+    const row = (snap.rows || []).find(r => r.ticker === ticker);
+    if (!row) return;
+
+    const upside = csRatio(row.target_mean, row.price);
+    const spread = csVal(row.target_high) && csVal(row.target_low) && csVal(row.target_median) && row.target_median > 0
+        ? (row.target_high - row.target_low) / row.target_median : null;
+
+    box.innerHTML = `
+        <div class="dcm-title">Consenso dos Analistas</div>
+        <div class="dcm-row">
+            <div class="dcm-item"><small>Analistas</small><strong>${csInteger(row.analyst_count)}</strong></div>
+            <div class="dcm-item"><small>Mínimo</small><strong>${csBrl(row.target_low)}</strong></div>
+            <div class="dcm-item"><small>Mediana</small><strong>${csBrl(row.target_median)}</strong></div>
+            <div class="dcm-item"><small>Máximo</small><strong>${csBrl(row.target_high)}</strong></div>
+            <div class="dcm-item"><small>Upside</small><strong class="change ${csVal(upside) && upside < 0 ? 'negative' : 'positive'}">${csPct(upside)}</strong></div>
+            <div class="dcm-item"><small>Dispersão</small><strong>${csPct(spread)}</strong></div>
+        </div>
+    `;
+    box.classList.add('has-data');
+}
+
+// ---- GEX (GammaScreener) ----
+let gexData = null;
+let gexChart = null;
+let gexActiveTab = 'net';
+
+function gexFmtPrice(v) {
+    return csVal(v) ? 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
+}
+function gexFmtCompact(v) {
+    if (!csVal(v)) return '—';
+    const abs = Math.abs(v);
+    if (abs >= 1e6) return (v / 1e6).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + ' mi';
+    if (abs >= 1e3) return (v / 1e3).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mil';
+    return v.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+}
+
+async function loadGex(ticker) {
+    const box = document.getElementById('gexContent');
+    box.innerHTML = '<div class="tool-loading">Carregando GEX...</div>';
+    gexData = null;
+    if (gexChart) { gexChart.destroy(); gexChart = null; }
+    try {
+        const res = await fetch('/api/gex-proxy?ticker=' + encodeURIComponent(ticker));
+        const data = await res.json();
+        if (currentTicker !== ticker) return;
+        if (!res.ok || data.error) {
+            box.innerHTML = `<div class="tool-empty">${data.error || 'Sem dados de GEX para este ativo.'}</div>`;
+            return;
+        }
+        gexData = data;
+        gexActiveTab = 'net';
+        renderGex();
+    } catch (e) {
+        if (currentTicker === ticker) box.innerHTML = '<div class="tool-empty">Erro ao carregar GEX (GammaScreener indisponível).</div>';
+    }
+}
+
+function renderGex() {
+    if (!gexData) return;
+    const d = gexData;
+    const box = document.getElementById('gexContent');
+    const metrics = [
+        ['Spot', gexFmtPrice(d.spot), ''],
+        ['Gamma Flip', gexFmtPrice(d.gamma_flip), ''],
+        ['Zero Gamma', gexFmtPrice(d.zero_gamma_strike), ''],
+        ['Call Wall', gexFmtPrice(d.call_wall), ''],
+        ['Put Wall', gexFmtPrice(d.put_wall), ''],
+        ['Gamma Máx', gexFmtPrice(d.gamma_max), ''],
+        ['Gamma Mín', gexFmtPrice(d.gamma_min), ''],
+        ['GEX líquido total', gexFmtCompact(d.gex_net_total), d.regime || ''],
+        ['IV atual', csVal(d.iv_current) ? d.iv_current.toFixed(1) + '%' : '—', ''],
+    ];
+    box.innerHTML = `
+        <div class="gex-metrics">
+            ${metrics.map(m => `<div class="gex-metric"><small>${m[0]}</small><strong>${m[1]}</strong>${m[2] ? `<span>${m[2]}</span>` : ''}</div>`).join('')}
+        </div>
+        <div class="gex-tabs">
+            <button type="button" class="gex-tab${gexActiveTab === 'net' ? ' active' : ''}" data-tab="net">GEX líquido</button>
+            <button type="button" class="gex-tab${gexActiveTab === 'callput' ? ' active' : ''}" data-tab="callput">CALL x PUT</button>
+            <button type="button" class="gex-tab${gexActiveTab === 'oi' ? ' active' : ''}" data-tab="oi">NET Open Interest</button>
+            <button type="button" class="gex-tab${gexActiveTab === 'cum' ? ' active' : ''}" data-tab="cum">GEX cumulativo</button>
+        </div>
+        <div class="gex-chart-wrap"><canvas id="gexChartCanvas"></canvas></div>
+    `;
+    box.querySelectorAll('.gex-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            gexActiveTab = btn.dataset.tab;
+            box.querySelectorAll('.gex-tab').forEach(b => b.classList.toggle('active', b === btn));
+            drawGexChart();
+        });
+    });
+    drawGexChart();
+}
+
+function drawGexChart() {
+    if (!gexData) return;
+    const ctx = document.getElementById('gexChartCanvas');
+    if (!ctx) return;
+    const strikes = gexData.by_strike || [];
+    const labels = strikes.map(r => r.strike.toFixed(2));
+    let datasets;
+    if (gexActiveTab === 'callput') {
+        datasets = [
+            { label: 'CALL', data: strikes.map(r => r.gex_call), backgroundColor: '#3fb950' },
+            { label: 'PUT', data: strikes.map(r => -Math.abs(r.gex_put)), backgroundColor: '#f85149' },
+        ];
+    } else if (gexActiveTab === 'oi') {
+        datasets = [
+            { label: 'OI líquido (call - put)', data: strikes.map(r => (r.weight_call || 0) - (r.weight_put || 0)),
+              backgroundColor: strikes.map(r => (r.weight_call || 0) - (r.weight_put || 0) >= 0 ? '#3fb950' : '#f85149') },
+        ];
+    } else if (gexActiveTab === 'cum') {
+        let acc = 0;
+        const cum = strikes.map(r => acc += r.gex_net);
+        datasets = [{ label: 'GEX cumulativo', data: cum, backgroundColor: cum.map(v => v >= 0 ? '#3fb950' : '#f85149') }];
+    } else {
+        datasets = [{ label: 'GEX líquido', data: strikes.map(r => r.gex_net), backgroundColor: strikes.map(r => r.gex_net >= 0 ? '#3fb950' : '#f85149') }];
+    }
+    gexChart = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                x: { ticks: { color: '#8b949e', maxTicksLimit: 20, autoSkip: true }, grid: { color: '#21262d' } },
+                y: { ticks: { color: '#8b949e' }, grid: { color: '#21262d' } },
+            },
+            plugins: { legend: { labels: { color: '#c9d1d9' } } },
+        },
+    });
+}
+
+// ---- RRG (RRGCOMPLETO) ----
+const RRG_QUADRANT_LABELS = {
+    Leading: 'Leading (forte)', Weakening: 'Weakening (perdendo força)',
+    Lagging: 'Lagging (fraco)', Improving: 'Improving (recuperando)',
+};
+
+async function loadRrg(ticker) {
+    const box = document.getElementById('rrgContent');
+    box.innerHTML = '<div class="tool-loading">Carregando RRG...</div>';
+    try {
+        const res = await fetch('/api/rrg-strip?ticker=' + encodeURIComponent(ticker) + '&weeks=36');
+        const data = await res.json();
+        if (currentTicker !== ticker) return;
+        if (!res.ok || data.error) {
+            box.innerHTML = `<div class="tool-empty">${data.error || 'Sem histórico de RRG para este ativo.'}</div>`;
+            return;
+        }
+        const weekly = data.weekly || [];
+        if (!weekly.length) {
+            box.innerHTML = '<div class="tool-empty">Sem semanas suficientes de histórico de RRG.</div>';
+            return;
+        }
+        box.innerHTML = `
+            <div class="rrg-strip">
+                ${weekly.map(w => `<div class="rrg-sq q-${w.quadrant || ''}" title="${fmtDate(w.week_ending)} — ${RRG_QUADRANT_LABELS[w.quadrant] || w.quadrant || 'sem dado'}"></div>`).join('')}
+            </div>
+            <div class="rrg-legend">
+                <span class="rrg-legend-item"><i style="background:#3fb950"></i>Leading</span>
+                <span class="rrg-legend-item"><i style="background:#58a6ff"></i>Improving</span>
+                <span class="rrg-legend-item"><i style="background:#d29922"></i>Weakening</span>
+                <span class="rrg-legend-item"><i style="background:#f85149"></i>Lagging</span>
+            </div>
+        `;
+    } catch (e) {
+        if (currentTicker === ticker) box.innerHTML = '<div class="tool-empty">Erro ao carregar RRG (RRGCOMPLETO indisponível).</div>';
+    }
+}
+
+// ---- SmartMoneyBR — Maiores Posições ----
+let holdersData = [];
+let holdersSide = 'buy'; // buy = comprados recentemente (qty_delta >= 0) / sell = vendidos
+let holdersMetric = 'pl'; // pl = % do PL do fundo / value = valor de mercado
+
+async function loadSmartMoney(ticker) {
+    const box = document.getElementById('smartmoneyContent');
+    box.innerHTML = '<div class="tool-loading">Carregando posições...</div>';
+    document.getElementById('smartmoneyInsidersLink').href = '/smartmoney/insiders';
+    document.getElementById('smartmoneyBuybacksLink').href = '/smartmoney/recompras';
+    try {
+        const res = await fetch('/api/smartmoney-holders?ticker=' + encodeURIComponent(ticker));
+        const data = await res.json();
+        if (currentTicker !== ticker) return;
+        if (!res.ok || data.error) {
+            box.innerHTML = `<div class="tool-empty">${data.error || 'Sem fundos posicionados neste ativo no SmartMoneyBR.'}</div>`;
+            return;
+        }
+        holdersData = data.holders || [];
+        holdersSide = 'buy';
+        holdersMetric = 'pl';
+        renderHolders();
+    } catch (e) {
+        if (currentTicker === ticker) box.innerHTML = '<div class="tool-empty">Erro ao carregar SmartMoneyBR.</div>';
+    }
+}
+
+function renderHolders() {
+    const box = document.getElementById('smartmoneyContent');
+    if (!holdersData.length) {
+        box.innerHTML = '<div class="tool-empty">Nenhum fundo com posição declarada neste ativo.</div>';
+        return;
+    }
+
+    const filtered = holdersData.filter(h => holdersSide === 'sell' ? (h.qty_delta ?? 0) < 0 : (h.qty_delta ?? 0) >= 0);
+    const metricVal = h => holdersMetric === 'value'
+        ? h.market_value
+        : (csVal(h.fund_net_asset_value) && h.fund_net_asset_value > 0 ? h.market_value / h.fund_net_asset_value : null);
+    const ranked = [...filtered].filter(h => csVal(metricVal(h))).sort((a, b) => metricVal(b) - metricVal(a)).slice(0, 10);
+    const maxVal = ranked.length ? metricVal(ranked[0]) : 0;
+
+    box.innerHTML = `
+        <div class="holders-toggle-row">
+            <button type="button" class="holders-toggle${holdersSide === 'buy' ? ' active' : ''}" data-side="buy">Comprados</button>
+            <button type="button" class="holders-toggle${holdersSide === 'sell' ? ' active' : ''}" data-side="sell">Vendidos</button>
+            <button type="button" class="holders-toggle${holdersMetric === 'pl' ? ' active' : ''}" data-metric="pl">% PL</button>
+            <button type="button" class="holders-toggle${holdersMetric === 'value' ? ' active' : ''}" data-metric="value">Valor</button>
+        </div>
+        ${ranked.length ? ranked.map(h => {
+            const v = metricVal(h);
+            const pct = maxVal > 0 ? (v / maxVal) * 100 : 0;
+            const label = holdersMetric === 'value'
+                ? v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact', maximumFractionDigits: 1 })
+                : v.toLocaleString('pt-BR', { style: 'percent', maximumFractionDigits: 1 });
+            return `
+                <div class="holders-bar-row">
+                    <div class="holders-bar-name" title="${csEsc(h.fund_name)}">${csEsc(h.fund_name)}</div>
+                    <div class="holders-bar-track"><div class="holders-bar-fill" style="width:${pct}%"></div></div>
+                    <div class="holders-bar-value">${label}</div>
+                </div>
+            `;
+        }).join('') : '<div class="tool-empty">Nenhum fundo nesse filtro.</div>'}
+    `;
+
+    box.querySelectorAll('.holders-toggle[data-side]').forEach(btn => {
+        btn.addEventListener('click', () => { holdersSide = btn.dataset.side; renderHolders(); });
+    });
+    box.querySelectorAll('.holders-toggle[data-metric]').forEach(btn => {
+        btn.addEventListener('click', () => { holdersMetric = btn.dataset.metric; renderHolders(); });
+    });
+}
 
 init();
 </script>

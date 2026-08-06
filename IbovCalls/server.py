@@ -2,6 +2,7 @@ from flask import Flask, jsonify, send_from_directory, request
 from flask_cors import CORS
 import yfinance as yf
 import pandas as pd
+import requests
 from datetime import datetime, timedelta
 import os
 import re
@@ -25,6 +26,13 @@ FUNDAMENTUS_DB_PATH = os.environ.get(
     'FUNDAMENTUS_DB',
     r'C:\Users\Guilherme\Downloads\TestCarlao\FundamentusBR\data\fundamentus.sqlite3'
 )
+
+# Bases dos 3 servicos irmaos consumidos pela pagina de detalhe de ativo
+# (acoes.html) via proxy server-side -- evita CORS e mantem o padrao ja usado
+# em DEEPVAL_HTML_PATH/FUNDAMENTUS_DB_PATH acima (env var com default local).
+GAMMA_API_BASE = os.environ.get('GAMMA_API_BASE', 'http://127.0.0.1:8017')
+RRG_API_BASE = os.environ.get('RRG_API_BASE', 'http://127.0.0.1:8021')
+SMARTMONEY_API_BASE = os.environ.get('SMARTMONEY_API_BASE', 'http://127.0.0.1:8100')
 
 # Layout dos campos do quadro fundamentalista (copiado de FundamentusBR/fundamentus.py
 # DISPLAY_SECTIONS -- e so configuracao estatica de layout, copiar evita import cross-repo).
@@ -110,6 +118,106 @@ def get_fundamentus_asset(ticker):
     asset['updated_at'] = row['updated_at']
     asset['sections'] = FUNDAMENTUS_SECTIONS
     return jsonify(asset)
+
+
+@app.route('/api/gex-proxy')
+def get_gex_proxy():
+    ticker = re.sub(r'[^A-Z0-9]', '', request.args.get('ticker', '').upper())
+    if not ticker:
+        return jsonify({'error': 'ticker inválido'}), 400
+
+    # Root de opcoes = ticker sem o sufixo numerico (SBSP3 -> SBSP, BOVA11 -> BOVA)
+    # -- mesma convencao usada pelo proprio GammaScreener (b3_oi_client.build_universe).
+    root = re.sub(r'\d+$', '', ticker) or ticker
+
+    try:
+        resp = requests.get(
+            f'{GAMMA_API_BASE}/api/gex',
+            params={'ticker': ticker, 'root': root},
+            timeout=15,
+        )
+    except requests.RequestException:
+        return jsonify({'error': 'GammaScreener indisponível'}), 503
+
+    if resp.status_code == 404:
+        return jsonify({'error': 'sem dados de GEX para este ativo'}), 404
+    if not resp.ok:
+        return jsonify({'error': 'falha ao consultar GammaScreener'}), 502
+
+    return jsonify(resp.json())
+
+
+@app.route('/api/rrg-strip')
+def get_rrg_strip():
+    ticker = re.sub(r'[^A-Z0-9]', '', request.args.get('ticker', '').upper())
+    if not ticker:
+        return jsonify({'error': 'ticker inválido'}), 400
+
+    try:
+        weeks = max(1, min(52, int(request.args.get('weeks', 36))))
+    except ValueError:
+        weeks = 36
+
+    try:
+        resp = requests.get(f'{RRG_API_BASE}/api/matrix', timeout=20)
+    except requests.RequestException:
+        return jsonify({'error': 'RRGCOMPLETO indisponível'}), 503
+
+    if not resp.ok:
+        return jsonify({'error': 'falha ao consultar RRGCOMPLETO'}), 502
+
+    matrix = resp.json()
+    asset = next((a for a in matrix.get('assets', []) if a.get('ticker') == ticker), None)
+    if not asset:
+        return jsonify({'error': 'sem histórico de RRG para este ativo'}), 404
+
+    return jsonify({
+        'ticker': asset['ticker'],
+        'name': asset.get('name', ''),
+        'weekly': asset.get('weekly', [])[-weeks:],
+    })
+
+
+@app.route('/api/smartmoney-holders')
+def get_smartmoney_holders():
+    ticker = re.sub(r'[^A-Z0-9]', '', request.args.get('ticker', '').upper())
+    if not ticker:
+        return jsonify({'error': 'ticker inválido'}), 400
+
+    try:
+        search_resp = requests.get(
+            f'{SMARTMONEY_API_BASE}/api/assets',
+            params={'search': ticker, 'limit': 5},
+            timeout=15,
+        )
+    except requests.RequestException:
+        return jsonify({'error': 'SmartMoneyBR indisponível'}), 503
+
+    if not search_resp.ok:
+        return jsonify({'error': 'falha ao consultar SmartMoneyBR'}), 502
+
+    matches = [a for a in search_resp.json() if a.get('ticker') == ticker]
+    if not matches:
+        return jsonify({'error': 'ativo não encontrado no SmartMoneyBR'}), 404
+
+    asset_id = matches[0]['id']
+
+    try:
+        holders_resp = requests.get(
+            f'{SMARTMONEY_API_BASE}/api/assets/{asset_id}/holders',
+            timeout=15,
+        )
+    except requests.RequestException:
+        return jsonify({'error': 'SmartMoneyBR indisponível'}), 503
+
+    if not holders_resp.ok:
+        return jsonify({'error': 'falha ao consultar posições no SmartMoneyBR'}), 502
+
+    return jsonify({
+        'ticker': ticker,
+        'asset_id': asset_id,
+        'holders': holders_resp.json(),
+    })
 
 
 @app.route('/api/ibov')
