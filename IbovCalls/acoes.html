@@ -170,6 +170,12 @@ body {
 .holders-bar-fill { background: #d4af37; height: 100%; }
 .holders-bar-value { text-align: right; color: #8b949e; }
 
+.sm-table-wrap { overflow: auto; max-height: 420px; border: 1px solid #21262d; border-radius: 9px; }
+.sm-table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+.sm-table th { position: sticky; top: 0; background: #1c2128; color: #8b949e; text-align: left; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid #21262d; }
+.sm-table td { padding: 8px 10px; border-bottom: 1px solid #21262d; color: #c9d1d9; font-size: 12px; }
+.sm-table tbody tr:hover { background: #1c2128; }
+
 .chart-wrapper {
     background: #161b22; border-radius: 12px; border: 1px solid #21262d;
     padding: 20px; margin-bottom: 24px; position: relative;
@@ -494,11 +500,9 @@ body {
         <div class="tool-section" id="smartmoneySection">
             <div class="tool-section-head">
                 <h2>SmartMoneyBR — fundos posicionados</h2>
-                <div class="smartmoney-links">
-                    <a id="smartmoneyInsidersLink" class="smartmoney-link-btn" href="/smartmoney/insiders" target="_blank" rel="noopener">Insiders</a>
-                    <a id="smartmoneyBuybacksLink" class="smartmoney-link-btn" href="/smartmoney/recompras" target="_blank" rel="noopener">Recompras</a>
-                </div>
+                <span class="tool-section-sub">Posições, insiders e recompras</span>
             </div>
+            <div class="holders-toggle-row" id="smartmoneyTabs"></div>
             <div id="smartmoneyContent"><div class="tool-loading">Carregando posições...</div></div>
         </div>
     </div>
@@ -708,9 +712,6 @@ async function showDetail(ticker) {
     document.getElementById('detailPrice').innerHTML = '';
     document.getElementById('chartLoading').style.display = '';
     document.getElementById('chartLoading').textContent = 'Carregando cotação...';
-
-    document.getElementById('smartmoneyInsidersLink').href = '/smartmoney/insiders';
-    document.getElementById('smartmoneyBuybacksLink').href = '/smartmoney/recompras';
 
     // Seções de ferramentas (GEX/RRG/SmartMoney/consenso) buscam em paralelo,
     // cada uma com seu próprio loading/erro -- uma sem dado não trava as outras.
@@ -1451,16 +1452,51 @@ async function loadRrg(ticker) {
     }
 }
 
-// ---- SmartMoneyBR — Maiores Posições ----
+// ---- SmartMoneyBR — Posições / Insiders / Recompras (abas embutidas, sem navegar pra fora) ----
+let smTicker = null;
+let smView = 'holders'; // holders | insiders | buybacks
 let holdersData = [];
 let holdersSide = 'buy'; // buy = comprados recentemente (qty_delta >= 0) / sell = vendidos
 let holdersMetric = 'pl'; // pl = % do PL do fundo / value = valor de mercado
+let smInsiders = null;
+let smBuybacks = null;
 
 async function loadSmartMoney(ticker) {
+    smTicker = ticker;
+    smView = 'holders';
+    holdersData = [];
+    holdersSide = 'buy';
+    holdersMetric = 'pl';
+    smInsiders = null;
+    smBuybacks = null;
+    renderSmartMoneyTabs();
+    await loadSmHolders(ticker);
+}
+
+function renderSmartMoneyTabs() {
+    const tabs = document.getElementById('smartmoneyTabs');
+    tabs.innerHTML = `
+        <button type="button" class="holders-toggle${smView === 'holders' ? ' active' : ''}" data-view="holders">Posições dos Fundos</button>
+        <button type="button" class="holders-toggle${smView === 'insiders' ? ' active' : ''}" data-view="insiders">Insiders</button>
+        <button type="button" class="holders-toggle${smView === 'buybacks' ? ' active' : ''}" data-view="buybacks">Recompras</button>
+    `;
+    tabs.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', () => switchSmView(btn.dataset.view));
+    });
+}
+
+function switchSmView(view) {
+    if (smView === view) return;
+    smView = view;
+    renderSmartMoneyTabs();
+    if (view === 'holders') { renderHolders(); return; }
+    if (view === 'insiders') { loadSmInsiders(smTicker); return; }
+    if (view === 'buybacks') { loadSmBuybacks(smTicker); return; }
+}
+
+async function loadSmHolders(ticker) {
     const box = document.getElementById('smartmoneyContent');
     box.innerHTML = '<div class="tool-loading">Carregando posições...</div>';
-    document.getElementById('smartmoneyInsidersLink').href = '/smartmoney/insiders';
-    document.getElementById('smartmoneyBuybacksLink').href = '/smartmoney/recompras';
     try {
         const res = await fetch('/api/smartmoney-holders?ticker=' + encodeURIComponent(ticker));
         const data = await res.json();
@@ -1470,11 +1506,9 @@ async function loadSmartMoney(ticker) {
             return;
         }
         holdersData = data.holders || [];
-        holdersSide = 'buy';
-        holdersMetric = 'pl';
-        renderHolders();
+        if (smView === 'holders') renderHolders();
     } catch (e) {
-        if (currentTicker === ticker) box.innerHTML = '<div class="tool-empty">Erro ao carregar SmartMoneyBR.</div>';
+        if (currentTicker === ticker && smView === 'holders') box.innerHTML = '<div class="tool-empty">Erro ao carregar SmartMoneyBR.</div>';
     }
 }
 
@@ -1521,6 +1555,98 @@ function renderHolders() {
     box.querySelectorAll('.holders-toggle[data-metric]').forEach(btn => {
         btn.addEventListener('click', () => { holdersMetric = btn.dataset.metric; renderHolders(); });
     });
+}
+
+async function loadSmInsiders(ticker) {
+    const box = document.getElementById('smartmoneyContent');
+    if (smInsiders) { renderSmInsiders(); return; }
+    box.innerHTML = '<div class="tool-loading">Carregando insiders...</div>';
+    try {
+        const res = await fetch('/api/smartmoney-insiders?ticker=' + encodeURIComponent(ticker));
+        const data = await res.json();
+        if (smTicker !== ticker || smView !== 'insiders') return;
+        if (!res.ok || data.error) {
+            box.innerHTML = `<div class="tool-empty">${data.error || 'Sem negociações de insiders para este ativo.'}</div>`;
+            return;
+        }
+        smInsiders = data.trades || [];
+        renderSmInsiders();
+    } catch (e) {
+        if (smTicker === ticker && smView === 'insiders') box.innerHTML = '<div class="tool-empty">Erro ao carregar insiders.</div>';
+    }
+}
+
+function renderSmInsiders() {
+    const box = document.getElementById('smartmoneyContent');
+    if (!smInsiders.length) {
+        box.innerHTML = '<div class="tool-empty">Nenhuma negociação de insider registrada para este ativo.</div>';
+        return;
+    }
+    box.innerHTML = `
+        <div class="sm-table-wrap">
+            <table class="sm-table">
+                <thead><tr><th>Data</th><th>Cargo</th><th>Tipo</th><th>Quantidade</th><th>Preço</th><th>Volume</th></tr></thead>
+                <tbody>
+                    ${smInsiders.map(t => `
+                        <tr>
+                            <td>${t.data_movimentacao ? fmtDate(t.data_movimentacao) : '—'}</td>
+                            <td>${csEsc(t.tipo_cargo || '—')}</td>
+                            <td class="${t.direction === 'VENDA' ? 'change negative' : 'change positive'}">${csEsc(t.direction || t.tipo_movimentacao || '—')}</td>
+                            <td>${csVal(t.quantidade) ? t.quantidade.toLocaleString('pt-BR') : '—'}</td>
+                            <td>${csVal(t.preco_unitario) ? gexFmtPrice(t.preco_unitario) : '—'}</td>
+                            <td>${csVal(t.volume) ? gexFmtCompact(t.volume) : '—'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+async function loadSmBuybacks(ticker) {
+    const box = document.getElementById('smartmoneyContent');
+    if (smBuybacks) { renderSmBuybacks(); return; }
+    box.innerHTML = '<div class="tool-loading">Carregando recompras...</div>';
+    try {
+        const res = await fetch('/api/smartmoney-buybacks?ticker=' + encodeURIComponent(ticker));
+        const data = await res.json();
+        if (smTicker !== ticker || smView !== 'buybacks') return;
+        if (!res.ok || data.error) {
+            box.innerHTML = `<div class="tool-empty">${data.error || 'Sem programas de recompra para este ativo.'}</div>`;
+            return;
+        }
+        smBuybacks = data.programs || [];
+        renderSmBuybacks();
+    } catch (e) {
+        if (smTicker === ticker && smView === 'buybacks') box.innerHTML = '<div class="tool-empty">Erro ao carregar recompras.</div>';
+    }
+}
+
+function renderSmBuybacks() {
+    const box = document.getElementById('smartmoneyContent');
+    if (!smBuybacks.length) {
+        box.innerHTML = '<div class="tool-empty">Nenhum programa de recompra registrado para este ativo.</div>';
+        return;
+    }
+    box.innerHTML = `
+        <div class="sm-table-wrap">
+            <table class="sm-table">
+                <thead><tr><th>Declarado em</th><th>Prazo</th><th>Status</th><th>Tipo</th><th>Qtd ON</th><th>Qtd PN</th></tr></thead>
+                <tbody>
+                    ${smBuybacks.map(b => `
+                        <tr>
+                            <td>${fmtDate(b.declared_at)}</td>
+                            <td>${b.deadline ? fmtDate(b.deadline) : '—'}</td>
+                            <td>${csEsc(b.status)}</td>
+                            <td>${csEsc(b.operation_type || '—')}</td>
+                            <td>${csVal(b.qty_common_shares) ? b.qty_common_shares.toLocaleString('pt-BR') : '—'}</td>
+                            <td>${csVal(b.qty_preferred_shares) ? b.qty_preferred_shares.toLocaleString('pt-BR') : '—'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
 }
 
 init();

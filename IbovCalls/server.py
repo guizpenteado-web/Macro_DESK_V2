@@ -220,6 +220,56 @@ def get_smartmoney_holders():
     })
 
 
+@app.route('/api/smartmoney-insiders')
+def get_smartmoney_insiders():
+    ticker = re.sub(r'[^A-Z0-9]', '', request.args.get('ticker', '').upper())
+    if not ticker:
+        return jsonify({'error': 'ticker inválido'}), 400
+
+    try:
+        resp = requests.get(
+            f'{SMARTMONEY_API_BASE}/api/insiders',
+            params={'search': ticker, 'limit': 50},
+            timeout=15,
+        )
+    except requests.RequestException:
+        return jsonify({'error': 'SmartMoneyBR indisponível'}), 503
+
+    if not resp.ok:
+        return jsonify({'error': 'falha ao consultar insiders no SmartMoneyBR'}), 502
+
+    trades = resp.json()
+    if not trades:
+        return jsonify({'error': 'sem negociações de insiders para este ativo'}), 404
+
+    return jsonify({'ticker': ticker, 'trades': trades})
+
+
+@app.route('/api/smartmoney-buybacks')
+def get_smartmoney_buybacks():
+    ticker = re.sub(r'[^A-Z0-9]', '', request.args.get('ticker', '').upper())
+    if not ticker:
+        return jsonify({'error': 'ticker inválido'}), 400
+
+    try:
+        resp = requests.get(
+            f'{SMARTMONEY_API_BASE}/api/buybacks',
+            params={'search': ticker, 'limit': 50},
+            timeout=15,
+        )
+    except requests.RequestException:
+        return jsonify({'error': 'SmartMoneyBR indisponível'}), 503
+
+    if not resp.ok:
+        return jsonify({'error': 'falha ao consultar recompras no SmartMoneyBR'}), 502
+
+    programs = resp.json()
+    if not programs:
+        return jsonify({'error': 'sem programas de recompra para este ativo'}), 404
+
+    return jsonify({'ticker': ticker, 'programs': programs})
+
+
 @app.route('/api/ibov')
 def get_ibov_data():
     range_param = request.args.get('range', '1y')
