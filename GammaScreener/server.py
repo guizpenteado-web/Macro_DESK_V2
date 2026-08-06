@@ -1,4 +1,3 @@
-import concurrent.futures
 import os
 import threading
 import time
@@ -11,11 +10,10 @@ from flask import Flask, jsonify, request, send_from_directory
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent
-load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR.parent / ".env")
 
 import oplab_client
 import b3_oi_client
-import history_store
 from gex_engine import build_gex_payload, flatten_legs_from_oi, SELIC_RATE
 
 app = Flask(__name__, static_folder=str(BASE_DIR), static_url_path="")
@@ -23,29 +21,28 @@ app = Flask(__name__, static_folder=str(BASE_DIR), static_url_path="")
 DEFAULT_TICKER = "BOVA11"
 DEFAULT_ROOT = "BOVA"
 
-# Filtro de qualidade do mercado de GEX, substituindo o corte fixo por rank
-# de OI (validado em 03/ago/2026 contra os 168 ativos classificaveis do
-# universo -- ver memoria do projeto). Rank de OI sozinho deixa passar
-# ativos com mercado de opcoes degenerado: ex. CVCB3 tinha OI alto (rank 39)
-# mas IV implicita de 169% e so R$3mi/dia no papel-base -- sinal classico de
-# preco de opcao sem negociacao real por tras. RAIZ4/ONCO3/PCAR3/MILS3/HBOR3
-# tinham OI decente mas iv_current=0 (OpLab sem cotacao viva de opcao), caso
-# em que o motor de GEX cairia no fallback de IV fixa (17.5%) e fabricaria
-# um numero. Um ativo so entra na lista se passar em TODOS os criterios:
-CANDIDATE_POOL_SIZE = 200      # avalia todo o universo classificavel real (~168) antes do filtro
-MIN_ACTIVE_STRIKES = 30        # profundidade minima de cadeia p/ sweep +-30% confiavel (via B3, sem custo de API)
-MIN_OI_TOTAL = 1_000_000       # piso de OI agregado (via B3, sem custo de API)
-MIN_FINANCIAL_VOLUME = 10_000_000  # liquidez minima do papel-base, R$/dia (via OpLab)
-# iv_current > 0 (cotacao viva de opcao na OpLab) tambem e exigido, checado
-# direto em _passes_quality_filter -- sem constante numerica, e booleano.
+# Filtro de qualidade do mercado de GEX -- ver server.py do Hub
+# (Mktsentiment/GammaScreener) pro racional completo, validado em
+# 03/ago/2026. Substitui o corte fixo por rank de OI.
+CANDIDATE_POOL_SIZE = 200
+MIN_ACTIVE_STRIKES = 30
+MIN_OI_TOTAL = 1_000_000
+MIN_FINANCIAL_VOLUME = 10_000_000
 
-OI_TTL_SECONDS = 2 * 60 * 60  # pedido do usuario 03/ago/2026 (era 6h)
-ASSET_TTL_SECONDS = 5 * 60    # spot/IV mudam intraday
-SCREENER_TTL_SECONDS = 5 * 60
+OI_TTL_SECONDS = 2 * 60 * 60   # pedido do usuario 03/ago/2026 (era 6h)
+ASSET_TTL_SECONDS = 50 * 60    # 05/ago/2026: dado em tempo real nao e prioridade,
+                                # o que importa e a metrica certa -- intervalo maior
+                                # poupa a OpLab (historico de instabilidade/bloqueio
+                                # sob carga, ver memoria do incidente 04/ago)
+# SCREENER_TTL nao existe mais -- o screener so atualiza nos horarios fixos
+# de SCHEDULED_REFRESH_TIMES_BRT (ver _scheduled_warmer), nunca por TTL.
 
 _oi_cache = {"index": None, "ref_date": None, "fetched_at": 0}
 _asset_cache = {}  # ticker -> {"payload":..., "fetched_at":...}
 _screener_cache = {"payload": None, "fetched_at": 0}
+_screener_lock = threading.Lock()
+_screener_refreshing = False
+_screener_ready = threading.Event()  # sinaliza quando o 1o calculo (cold start) termina
 
 
 def _get_oi_index(force=False):
@@ -63,49 +60,22 @@ def _get_oi_index(force=False):
     return _oi_cache["index"], _oi_cache["ref_date"]
 
 
-_stocks_bulk_cache = {"by_symbol": {}, "fetched_at": 0}
-
-
-def _get_stocks_bulk(force=False):
-    """Busca TODOS os ativos da OpLab numa unica chamada (/market/stocks,
-    sem symbol -- achado 04/ago/2026, tem os mesmos campos de get_stock()
-    pra ~240 ativos de uma vez) e cacheia por symbol. So refaz a chamada se
-    force=True ou se ainda nao tiver dado nenhum (bootstrap) -- fora isso,
-    serve o que ja tem ate o proximo _scheduled_warmer atualizar (mesma
-    filosofia do _screener_cache: coleta so nos horarios fixos, nao por
-    TTL). Troca ~98 chamadas por ciclo (1 por ticker) por exatamente 1.
-    """
-    if not force and _stocks_bulk_cache["by_symbol"]:
-        return _stocks_bulk_cache["by_symbol"]
-    stocks = oplab_client.get_all_stocks()
-    by_symbol = {s["symbol"]: s for s in stocks if s.get("symbol")}
-    _stocks_bulk_cache["by_symbol"] = by_symbol
-    _stocks_bulk_cache["fetched_at"] = time.time()
-    return by_symbol
-
-
-def _get_stock_cached(ticker):
-    stock = _get_stocks_bulk().get(ticker)
-    if stock is None:
-        raise RuntimeError(f"Ativo {ticker} nao encontrado no lote da OpLab")
-    return stock
-
-
 def _compute_asset_payload(ticker, root, oi_index, ref_date, use_atm_iv=True):
-    stock = _get_stock_cached(ticker)
-    spot = stock.get("bid") or stock.get("close")
+    stock = oplab_client.get_stock(ticker)
+    bid, ask = stock.get("bid"), stock.get("ask")
+    spot = (bid + ask) / 2 if bid and ask else (stock.get("close") or bid)
 
     iv_current = stock.get("iv_current") or 17.5
     iv_atm = None
     # IV ATM real (venc. mais curto) so ajuda em acoes -- em ETF/unit (sufixo
-    # 11, ex BOVA11) o iv_current ja bate bem com o flip real (validado
-    # contra o Jumba, 05/ago/2026: aplicar ATM la piorou o resultado vs
-    # iv_current flat). So busca a serie completa (chamada pesada na OpLab)
-    # na tela de detalhe de 1 ativo -- pro screener em lote (95 ativos),
-    # use_atm_iv=False evita reintroduzir o travamento da OpLab ja visto
-    # antes (ver [[project_gammascreener_oplab_blocking_incident]]).
+    # 11, ex BOVA11) o iv_current ja bate bem com o flip real (testado
+    # 05/ago/2026: aplicar ATM la piorou o resultado vs iv_current flat).
     is_etf_or_unit = ticker.endswith("11")
     if use_atm_iv and not is_etf_or_unit:
+        # So busca a serie completa (chamada pesada na OpLab) na tela de
+        # detalhe de 1 ativo -- fazer isso pra cada um dos 30-60 ativos do
+        # screener em lote reintroduziria o mesmo travamento da OpLab ja
+        # visto antes (ver incidente de bloqueio, 04/ago/2026).
         try:
             iv_atm = oplab_client.get_atm_iv(ticker, spot, irate_pct=SELIC_RATE * 100)
         except Exception:
@@ -129,25 +99,9 @@ def _compute_asset_payload(ticker, root, oi_index, ref_date, use_atm_iv=True):
     payload["source_label"] = f"Open Interest oficial B3 ({ref_date.strftime('%d/%m/%Y')})"
     payload["oi_reference_date"] = ref_date.strftime("%Y-%m-%d")
     payload["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
-    # Campos usados pelo filtro de qualidade do screener (_passes_quality_filter)
     payload["financial_volume"] = stock.get("financial_volume") or 0
-    payload["iv_current_raw"] = stock.get("iv_current") or 0
     payload["iv_source"] = "atm_nearest_expiry" if iv_atm else "stock_iv_current"
-
-    # Registra o ponto de hoje no historico com IV real (ao vivo) -- so o
-    # backfill do passado usa proxy de volatilidade realizada. Upsert por
-    # (ticker, ref_date): reescreve o mesmo dia varias vezes ao longo do
-    # pregao sem criar linha duplicada. Nunca deve derrubar o calculo do
-    # cockpit por causa de um problema no SQLite.
-    try:
-        history_store.upsert_snapshot(
-            ticker=ticker, root=root, ref_date=payload["oi_reference_date"],
-            gamma_flip=payload["gamma_flip"], spot=spot, regime=payload["regime"],
-            iv_source=payload["iv_source"], computed_at=payload["updated_at"],
-        )
-    except Exception:
-        traceback.print_exc()
-
+    payload["iv_current_raw"] = stock.get("iv_current") or 0
     return payload
 
 
@@ -180,120 +134,106 @@ def api_gex():
         return jsonify({"error": str(e)}), 502
 
 
-def _row_for_asset(asset, oi_index, ref_date, force):
+def _compute_screener(force):
+    """Calculo pesado (percorre ~100+ ativos na OpLab, sequencial, pode levar
+    minutos se a OpLab estiver degradada) -- roda SEMPRE numa thread separada
+    (nunca no request handler), pra nenhum clique de usuario ficar pendurado
+    esperando rede de terceiro. Atualiza _screener_cache quando termina;
+    request handler so LE o cache, nunca espera esse calculo direto (exceto
+    no cold-start, com timeout curto -- ver api_screener). Achado 05/ago/2026:
+    a OpLab ficou intermitente/lenta e o calculo sincrono anterior deixava a
+    aba inteira "travada" no clique do usuario por minutos."""
+    global _screener_refreshing
     try:
-        # use_atm_iv=False no screener em lote (95 ativos) -- ATM real e uma
-        # chamada extra por ativo na OpLab, faria isso de novo aqui
-        # reintroduziria o travamento ja visto antes (ver comentario em
-        # _compute_asset_payload). A tela de detalhe de 1 ativo (api_gex)
-        # usa o padrao use_atm_iv=True.
-        p = _get_asset_payload(asset["ticker"], asset["root"], oi_index, ref_date, force=force, use_atm_iv=False)
-        return {
-            "ticker": asset["ticker"],
-            "root": asset["root"],
-            "name": asset["name"],
-            "spot": p["spot"],
-            "gamma_flip": p["gamma_flip"],
-            "distance_pct": ((p["gamma_flip"] / p["spot"] - 1) * 100) if p["gamma_flip"] else None,
-            "regime": p["regime"],
-            "gex_net_total": p["gex_net_total"],
-            "oi_total": asset["oi_total"],
-            "n_active_strikes": asset["n_active_strikes"],
-            "financial_volume": p["financial_volume"],
-            "iv_current": p["iv_current_raw"],
+        oi_index, ref_date = _get_oi_index(force=force)
+        candidates = b3_oi_client.build_universe(oi_index, top_n=CANDIDATE_POOL_SIZE)
+        for c in candidates:
+            c["n_active_strikes"] = b3_oi_client.count_active_strikes(oi_index, c["root"])
+        prefiltered = [
+            c for c in candidates
+            if c["oi_total"] >= MIN_OI_TOTAL and c["n_active_strikes"] >= MIN_ACTIVE_STRIKES
+        ]
+        rows = []
+        for asset in prefiltered:
+            try:
+                p = _get_asset_payload(asset["ticker"], asset["root"], oi_index, ref_date, force=force, use_atm_iv=False)
+                if (p.get("iv_current_raw") or 0) <= 0 or (p.get("financial_volume") or 0) < MIN_FINANCIAL_VOLUME:
+                    continue
+                rows.append({
+                    "ticker": asset["ticker"],
+                    "root": asset["root"],
+                    "name": asset["name"],
+                    "spot": p["spot"],
+                    "gamma_flip": p["gamma_flip"],
+                    "distance_pct": ((p["gamma_flip"] / p["spot"] - 1) * 100) if p["gamma_flip"] else None,
+                    "regime": p["regime"],
+                    "gex_net_total": p["gex_net_total"],
+                    "oi_total": asset["oi_total"],
+                    "n_active_strikes": asset["n_active_strikes"],
+                    "financial_volume": p["financial_volume"],
+                    "iv_current": p["iv_current_raw"],
+                })
+            except Exception:
+                traceback.print_exc()
+        rows.sort(key=lambda r: -(r.get("oi_total") or 0))
+        _screener_cache["payload"] = {
+            "rows": rows,
+            "oi_reference_date": ref_date.strftime("%Y-%m-%d"),
+            "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "universe_candidates": len(candidates),
+            "universe_prefiltered": len(prefiltered),
+            "universe_kept": len(rows),
         }
-    except Exception as asset_err:
+        _screener_cache["fetched_at"] = time.time()
+    except Exception as e:
         traceback.print_exc()
-        return {"ticker": asset["ticker"], "root": asset["root"], "name": asset["name"],
-                "error": str(asset_err)}
+        if _screener_cache["payload"] is not None:
+            stale = dict(_screener_cache["payload"])
+            stale["fetch_error"] = str(e)
+            _screener_cache["payload"] = stale
+            # fetched_at NAO avanca -- proxima chamada tenta de novo, nao
+            # fica presa achando que esse erro e um resultado valido fresco.
+    finally:
+        _screener_refreshing = False
+        _screener_ready.set()
 
 
-def _passes_quality_filter(row):
-    """Segunda etapa do filtro (depende de dado da OpLab, ja calculado em
-    _row_for_asset). Ver constantes no topo do arquivo pro racional de cada
-    criterio."""
-    if "error" in row:
-        return False
-    return (
-        (row.get("iv_current") or 0) > 0
-        and (row.get("financial_volume") or 0) >= MIN_FINANCIAL_VOLUME
-    )
-
-
-def _refresh_screener(force=False):
-    """Recalcula o screener inteiro com filtro de qualidade em 2 etapas:
-
-    1) Pre-filtro barato (OI total + numero de strikes ativos), calculado
-       direto do arquivo da B3 sem nenhuma chamada de API -- descarta a
-       maior parte dos candidatos claramente ilíquidos antes de gastar
-       requisicao na OpLab.
-    2) Filtro caro (IV implicita viva + volume financeiro do papel-base),
-       que so roda pros sobreviventes da etapa 1. As chamadas por ativo na
-       OpLab sao a parte lenta (I/O de rede) -- paralelizadas com thread
-       pool, senao dezenas de ativos x ~300-500ms cada vira 15-25s+ de
-       espera. O arquivo de OI da B3 continua buscado 1x so (dentro de
-       _get_oi_index, TTL proprio), nunca por ativo.
-
-    Achado em 03/ago/2026: rank de OI puro deixava passar ativos com mercado
-    de opcoes degenerado (IV implicita absurda por falta de negociacao real,
-    ou nenhuma cotacao viva de opcao) -- ver constantes no topo do arquivo.
-    """
-    oi_index, ref_date = _get_oi_index(force=force)
-    # 1 chamada em lote pra OpLab (todos os ativos de uma vez) no INICIO de
-    # cada ciclo de refresh -- _refresh_screener so roda nos 3 horarios
-    # fixos do _scheduled_warmer (+ bootstrap), entao forcar aqui e seguro:
-    # nunca gera mais de 1 chamada em lote por ciclo real de atualizacao.
-    _get_stocks_bulk(force=True)
-    candidates = b3_oi_client.build_universe(oi_index, top_n=CANDIDATE_POOL_SIZE)
-    for c in candidates:
-        c["n_active_strikes"] = b3_oi_client.count_active_strikes(oi_index, c["root"])
-    prefiltered = [
-        c for c in candidates
-        if c["oi_total"] >= MIN_OI_TOTAL and c["n_active_strikes"] >= MIN_ACTIVE_STRIKES
-    ]
-    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
-        rows = list(pool.map(
-            lambda asset: _row_for_asset(asset, oi_index, ref_date, force), prefiltered
-        ))
-    kept_rows = [r for r in rows if _passes_quality_filter(r)]
-    kept_rows.sort(key=lambda r: -(r.get("oi_total") or 0))
-    payload = {
-        "rows": kept_rows,
-        "oi_reference_date": ref_date.strftime("%Y-%m-%d"),
-        "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
-        "universe_candidates": len(candidates),
-        "universe_prefiltered": len(prefiltered),
-        "universe_kept": len(kept_rows),
-    }
-    _screener_cache["payload"] = payload
-    _screener_cache["fetched_at"] = time.time()
-    return payload
+def _kick_off_screener_refresh(force=False):
+    """Dispara _compute_screener em background se nao tiver uma rodando
+    ja -- lock evita 2 threads batendo na OpLab ao mesmo tempo pro mesmo
+    calculo (varios usuarios clicando juntos, por ex)."""
+    global _screener_refreshing
+    with _screener_lock:
+        if _screener_refreshing:
+            return False
+        _screener_refreshing = True
+        _screener_ready.clear()
+    threading.Thread(target=_compute_screener, args=(force,), daemon=True).start()
+    return True
 
 
 @app.route("/api/screener")
 def api_screener():
-    # Achado 04/ago/2026: a coleta na OpLab (via _refresh_screener) foi
-    # limitada a 3x/dia (ver _scheduled_warmer) por suspeita de rate-limit/
-    # bloqueio causado por polling agressivo demais. Pra essa mudanca fazer
-    # sentido, o endpoint sob demanda NAO pode mais disparar coleta nova por
-    # TTL nem por "?force=1" do botao de atualizar -- sempre serve o cache
-    # do ultimo horario agendado. Unica excecao: processo acabou de subir e
-    # ainda nao tem NENHUM cache (bootstrap unico, nao repete).
+    # Achado 05/ago/2026: o botao "Atualizar" (force=1) e o TTL de 5min NAO
+    # disparam mais coleta nova aqui -- so o _scheduled_warmer (horarios
+    # fixos, ver mais abaixo) tem permissao pra bater na OpLab pro screener.
+    # Motivo: o loop varre ate ~107 ativos, cada exception (ex. login falhando)
+    # so passava pro proximo -- combinado com TTL curto e clientes clicando
+    # em "Atualizar", isso gerava dezenas de tentativas de login em sequencia
+    # (achado ao vivo: 500+ tentativas em 35min numa OpLab degradada), o
+    # mesmo padrao de "efeito manada" que ja causou bloqueio antes (ver
+    # incidente 04/ago/2026 na memoria do projeto). Unica excecao: processo
+    # acabou de subir e ainda nao tem NENHUM cache (bootstrap unico).
     if _screener_cache["payload"] is None:
-        try:
-            return jsonify(_refresh_screener(force=False))
-        except Exception as e:
-            traceback.print_exc()
-            return jsonify({"error": str(e)}), 502
+        _kick_off_screener_refresh(force=False)
+        finished = _screener_ready.wait(timeout=25)
+        if finished and _screener_cache["payload"] is not None:
+            return jsonify(_screener_cache["payload"])
+        return jsonify({"error": "Calculando dados pela primeira vez, ainda nao pronto -- tente novamente em alguns segundos."}), 503
+
     payload = dict(_screener_cache["payload"])
     payload["next_scheduled_refresh"] = _next_scheduled_refresh_label()
     return jsonify(payload)
-
-
-@app.route("/api/gex-history")
-def api_gex_history():
-    ticker = request.args.get("ticker", DEFAULT_TICKER)
-    return jsonify({"ticker": ticker, "points": history_store.get_history(ticker)})
 
 
 @app.route("/")
@@ -301,19 +241,13 @@ def index():
     return send_from_directory(str(BASE_DIR), "index.html")
 
 
-# Horarios fixos de coleta na OpLab, horario de Brasilia (pedido do usuario
-# 04/ago/2026, ver historico abaixo). Antes disso o warmer rodava a cada
-# ~4,5min, 24h/dia -- suspeita de que esse padrao de rajada continua tenha
-# disparado rate-limit/bloqueio silencioso do lado da OpLab (login parou de
-# responder, tanto na nossa API quanto no proprio app.oplab.com.br do
-# usuario). Ajustado no mesmo dia pra de hora em hora durante o pregao
-# (09h-17h) -- usuario pediu mais frequencia intradiaria depois de validar
-# que o endpoint em lote reduziu tanto o consumo que da pra dar mais
-# atualizacoes sem voltar ao padrao que causou o bloqueio: 9 ciclos/dia
-# (9 logins + 9 chamadas em lote = 18 requisicoes/dia) continua uma fracao
-# minuscula do volume anterior (~320 ciclos/dia, ate 9 logins simultaneos
-# cada um por causa do bug de concorrencia ja corrigido).
-SCHEDULED_REFRESH_TIMES_BRT = [(9, 0), (10, 0), (11, 0), (12, 0), (13, 0), (14, 0), (15, 0), (16, 0), (17, 0)]
+# Horarios fixos de coleta na OpLab pro screener, horario de Brasilia --
+# pedido explicito do usuario 05/ago/2026: nao precisa de dado em tempo
+# real, so 3x/dia (abertura, meio do dia, fechamento). Mais enxuto que o
+# padrao de 9x/dia (hora em hora) ja usado no server.py do Hub (git,
+# Mktsentiment/GammaScreener) desde 04/ago/2026 -- aqui reduzido ainda mais
+# porque o usuario nao precisa de granularidade intradiaria nenhuma.
+SCHEDULED_REFRESH_TIMES_BRT = [(11, 0), (15, 0), (18, 0)]
 BR_TZ = ZoneInfo("America/Sao_Paulo")
 
 
@@ -321,45 +255,35 @@ def _next_scheduled_refresh_label() -> str:
     now = datetime.now(BR_TZ)
     today_slots = [now.replace(hour=h, minute=m, second=0, microsecond=0) for h, m in SCHEDULED_REFRESH_TIMES_BRT]
     upcoming = [s for s in today_slots if s > now]
-    nxt = min(upcoming) if upcoming else min(today_slots)  # nenhum sobrou hoje -> primeiro de amanha (so pro rotulo)
+    nxt = min(upcoming) if upcoming else min(today_slots)
     return nxt.strftime("%H:%M") + " (BRT)"
 
 
 def _scheduled_warmer():
-    """Atualiza o cache do screener so nos horarios fixos definidos em
-    SCHEDULED_REFRESH_TIMES_BRT, em vez de continuamente. Faz 1 atualizacao
-    de bootstrap ao subir (se ainda nao tiver cache nenhum) pra tela nao
-    ficar vazia ate o proximo horario agendado.
-    """
-    time.sleep(5)  # da tempo do processo terminar de subir
-    if _screener_cache["payload"] is None:
-        try:
-            _refresh_screener(force=False)
-        except Exception:
-            traceback.print_exc()
-
+    """Atualiza o cache do screener so nos horarios fixos de
+    SCHEDULED_REFRESH_TIMES_BRT. Bootstrap unico ao subir (se ainda nao
+    tiver cache nenhum) fica a cargo do proprio api_screener (1a requisicao
+    apos o processo subir); aqui so cuidamos dos horarios agendados."""
     last_run_key = None
     while True:
         now = datetime.now(BR_TZ)
         run_key = now.strftime("%Y-%m-%d %H:%M")
         if (now.hour, now.minute) in SCHEDULED_REFRESH_TIMES_BRT and run_key != last_run_key:
-            try:
-                _refresh_screener(force=True)
-            except Exception:
-                traceback.print_exc()
+            _kick_off_screener_refresh(force=True)
             last_run_key = run_key
         time.sleep(30)
 
 
 # GAMMA_WARMER_DISABLED=1 no .env pausa a coleta agendada por completo (fica
-# 100% manual/parada). Usado 04/ago/2026 como pausa de emergencia enquanto
-# investigava o bloqueio da OpLab -- manter como valvula de escape caso
-# aconteca de novo. Nao mexe no refresh de OI (_get_oi_index) -- esse usa o
-# arquivo publico da B3, nunca tocou na OpLab, fora do escopo dessa questao.
+# 100% manual/parada) -- valvula de escape pra qualquer proximo incidente de
+# bloqueio da OpLab, mesmo padrao ja usado no Hub em 04/ago/2026.
 if os.environ.get("GAMMA_WARMER_DISABLED") != "1":
     threading.Thread(target=_scheduled_warmer, daemon=True).start()
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8017))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    # threaded=True -- achado 05/ago/2026: sem isso, o servidor de dev do
+    # Flask processa 1 requisicao por vez; o cold-start do screener (ate 25s
+    # de espera, ver api_screener) travava ATE requisicoes de outros
+    # endpoints (ex. /api/gex de outro usuario) na fila atras dele.
+    app.run(host="127.0.0.1", port=8017, debug=False, threaded=True)

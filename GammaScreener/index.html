@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gamma Flip — Ibovespa</title>
+<title>Screener de Gamma Flip — B3</title>
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <style>
   /* Paleta igual a do Macro Desk Principal (unified_server.py do Hub):
@@ -129,6 +129,19 @@
   .metric .label { font-size: 0.72rem; color: var(--text-muted); }
   .metric .value { font-size: 1.25rem; font-weight: 700; margin-top: 2px; }
   .metric .sub { font-size: 0.72rem; color: var(--text-secondary); margin-top: 2px; }
+  button.metric {
+    display: block; width: 100%; text-align: left; cursor: pointer;
+    background: var(--surface); font-family: inherit;
+    border-width: 1px; border-bottom-width: 3px; border-style: solid;
+    border-color: var(--border) var(--border) var(--border);
+    transition: border-color .15s, background .15s;
+  }
+  button.metric:hover { border-color: var(--line-color, var(--border)); }
+  button.metric.active {
+    border-bottom-color: var(--line-color, var(--call));
+    background: color-mix(in srgb, var(--line-color, var(--call)) 10%, var(--surface));
+  }
+  button.metric.active .label { color: var(--line-color, var(--text-muted)); }
 
   .plot { width: 100%; }
 
@@ -151,18 +164,18 @@
   .card-header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
   .info-wrap { position: relative; flex-shrink: 0; }
   .info-btn {
-    width: 20px; height: 20px;
+    width: 24px; height: 24px;
     border-radius: 50%;
-    border: 1px solid #d4af37;
+    border: 1px solid var(--border);
     background: transparent;
-    color: #d4af37;
-    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-size: 0.82rem;
     line-height: 1;
     display: flex; align-items: center; justify-content: center;
     cursor: help;
     padding: 0;
   }
-  .info-btn:hover { border-color: #f0c94a; color: #f0c94a; }
+  .info-btn:hover { border-color: var(--call); color: var(--call); }
   .info-tooltip {
     display: none;
     position: absolute;
@@ -183,51 +196,15 @@
   .info-tooltip strong { color: var(--text-primary); display: block; margin-top: 10px; font-size: 0.8rem; }
   .info-tooltip strong:first-child { margin-top: 0; }
 
-  .back-btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 9px 18px;
-    margin-bottom: 16px;
-    border: 1.5px solid var(--call);
-    border-radius: 8px;
-    background: transparent;
-    color: var(--call);
-    font-size: 0.9rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background .15s, color .15s;
-  }
-  .back-btn:hover { background: var(--call); color: var(--page); }
-  .back-btn .arrow { font-size: 1.05rem; line-height: 1; }
-
-  .detail-layout { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
-  .detail-main { flex: 1 1 480px; min-width: 0; }
-  .history-panel {
-    flex: 0 0 240px;
-    position: sticky; top: 16px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px 16px 6px;
-  }
-  .history-panel h3 { font-size: 0.82rem; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; }
-  .history-list { margin-top: 6px; max-height: 320px; overflow-y: auto; }
-  .history-row {
-    display: flex; justify-content: space-between; align-items: baseline;
-    padding: 6px 0; border-bottom: 1px solid var(--gridline);
-    font-size: 0.78rem;
-  }
-  .history-row:last-child { border-bottom: none; }
-  .history-date { color: var(--text-muted); }
-  .history-value { font-variant-numeric: tabular-nums; font-weight: 700; }
-  .history-empty { font-size: 0.78rem; color: var(--text-muted); padding: 8px 0; }
+  .back-link { font-size: 0.85rem; color: var(--text-secondary); cursor: pointer; text-decoration: underline; }
 
   table.screener-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
   table.screener-table th { text-align: right; padding: 8px 10px; color: var(--text-muted); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; border-bottom: 1px solid var(--gridline); }
-  table.screener-table td { text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--gridline); font-variant-numeric: tabular-nums; }
-  table.screener-table th:first-child, table.screener-table td:first-child { text-align: left; }
   table.screener-table th.sortable-th { cursor: pointer; user-select: none; }
   table.screener-table th.sortable-th:hover, table.screener-table th.sortable-th.active { color: var(--text-primary); }
   table.screener-table th .sort-arrow { display: inline-block; width: 10px; margin-left: 3px; color: var(--call); }
+  table.screener-table td { text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--gridline); font-variant-numeric: tabular-nums; }
+  table.screener-table th:first-child, table.screener-table td:first-child { text-align: left; }
   table.screener-table tbody tr { cursor: pointer; }
   table.screener-table tbody tr:hover { background: var(--page); }
   .ticker-name { display: block; font-size: 0.72rem; color: var(--text-muted); font-variant-numeric: normal; }
@@ -242,11 +219,12 @@
   <div id="screenerView">
     <header>
       <div>
-        <h1>Gamma Flip — Ibovespa</h1>
+        <h1>Screener de Gamma Flip — B3</h1>
+        <div class="subtitle">Open Interest oficial da B3 · <span id="screenerUniverseCount">os ativos</span> com opções mais líquidos, ranqueados por OI total</div>
       </div>
-      <div>
+      <div style="text-align:right">
         <button class="refresh-btn" id="screenerRefreshBtn">Atualizar</button>
-        <div class="updated" id="screenerUpdatedAt" style="text-align:right; margin-top:4px"></div>
+        <div class="updated" id="screenerUpdatedAt"></div>
       </div>
     </header>
     <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin: 10px 0">
@@ -277,71 +255,69 @@
   </div>
 
   <div id="detailView" style="display:none">
+  <span class="back-link" id="backToScreener">← Screener</span>
 
-  <button class="back-btn" id="backToScreener" type="button"><span class="arrow">&larr;</span> Voltar</button>
-
-  <div class="detail-layout">
-
-    <aside class="history-panel">
-      <h3>Evolução do Gamma Flip</h3>
-      <div id="historyChart" class="plot" style="height:150px"></div>
-      <div id="historyList" class="history-list"></div>
-    </aside>
-
-    <div class="detail-main">
-
-      <header>
-        <div>
-          <h1 id="detailTitle">BOVA11</h1>
-        </div>
-        <div style="text-align:right">
-          <button class="refresh-btn" id="refreshBtn">Atualizar</button>
-          <div class="updated" id="updatedAt"></div>
-        </div>
-      </header>
-
-      <div class="badges" id="badges"></div>
-
-      <div class="metrics-row" id="metrics"></div>
-
-      <div class="card">
-        <div class="card-header-row" style="justify-content:flex-end">
-          <div class="info-wrap">
-            <button class="info-btn" type="button" aria-label="O que cada modo mostra">?</button>
-            <div class="info-tooltip">
-              <strong>GEX líquido</strong>
-              Eixo: R$. Exposição de gamma ponderada — call contribui positivo, put negativo, somados num valor só por strike. Decide o regime (positivo/negativo) e de onde saem o Gamma Flip e os Call Wall/Put Wall.
-              <strong>CALL x PUT</strong>
-              Eixo: também R$, mas sem somar — call e put lado a lado, sem cancelar um com o outro. Use quando um strike chamar atenção no GEX líquido e você quiser saber se é call ou put que domina ali.
-              <strong>NET Open Interest</strong>
-              Eixo: contratos (OI real, sem peso de gamma). Mostra o desequilíbrio bruto de posicionamento — revela OI concentrado longe do spot que hoje não pesa no gamma, mas pode passar a pesar se o preço se aproximar.
-              <strong>Fluxo sugerido</strong>
-              GEX líquido pro regime geral → CALL x PUT pra ver a origem de um pico → NET Open Interest pra saber se é uma posição grande de verdade ou só efeito de proximidade do gamma.
-            </div>
-          </div>
-        </div>
-        <div class="toggle-group" id="toggleGroup">
-          <button class="toggle-btn active" data-mode="net">GEX líquido</button>
-          <button class="toggle-btn" data-mode="callput">CALL x PUT</button>
-          <button class="toggle-btn" data-mode="volume" id="weightModeBtn">NET Open Interest</button>
-          <button class="toggle-btn" data-mode="cumulative">GEX cumulativo</button>
-        </div>
-        <div id="cockpitChart" class="plot" style="height:420px"></div>
-        <span class="table-toggle" data-target="cockpitTable">ver tabela</span>
-        <table class="data-table" id="cockpitTable"></table>
-      </div>
-
-      <div class="card">
-        <div id="profileChart" class="plot" style="height:380px"></div>
-        <span class="table-toggle" data-target="profileTable">ver tabela</span>
-        <table class="data-table" id="profileTable"></table>
-      </div>
-
-      <div class="disclaimer" id="disclaimer"></div>
-
+  <header>
+    <div>
+      <h1 id="detailTitle">BOVA11 — Cockpit de GEX / Gamma Flip</h1>
     </div>
+    <div style="text-align:right">
+      <button class="refresh-btn" id="refreshBtn">Atualizar</button>
+      <div class="updated" id="updatedAt"></div>
+    </div>
+  </header>
 
+  <div class="badges" id="badges"></div>
+
+  <div class="metrics-row" id="metrics"></div>
+
+  <div class="card">
+    <div class="card-header-row" style="justify-content:flex-end">
+      <div class="info-wrap">
+        <button class="info-btn" type="button" aria-label="O que cada modo mostra">?</button>
+        <div class="info-tooltip">
+          <strong>GEX líquido</strong>
+          Eixo: R$. Exposição de gamma ponderada — call contribui positivo, put negativo, somados num valor só por strike. Decide o regime (positivo/negativo) e de onde saem o Gamma Flip e os Call Wall/Put Wall.
+          <strong>CALL x PUT</strong>
+          Eixo: também R$, mas sem somar — call e put lado a lado, sem cancelar um com o outro. Use quando um strike chamar atenção no GEX líquido e você quiser saber se é call ou put que domina ali.
+          <strong>NET Open Interest</strong>
+          Eixo: contratos (OI real, sem peso de gamma). Mostra o desequilíbrio bruto de posicionamento — revela OI concentrado longe do spot que hoje não pesa no gamma, mas pode passar a pesar se o preço se aproximar.
+          <strong>Fluxo sugerido</strong>
+          GEX líquido pro regime geral → CALL x PUT pra ver a origem de um pico → NET Open Interest pra saber se é uma posição grande de verdade ou só efeito de proximidade do gamma.
+        </div>
+      </div>
+    </div>
+    <div class="toggle-group" id="toggleGroup">
+      <button class="toggle-btn active" data-mode="net">GEX líquido</button>
+      <button class="toggle-btn" data-mode="callput">CALL x PUT</button>
+      <button class="toggle-btn" data-mode="volume" id="weightModeBtn">NET Open Interest</button>
+      <button class="toggle-btn" data-mode="cumulative">GEX cumulativo</button>
+    </div>
+    <div id="cockpitChart" class="plot" style="height:420px"></div>
+    <span class="table-toggle" data-target="cockpitTable">ver tabela</span>
+    <table class="data-table" id="cockpitTable"></table>
   </div>
+
+  <div class="card">
+    <div class="card-header-row" style="justify-content:flex-end">
+      <div class="info-wrap">
+        <button class="info-btn" type="button" aria-label="Gamma Flip x Zero Gamma">?</button>
+        <div class="info-tooltip">
+          <strong>Gamma Flip</strong>
+          É uma simulação de preço: recalcula o gamma de toda a cadeia (mesmo OI, mesma volatilidade de hoje) pra vários preços hipotéticos dentro de ±30% do spot. O nível onde a soma total muda de sinal é o Gamma Flip — responde "quanto o preço precisa se mover pra mudar de regime".
+          <strong>Zero Gamma (por strike)</strong>
+          É diferente: não simula preço nenhum. Pega o GEX de hoje calculado no spot atual (fixo) pra cada strike, soma acumulado do menor pro maior strike, e vê onde essa soma cruza zero. É uma estatística sobre como o book de hoje está distribuído pelos strikes, não um preço-alvo.
+          <strong>Por que dão números diferentes</strong>
+          Um varre preços simulados recalculando gamma; o outro soma valores fixos percorrendo strikes. Não há motivo pra baterem — principalmente com OI real distribuído de forma irregular. Use o Gamma Flip como o nível que importa; trate o Zero Gamma por strike como contexto.
+        </div>
+      </div>
+    </div>
+    <div id="profileChart" class="plot" style="height:380px"></div>
+    <span class="table-toggle" data-target="profileTable">ver tabela</span>
+    <table class="data-table" id="profileTable"></table>
+  </div>
+
+  <div class="disclaimer" id="disclaimer"></div>
 
   </div>
 
@@ -372,16 +348,24 @@ function cssVar(name) {
 let currentData = null;
 let currentMode = 'net';
 let currentTicker = 'BOVA11';
-let currentRoot = 'BOVA';
-
-// Base absoluta calculada a partir de location.pathname em vez de fetch
-// relativo puro ('api/...') -- achado 05/ago/2026: dentro do iframe do Hub
-// (embed em /gamma/), a resolucao relativa as vezes bate em "/api/..." na
-// raiz do dominio em vez de "/gamma/api/...", gerando 404 real (nao e' cache
-// do navegador, confirmado no log de acesso do Hub). location.pathname
-// sempre reflete a URL de fato carregada, entao concatenar direto elimina
-// qualquer ambiguidade de resolucao relativa.
 const API_BASE = location.pathname.endsWith('/') ? location.pathname : location.pathname + '/';
+let currentRoot = 'BOVA';
+let screenerRawData = null;
+let screenerFilter = '';
+const screenerSort = { key: null, dir: 'desc' };
+
+// Metricas que viram linha vertical tracejada no grafico quando o card e
+// clicado -- pedido do usuario 06/ago/2026, cores fixas por metrica.
+const LINE_DEFS = [
+  { key: 'spot',       label: 'Spot',                     color: '#ffffff', get: d => d.spot },
+  { key: 'gamma_flip', label: 'Gamma Flip',                color: '#f0c94a', get: d => d.gamma_flip },
+  { key: 'zero_gamma', label: 'Zero Gamma (por strike)',   color: '#38bdf8', get: d => d.zero_gamma_strike },
+  { key: 'call_wall',  label: 'Call Wall',                 color: '#22c55e', get: d => d.call_wall },
+  { key: 'put_wall',   label: 'Put Wall',                  color: '#ef4444', get: d => d.put_wall },
+  { key: 'gamma_max',  label: 'Gamma Máx',                 color: '#1e3a8a', get: d => d.gamma_max },
+  { key: 'gamma_min',  label: 'Gamma Mín',                 color: '#ec4899', get: d => d.gamma_min },
+];
+let activeLines = new Set(['spot', 'gamma_flip']);
 
 function showScreener() {
   document.getElementById('screenerView').style.display = '';
@@ -391,64 +375,13 @@ function showScreener() {
 function showDetail(ticker, root) {
   currentTicker = ticker;
   currentRoot = root;
-  document.getElementById('detailTitle').textContent = ticker;
+  if (screenerRawData) {
+    document.getElementById('backToScreener').textContent = `← Screener (${screenerRawData.rows.length} ativos)`;
+  }
+  document.getElementById('detailTitle').textContent = `${ticker} — Cockpit de GEX / Gamma Flip`;
   document.getElementById('screenerView').style.display = 'none';
   document.getElementById('detailView').style.display = '';
   fetchData(false);
-  renderHistory(ticker);
-}
-
-async function renderHistory(ticker) {
-  const chartEl = document.getElementById('historyChart');
-  const listEl = document.getElementById('historyList');
-  listEl.innerHTML = '<div class="history-empty">Carregando...</div>';
-  try {
-    const r = await fetch(`${API_BASE}api/gex-history?ticker=${encodeURIComponent(ticker)}`, { cache: 'no-store' });
-    const data = await r.json();
-    const points = data.points || [];
-    if (points.length === 0) {
-      Plotly.purge(chartEl);
-      listEl.innerHTML = '<div class="history-empty">Sem histórico ainda pra esse ativo.</div>';
-      return;
-    }
-
-    const dates = points.map(p => p.ref_date);
-    const flips = points.map(p => p.gamma_flip);
-
-    Plotly.react(chartEl, [{
-      x: dates, y: flips, type: 'scatter', mode: 'lines+markers',
-      line: { color: cssVar('--call'), width: 2 },
-      marker: { size: 4, color: cssVar('--call') },
-      hovertemplate: '%{x}<br>Gamma Flip: R$ %{y:.2f}<extra></extra>',
-    }], {
-      paper_bgcolor: 'rgba(0,0,0,0)',
-      plot_bgcolor: 'rgba(0,0,0,0)',
-      font: { family: 'system-ui, -apple-system, "Segoe UI", sans-serif', color: cssVar('--text-secondary'), size: 10 },
-      margin: { l: 42, r: 10, t: 6, b: 24 },
-      xaxis: { gridcolor: cssVar('--gridline'), zerolinecolor: cssVar('--baseline'), linecolor: cssVar('--baseline'), showticklabels: false },
-      yaxis: { gridcolor: cssVar('--gridline'), zerolinecolor: cssVar('--baseline'), linecolor: cssVar('--baseline'), tickprefix: 'R$ ' },
-      hovermode: 'x unified',
-      showlegend: false,
-    }, { displayModeBar: false, responsive: true });
-
-    const recent = points.slice().reverse().slice(0, 12);
-    listEl.innerHTML = recent.map((p, idx) => {
-      const prev = recent[idx + 1];
-      let arrow = '';
-      if (prev && prev.gamma_flip != null && p.gamma_flip != null) {
-        arrow = p.gamma_flip >= prev.gamma_flip
-          ? '<span style="color:var(--good)">&#9650;</span>'
-          : '<span style="color:var(--critical)">&#9660;</span>';
-      }
-      const [y, m, dd] = p.ref_date.split('-');
-      return `<div class="history-row">
-        <span class="history-date">${dd}/${m}/${y.slice(2)}</span>
-        <span class="history-value">${arrow} ${fmtPrice(p.gamma_flip)}</span>
-      </div>`;
-    }).join('');
-  } catch (e) {
-    listEl.innerHTML = '<div class="history-empty">Erro ao carregar histórico.</div>';
-  }
 }
 
 async function fetchData(force) {
@@ -496,14 +429,11 @@ async function fetchScreener(force) {
   }
 }
 
-let screenerRawData = null;
-let screenerFilter = '';
-const screenerSort = { key: null, dir: 'desc' };
-
 function renderScreener(data) {
   screenerRawData = data;
   document.getElementById('screenerUpdatedAt').textContent = `Atualizado ${new Date(data.updated_at).toLocaleString('pt-BR')}`;
   document.getElementById('screenerOiBadge').textContent = `OI referente a ${new Date(data.oi_reference_date + 'T12:00:00').toLocaleDateString('pt-BR')}`;
+  document.getElementById('screenerUniverseCount').textContent = `os ${data.rows.length} ativos`;
   document.getElementById('screenerBadges').innerHTML = data.fetch_error
     ? `<span class="badge critical">dado em cache (falha ao atualizar: ${data.fetch_error})</span>` : '';
   renderScreenerTable();
@@ -564,30 +494,35 @@ function render() {
   document.getElementById('updatedAt').textContent = `Atualizado ${new Date(d.updated_at).toLocaleString('pt-BR')}`;
   document.getElementById('weightModeBtn').textContent = `NET ${d.weight_label}`;
 
-  const regimeGood = d.gex_net_total >= 0;
   document.getElementById('badges').innerHTML = `
-    <span class="badge ${regimeGood ? 'good' : 'critical'}">${regimeGood ? 'GEX positivo — estabiliza' : 'GEX negativo — amplifica vol'}</span>
-    <span class="badge">±30% do spot</span>
-    <span class="badge">${d.n_legs} séries com ${d.weight_label.toLowerCase()} > 0</span>
     ${d.oi_reference_date ? `<span class="badge">OI referente a ${new Date(d.oi_reference_date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>` : ''}
     ${d.fetch_error ? `<span class="badge critical">dado em cache (falha ao atualizar: ${d.fetch_error})</span>` : ''}
   `;
 
-  const metrics = [
-    [`Spot ${d.symbol}`, fmtPrice(d.spot), null],
-    ['Gamma Flip', fmtPrice(d.gamma_flip), d.gamma_flip != null ? `${((d.gamma_flip/d.spot-1)*100).toFixed(1)}%` : null],
-    ['Call Wall', fmtPrice(d.call_wall), d.call_wall != null ? `${((d.call_wall/d.spot-1)*100).toFixed(1)}%` : null],
-    ['Put Wall', fmtPrice(d.put_wall), d.put_wall != null ? `${((d.put_wall/d.spot-1)*100).toFixed(1)}%` : null],
-    ['GEX líquido total', fmtBRL(d.gex_net_total), null],
-    [`IV atual (${d.symbol})`, `${d.iv_current.toFixed(1)}%`, null],
-  ];
-  document.getElementById('metrics').innerHTML = metrics.map(([label, value, sub]) => `
+  const toggleCards = LINE_DEFS.map(ld => {
+    const val = ld.get(d);
+    const pct = val != null ? `${((val/d.spot-1)*100).toFixed(1)}%` : null;
+    const label = ld.key === 'spot' ? `Spot ${d.symbol}` : ld.label;
+    const active = activeLines.has(ld.key);
+    return `
+      <button type="button" class="metric${active ? ' active' : ''}" data-line-key="${ld.key}" style="--line-color:${ld.color}">
+        <div class="label">${label}</div>
+        <div class="value">${fmtPrice(val)}</div>
+        ${pct ? `<div class="sub">${pct}</div>` : ''}
+      </button>
+    `;
+  }).join('');
+  const plainCards = `
     <div class="metric">
-      <div class="label">${label}</div>
-      <div class="value">${value}</div>
-      ${sub ? `<div class="sub">${sub}</div>` : ''}
+      <div class="label">GEX líquido total</div>
+      <div class="value">${fmtBRL(d.gex_net_total)}</div>
     </div>
-  `).join('');
+    <div class="metric">
+      <div class="label">IV atual (${d.symbol})</div>
+      <div class="value">${d.iv_current.toFixed(1)}%</div>
+    </div>
+  `;
+  document.getElementById('metrics').innerHTML = toggleCards + plainCards;
 
   document.getElementById('disclaimer').innerHTML = d.methodology_note;
 
@@ -610,8 +545,8 @@ function plotlyLayoutBase(extra) {
   }, extra || {});
 }
 
-// Zoom com scroll do mouse + pan com clique-e-arraste — mesmo padrão livre
-// já usado nos gráficos do Macro Dashboard (CFG_Z).
+// Zoom com scroll do mouse + pan com clique-e-arraste -- mesmo padrao ja
+// usado nos graficos do Macro Dashboard (CFG_Z).
 const CFG_Z = {
   responsive: true, scrollZoom: true, displayModeBar: true, displaylogo: false,
   modeBarButtonsToRemove: ['select2d', 'lasso2d', 'toImage', 'resetScale2d', 'hoverClosestCartesian', 'hoverCompareCartesian'],
@@ -633,6 +568,26 @@ function categoryIndexFor(value, sortedValues) {
     }
   }
   return sortedValues.length - 1;
+}
+
+// Monta a lista de linhas verticais ativas (toggle nos cards de metrica),
+// alternando lado esquerdo/direito e altura por posicao FIXA em LINE_DEFS
+// (nao pela ordem de clique) -- mantem o espalhamento preveither mesmo se
+// o usuario ligar/desligar em qualquer ordem. xFor converte o valor real
+// (R$) pra coordenada do eixo x do grafico (categoria no cockpit, real no
+// perfil); labelFor formata o texto de cada linha.
+const VLINE_Y_ROTATION = [1.02, 1.09, 1.16, 1.23];
+function activeVlineItems(d, xFor, labelFor) {
+  return LINE_DEFS
+    .map((ld, i) => ({ ld, i, val: ld.get(d) }))
+    .filter(o => activeLines.has(o.ld.key) && o.val != null)
+    .map((o, idx) => ({
+      x: xFor(o.val),
+      label: labelFor(o.ld.label, o.val),
+      color: o.ld.color,
+      side: o.i % 2 === 0 ? 'right' : 'left',
+      y: VLINE_Y_ROTATION[idx % VLINE_Y_ROTATION.length],
+    }));
 }
 
 function renderCockpit() {
@@ -682,10 +637,14 @@ function renderCockpit() {
     tableRows = rows.map((r, i) => [fmtPrice(r.strike), fmtBRL(cumVals[i])]);
   }
 
-  const shapes = buildVlines([
-    { x: categoryIndexFor(d.spot, strikeValues), label: `Spot R$ ${d.spot.toFixed(2)}`, color: cssVar('--text-primary'), y: 1.03 },
-    { x: categoryIndexFor(d.gamma_flip, strikeValues), label: `Gamma Flip R$ ${d.gamma_flip?.toFixed(2)}`, color: '#eab308', xshift: -24, y: 1.07 },
-  ], true);
+  const shapes = buildVlines(
+    activeVlineItems(
+      d,
+      v => categoryIndexFor(v, strikeValues),
+      (label, v) => `${label} R$ ${v.toFixed(2)}`,
+    ),
+    true,
+  );
 
   const layout = plotlyLayoutBase({
     barmode: currentMode === 'net' || currentMode === 'callput' || currentMode === 'volume' ? 'relative' : undefined,
@@ -715,10 +674,10 @@ function renderProfile() {
     { x: p.spots, y: p.net, type: 'scatter', mode: 'lines', name: 'GEX líquido', line: { color: cssVar('--text-primary'), width: 1, dash: 'dot' } },
   ];
 
-  const shapes = buildVlines([
-    { x: d.spot, color: cssVar('--text-primary'), label: 'Spot', y: 1.03 },
-    { x: d.gamma_flip, color: cssVar('--call'), label: 'Gamma Flip', xshift: -24, y: 1.07 },
-  ]);
+  const shapes = buildVlines(
+    activeVlineItems(d, v => v, (label, v) => `${label} R$ ${v.toFixed(2)}`),
+    true,
+  );
 
   const layout = plotlyLayoutBase({
     xaxis: { title: `Preço simulado de ${d.symbol} (R$)`, gridcolor: cssVar('--gridline'), zerolinecolor: cssVar('--baseline'), linecolor: cssVar('--baseline') },
@@ -738,7 +697,7 @@ function renderProfile() {
   }</tbody>`;
 }
 
-// Cada linha de referencia (Spot, Gamma Flip) fica numa altura fixa e
+// Cada linha de referencia (Spot, Flip, Zero Gamma) fica numa altura fixa e
 // diferente das outras, pra rotulo nunca colidir mesmo quando os valores
 // (em x) estao muito proximos uns dos outros.
 const VLINE_Y_LEVELS = [1.16, 1.06, 0.96];
@@ -749,12 +708,18 @@ function buildVlines(items, preLabeled) {
     .map((it, i) => {
       const y = it.y ?? (VLINE_Y_LEVELS[i] ?? VLINE_Y_LEVELS[VLINE_Y_LEVELS.length - 1]);
       const text = preLabeled ? it.label : `${it.label} R$ ${it.x.toFixed(2)}`;
+      // side 'left' -> texto fica todo a ESQUERDA da propria linha; 'right'
+      // -> todo a DIREITA. Garante que 2 linhas proximas (ou ate coincidentes)
+      // nunca colidem: cada rotulo se afasta na direcao oposta da outra.
+      const side = it.side || 'right';
+      const xanchor = side === 'left' ? 'right' : 'left';
+      const xshift = it.xshift ?? (side === 'left' ? -3 : 3);
       return {
         shape: { type: 'line', x0: it.x, x1: it.x, y0: 0, y1: 1, yref: 'paper', line: { color: it.color, width: 2, dash: 'dash' } },
         annotation: {
-          x: it.x, y, yref: 'paper', text, showarrow: false, xanchor: 'left',
-          xshift: it.xshift || 0,
-          font: { size: 9, color: it.color },
+          x: it.x, y, yref: 'paper', text, showarrow: false,
+          xanchor, xshift,
+          font: { size: 10, color: it.color },
           bgcolor: hexToRgba(cssVar('--page'), 0.85), borderpad: 2,
         },
       };
@@ -791,6 +756,13 @@ document.querySelector('#screenerTable thead').addEventListener('click', (e) => 
   else { screenerSort.key = key; screenerSort.dir = 'desc'; }
   renderScreenerTable();
 });
+document.getElementById('metrics').addEventListener('click', (e) => {
+  const btn = e.target.closest('.metric[data-line-key]');
+  if (!btn) return;
+  const key = btn.dataset.lineKey;
+  if (activeLines.has(key)) activeLines.delete(key); else activeLines.add(key);
+  render();
+});
 document.getElementById('toggleGroup').addEventListener('click', (e) => {
   const btn = e.target.closest('.toggle-btn');
   if (!btn) return;
@@ -805,10 +777,6 @@ document.querySelectorAll('.table-toggle').forEach(el => {
   });
 });
 
-// Retry unico automatico so no carregamento inicial: se a pagina abrir bem no
-// instante de um restart do backend, a 1a resposta pode vir incompleta (proxy
-// nao propagou ainda) -- 1 nova tentativa depois de 3s resolve sem o usuario
-// precisar notar ou clicar em "Atualizar" (achado 05/ago/2026).
 async function fetchScreenerWithRetry() {
   await fetchScreener(false);
   const box = document.getElementById('screenerBadges');
