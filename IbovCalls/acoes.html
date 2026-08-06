@@ -115,11 +115,16 @@ body {
 
 .timeline-toggle {
     display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    width: 100%; background: none; border: none; cursor: pointer; padding: 0; margin-bottom: 16px;
+    width: 100%; background: #161b22; border: 1px solid #30363d; border-radius: 10px;
+    cursor: pointer; padding: 12px 16px; margin-bottom: 16px; transition: all 0.15s;
 }
+.timeline-toggle:hover { background: #1c2128; border-color: #484f58; }
 .timeline-toggle .timeline-toggle-label { font-size: 18px; color: #f0f6fc; font-weight: 600; }
-.timeline-toggle:hover .timeline-toggle-label { color: #e1e4e8; }
-.timeline-toggle-chevron { color: #8b949e; font-size: 13px; transition: transform 0.2s; }
+.timeline-toggle-chevron {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: 50%; background: #21262d;
+    color: #8b949e; font-size: 13px; transition: transform 0.2s;
+}
 .timeline-toggle[aria-expanded="false"] .timeline-toggle-chevron { transform: rotate(-90deg); }
 
 .tool-section { background: #161b22; border-radius: 12px; border: 1px solid #21262d; padding: 20px; margin-bottom: 24px; }
@@ -170,6 +175,12 @@ body {
 .holders-bar-track { background: #0d1117; border-radius: 6px; height: 16px; overflow: hidden; }
 .holders-bar-fill { background: #d4af37; height: 100%; }
 .holders-bar-value { text-align: right; color: #8b949e; }
+
+.sm-flow-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-bottom: 14px; }
+.sm-flow-card { background: #0d1117; border: 1px solid #21262d; border-radius: 8px; padding: 8px 10px; }
+.sm-flow-card .sm-flow-period { font-size: 9px; color: #6e7681; text-transform: uppercase; letter-spacing: 0.05em; }
+.sm-flow-card .sm-flow-value { font-size: 15px; font-weight: 700; margin: 3px 0; }
+.sm-flow-card .sm-flow-detail { font-size: 10px; color: #8b949e; }
 
 .sm-table-wrap { overflow: auto; max-height: 420px; border: 1px solid #21262d; border-radius: 9px; }
 .sm-table { width: 100%; border-collapse: collapse; white-space: nowrap; }
@@ -508,6 +519,7 @@ body {
                 <h2>SmartMoneyBR — fundos posicionados</h2>
                 <span class="tool-section-sub">Posições, insiders e recompras</span>
             </div>
+            <div class="sm-flow-row" id="smartmoneyFlow"></div>
             <div class="holders-toggle-row" id="smartmoneyTabs"></div>
             <div id="smartmoneyContent"><div class="tool-loading">Carregando posições...</div></div>
         </div>
@@ -1478,8 +1490,51 @@ async function loadSmartMoney(ticker) {
     holdersMetric = 'pl';
     smInsiders = null;
     smBuybacks = null;
+    document.getElementById('smartmoneyFlow').innerHTML = '';
     renderSmartMoneyTabs();
+    loadSmFlow(ticker);
     await loadSmHolders(ticker);
+}
+
+async function loadSmFlow(ticker) {
+    const box = document.getElementById('smartmoneyFlow');
+    try {
+        const res = await fetch('/api/smartmoney-flow?ticker=' + encodeURIComponent(ticker));
+        const data = await res.json();
+        if (smTicker !== ticker) return;
+        if (!res.ok || data.error) { box.innerHTML = ''; return; }
+        renderSmFlow(data.flow);
+    } catch (e) {
+        box.innerHTML = '';
+    }
+}
+
+const SM_FLOW_PERIODS = [
+    ['1', 'Último mês'],
+    ['3', 'Últimos 3 meses'],
+    ['6', 'Últimos 6 meses'],
+];
+function renderSmFlow(flow) {
+    const box = document.getElementById('smartmoneyFlow');
+    const cards = SM_FLOW_PERIODS.map(([key, label]) => {
+        const f = flow[key];
+        if (!f || !f.n_months) return '';
+        const period = f.ref_date_to ? `${label} · até ${fmtMonthYear(f.ref_date_to)}` : label;
+        const cls = f.net_value_delta >= 0 ? 'positive' : 'negative';
+        return `
+            <div class="sm-flow-card">
+                <div class="sm-flow-period">${csEsc(period)}</div>
+                <div class="sm-flow-value change ${cls}">${f.net_value_delta >= 0 ? '+' : ''}${f.net_value_delta.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact', maximumFractionDigits: 1 })}</div>
+                <div class="sm-flow-detail">${csInteger(f.n_funds_buying)} fundos compraram líquido · ${csInteger(f.n_funds_selling)} venderam líquido</div>
+            </div>
+        `;
+    }).filter(Boolean).join('');
+    box.innerHTML = cards;
+}
+const SM_FLOW_MONTH_ABBR = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+function fmtMonthYear(dateStr) {
+    const [y, m] = dateStr.split('-');
+    return `${SM_FLOW_MONTH_ABBR[Number(m) - 1]}/${y.slice(2)}`;
 }
 
 function renderSmartMoneyTabs() {

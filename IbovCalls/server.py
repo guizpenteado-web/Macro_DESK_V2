@@ -270,6 +270,49 @@ def get_smartmoney_buybacks():
     return jsonify({'ticker': ticker, 'programs': programs})
 
 
+@app.route('/api/smartmoney-flow')
+def get_smartmoney_flow():
+    ticker = re.sub(r'[^A-Z0-9]', '', request.args.get('ticker', '').upper())
+    if not ticker:
+        return jsonify({'error': 'ticker inválido'}), 400
+
+    try:
+        search_resp = requests.get(
+            f'{SMARTMONEY_API_BASE}/api/assets',
+            params={'search': ticker, 'limit': 5},
+            timeout=15,
+        )
+    except requests.RequestException:
+        return jsonify({'error': 'SmartMoneyBR indisponível'}), 503
+
+    if not search_resp.ok:
+        return jsonify({'error': 'falha ao consultar SmartMoneyBR'}), 502
+
+    matches = [a for a in search_resp.json() if a.get('ticker') == ticker]
+    if not matches:
+        return jsonify({'error': 'ativo não encontrado no SmartMoneyBR'}), 404
+
+    asset_id = matches[0]['id']
+
+    flow = {}
+    for months in (1, 3, 6):
+        try:
+            resp = requests.get(
+                f'{SMARTMONEY_API_BASE}/api/assets/{asset_id}/flow-accumulated',
+                params={'months': months},
+                timeout=15,
+            )
+        except requests.RequestException:
+            return jsonify({'error': 'SmartMoneyBR indisponível'}), 503
+
+        if not resp.ok:
+            return jsonify({'error': 'falha ao consultar fluxo no SmartMoneyBR'}), 502
+
+        flow[str(months)] = resp.json()
+
+    return jsonify({'ticker': ticker, 'asset_id': asset_id, 'flow': flow})
+
+
 @app.route('/api/ibov')
 def get_ibov_data():
     range_param = request.args.get('range', '1y')
