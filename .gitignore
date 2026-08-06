@@ -24,6 +24,10 @@ MacroDashboard/data/price_cache.json
 # cada fetch bem-sucedido, ~10MB, diferente por ambiente
 GammaScreener/b3_oi_cache.json
 
+# Cache do screener em disco (GammaScreener) — sobrevive a restart do
+# processo, regenerado a cada calculo bem-sucedido, diferente por ambiente
+GammaScreener/screener_cache.json
+
 # Dados da Biblioteca (posts reais do usuário, mídias e chave de API) — nunca no git
 biblioteca/data/
 

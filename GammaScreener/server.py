@@ -1,3 +1,4 @@
+import json
 import os
 import threading
 import time
@@ -43,6 +44,38 @@ _screener_cache = {"payload": None, "fetched_at": 0}
 _screener_lock = threading.Lock()
 _screener_refreshing = False
 _screener_ready = threading.Event()  # sinaliza quando o 1o calculo (cold start) termina
+
+# Persistencia em disco do cache do screener -- achado 06/ago/2026: o Hub
+# (processo pai) estava sendo reiniciado externamente via SSH a cada poucos
+# minutos (fora do nosso controle), e cada restart derrubava esse processo
+# junto, zerando o cache em memoria. Sem isso, toda vez o 1o usuario a abrir
+# a tela caia na janela de "calculando pela primeira vez" (503 por ate ~90s).
+# Com o cache em disco, o processo recem-subido ja responde na hora com o
+# ultimo resultado valido (marcado com sua idade real) enquanto recalcula em
+# background.
+_SCREENER_CACHE_FILE = BASE_DIR / "screener_cache.json"
+
+
+def _load_screener_cache_from_disk():
+    try:
+        with open(_SCREENER_CACHE_FILE, "r", encoding="utf-8") as f:
+            saved = json.load(f)
+        _screener_cache["payload"] = saved["payload"]
+        _screener_cache["fetched_at"] = saved["fetched_at"]
+        _screener_ready.set()
+    except Exception:
+        pass
+
+
+def _save_screener_cache_to_disk():
+    try:
+        with open(_SCREENER_CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump({"payload": _screener_cache["payload"], "fetched_at": _screener_cache["fetched_at"]}, f)
+    except Exception:
+        traceback.print_exc()
+
+
+_load_screener_cache_from_disk()
 
 
 def _get_oi_index(force=False):
@@ -185,6 +218,7 @@ def _compute_screener(force):
             "universe_kept": len(rows),
         }
         _screener_cache["fetched_at"] = time.time()
+        _save_screener_cache_to_disk()
     except Exception as e:
         traceback.print_exc()
         if _screener_cache["payload"] is not None:
@@ -279,6 +313,11 @@ def _scheduled_warmer():
 # bloqueio da OpLab, mesmo padrao ja usado no Hub em 04/ago/2026.
 if os.environ.get("GAMMA_WARMER_DISABLED") != "1":
     threading.Thread(target=_scheduled_warmer, daemon=True).start()
+    # Dispara o 1o calculo assim que o processo sobe, em vez de esperar o
+    # primeiro usuario clicar (ver comentario de _SCREENER_CACHE_FILE acima
+    # -- com restarts externos frequentes, isso reduz ainda mais a janela
+    # em que /api/screener so tem o cache antigo do disco pra oferecer).
+    _kick_off_screener_refresh(force=False)
 
 
 if __name__ == "__main__":
