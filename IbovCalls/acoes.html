@@ -84,12 +84,12 @@ body {
 }
 .detail-header-left, .detail-header-right { display: flex; flex-direction: column; gap: 10px; }
 .detail-header-right { align-items: flex-end; margin-top: 22px; }
-.ticker-name-row { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
+.detail-change { font-size: 14px; font-weight: 500; margin-top: 8px; }
+.ticker-name-row { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
 .detail-header .ticker-title { font-size: 28px; font-weight: 700; color: #f0f6fc; }
 .detail-header .ticker-company { font-size: 14px; color: #8b949e; margin-top: 4px; }
 .detail-price { text-align: left; }
 .detail-price .price { font-size: 22px; font-weight: 700; color: #f0f6fc; }
-.detail-price .change { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
 .change.positive { color: #3fb950; }
 .change.negative { color: #f85149; }
 
@@ -479,6 +479,7 @@ body {
     <div id="detailView" style="display:none">
         <div class="detail-header">
             <div class="detail-header-left">
+                <div class="detail-change" id="detailChange"></div>
                 <div class="ticker-name-row">
                     <div class="ticker-title" id="detailTicker"></div>
                     <div class="detail-price" id="detailPrice"></div>
@@ -747,6 +748,7 @@ async function showDetail(ticker) {
     document.querySelector('.consenso-cta').classList.remove('active');
     document.getElementById('detailView').style.display = '';
     document.getElementById('detailTicker').textContent = ticker;
+    document.getElementById('detailChange').innerHTML = '';
     document.getElementById('detailPrice').innerHTML = '';
     document.getElementById('chartLoading').style.display = '';
     document.getElementById('chartLoading').textContent = 'Carregando cotação...';
@@ -828,10 +830,8 @@ async function loadQuote(ticker) {
         const cur = quote.current;
         const cls = cur.change >= 0 ? 'positive' : 'negative';
         const sign = cur.change >= 0 ? '+' : '';
-        document.getElementById('detailPrice').innerHTML = `
-            <div class="change ${cls}">${sign}${fmtPrice(cur.change)} (${sign}${cur.changePercent}%)</div>
-            <div class="price">R$ ${fmtPrice(cur.price)}</div>
-        `;
+        document.getElementById('detailChange').innerHTML = `<span class="change ${cls}">${sign}${fmtPrice(cur.change)} (${sign}${cur.changePercent}%)</span>`;
+        document.getElementById('detailPrice').innerHTML = `<span class="price">R$ ${fmtPrice(cur.price)}</span>`;
         renderStockChart(quote.data);
     } catch (e) {
         document.getElementById('chartLoading').textContent = 'Erro ao carregar cotação.';
