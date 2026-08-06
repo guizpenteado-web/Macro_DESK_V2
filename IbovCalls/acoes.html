@@ -84,9 +84,10 @@ body {
 }
 .detail-header-left, .detail-header-right { display: flex; flex-direction: column; gap: 10px; }
 .detail-header-right { align-items: flex-end; }
+.ticker-name-row { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
 .detail-header .ticker-title { font-size: 28px; font-weight: 700; color: #f0f6fc; }
 .detail-header .ticker-company { font-size: 14px; color: #8b949e; margin-top: 4px; }
-.detail-price { text-align: right; }
+.detail-price { text-align: left; }
 .detail-price .price { font-size: 32px; font-weight: 700; color: #f0f6fc; }
 .detail-price .change { font-size: 14px; font-weight: 500; margin-top: 2px; }
 .change.positive { color: #3fb950; }
@@ -147,6 +148,8 @@ body {
 .gex-metric strong { display: block; font-size: 16px; color: #f0f6fc; margin-top: 4px; }
 .gex-metric span { font-size: 10px; color: #6e7681; }
 .gex-tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+.gex-reset-zoom { margin-left: auto; color: #6e7681; }
+.gex-reset-zoom:hover { color: #e1e4e8; }
 .gex-tab {
     border: 1px solid #30363d; background: transparent; color: #8b949e;
     padding: 5px 12px; border-radius: 14px; font-size: 12px; font-weight: 600; cursor: pointer;
@@ -463,7 +466,10 @@ body {
     <div id="detailView" style="display:none">
         <div class="detail-header">
             <div class="detail-header-left">
-                <div class="ticker-title" id="detailTicker"></div>
+                <div class="ticker-name-row">
+                    <div class="ticker-title" id="detailTicker"></div>
+                    <div class="detail-price" id="detailPrice"></div>
+                </div>
                 <div class="ticker-company" id="detailCompany"></div>
                 <div class="detail-tools">
                     <button type="button" class="tool-nav-btn" data-target="gexSection">Gamma</button>
@@ -473,7 +479,6 @@ body {
             </div>
             <div class="detail-header-right">
                 <div class="detail-consenso-mini" id="detailConsensoMini"></div>
-                <div class="detail-price" id="detailPrice"></div>
             </div>
         </div>
 
@@ -492,7 +497,7 @@ body {
 
         <div class="timeline-section">
             <button type="button" id="timelineToggleBtn" class="timeline-toggle" aria-expanded="true" aria-controls="detailTimeline">
-                <span class="timeline-toggle-label">SELL SIDE CALLS</span>
+                <span class="timeline-toggle-label">Sell Side Calls</span>
                 <span class="timeline-toggle-chevron" aria-hidden="true">▾</span>
             </button>
             <div class="timeline" id="detailTimeline"></div>
@@ -578,6 +583,8 @@ body {
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 <script>
 const BANK_COLORS = {
     'BTG Pactual': '#5c6bc0', 'Itaú BBA': '#ff8f00', 'Morgan Stanley': '#00bfa5',
@@ -1385,9 +1392,13 @@ function renderGex() {
             <button type="button" class="gex-tab${gexActiveTab === 'callput' ? ' active' : ''}" data-tab="callput">CALL x PUT</button>
             <button type="button" class="gex-tab${gexActiveTab === 'oi' ? ' active' : ''}" data-tab="oi">NET Open Interest</button>
             <button type="button" class="gex-tab${gexActiveTab === 'cum' ? ' active' : ''}" data-tab="cum">GEX cumulativo</button>
+            <button type="button" class="gex-tab gex-reset-zoom" id="gexResetZoomBtn">Resetar zoom</button>
         </div>
         <div class="gex-chart-wrap"><canvas id="gexChartCanvas"></canvas></div>
     `;
+    document.getElementById('gexResetZoomBtn').addEventListener('click', () => {
+        if (gexChart) gexChart.resetZoom();
+    });
     box.querySelectorAll('.gex-tab').forEach(btn => {
         btn.addEventListener('click', () => {
             gexActiveTab = btn.dataset.tab;
@@ -1429,7 +1440,13 @@ function drawGexChart() {
     if (!gexData) return;
     const ctx = document.getElementById('gexChartCanvas');
     if (!ctx) return;
+    // Sempre destrói a instância anterior antes de criar outra no MESMO canvas
+    // -- sem isso, trocar de aba (sem trocar de ticker) empilhava um Chart.js
+    // por cima do outro no mesmo <canvas>, gerando o layout bugado/sobreposto.
+    if (gexChart) { gexChart.destroy(); gexChart = null; }
+
     const strikes = gexData.by_strike || [];
+    let type = 'bar';
     let datasets;
     if (gexActiveTab === 'callput') {
         datasets = [
@@ -1442,14 +1459,19 @@ function drawGexChart() {
               backgroundColor: strikes.map(r => (r.weight_call || 0) - (r.weight_put || 0) >= 0 ? '#3fb950' : '#f85149') },
         ];
     } else if (gexActiveTab === 'cum') {
+        // Igual ao GammaScreener original: cumulativo é linha+área, não barras.
+        type = 'line';
         let acc = 0;
         const cum = strikes.map(r => ({ x: r.strike, y: (acc += r.gex_net) }));
-        datasets = [{ label: 'GEX cumulativo', data: cum, backgroundColor: cum.map(p => p.y >= 0 ? '#3fb950' : '#f85149') }];
+        datasets = [{
+            label: 'GEX cumulativo', data: cum, borderColor: '#3fb950', backgroundColor: 'rgba(63,185,80,0.12)',
+            borderWidth: 2, pointRadius: 0, fill: 'origin', tension: 0,
+        }];
     } else {
         datasets = [{ label: 'GEX líquido', data: strikes.map(r => ({ x: r.strike, y: r.gex_net })), backgroundColor: strikes.map(r => r.gex_net >= 0 ? '#3fb950' : '#f85149') }];
     }
     gexChart = new Chart(ctx, {
-        type: 'bar',
+        type,
         data: { datasets },
         options: {
             responsive: true, maintainAspectRatio: false,
@@ -1461,6 +1483,11 @@ function drawGexChart() {
             plugins: {
                 legend: { labels: { color: '#c9d1d9' } },
                 annotation: { annotations: buildGexAnnotations(gexData) },
+                zoom: {
+                    pan: { enabled: true, mode: 'x' },
+                    zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
+                    limits: { x: { min: 'original', max: 'original' } },
+                },
             },
         },
     });
