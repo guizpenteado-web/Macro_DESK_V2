@@ -1485,15 +1485,20 @@ function drawGexChart() {
     const strikes = gexData.by_strike || [];
     let type = 'bar';
     let datasets;
+    // Largura fixa em px pro strike -- com eixo linear e strikes desigualmente
+    // espaçados, o Chart.js infere a largura da barra pelo menor espaço entre
+    // pontos vizinhos, deixando tudo fino/ilegível quando há strikes muito
+    // próximos. Fixando em px, toda barra fica visível independente do range.
+    const BAR_W = 5;
     if (gexActiveTab === 'callput') {
         datasets = [
-            { label: 'CALL', data: strikes.map(r => ({ x: r.strike, y: r.gex_call })), backgroundColor: '#3fb950' },
-            { label: 'PUT', data: strikes.map(r => ({ x: r.strike, y: -Math.abs(r.gex_put) })), backgroundColor: '#f85149' },
+            { label: 'CALL', data: strikes.map(r => ({ x: r.strike, y: r.gex_call })), backgroundColor: '#3fb950', barThickness: BAR_W, minBarLength: 1 },
+            { label: 'PUT', data: strikes.map(r => ({ x: r.strike, y: -Math.abs(r.gex_put) })), backgroundColor: '#f85149', barThickness: BAR_W, minBarLength: 1 },
         ];
     } else if (gexActiveTab === 'oi') {
         datasets = [
             { label: 'OI líquido (call - put)', data: strikes.map(r => ({ x: r.strike, y: (r.weight_call || 0) - (r.weight_put || 0) })),
-              backgroundColor: strikes.map(r => (r.weight_call || 0) - (r.weight_put || 0) >= 0 ? '#3fb950' : '#f85149') },
+              backgroundColor: strikes.map(r => (r.weight_call || 0) - (r.weight_put || 0) >= 0 ? '#3fb950' : '#f85149'), barThickness: BAR_W, minBarLength: 1 },
         ];
     } else if (gexActiveTab === 'cum') {
         // Igual ao GammaScreener original: cumulativo é linha+área, não barras.
@@ -1505,7 +1510,7 @@ function drawGexChart() {
             borderWidth: 2, pointRadius: 0, fill: 'origin', tension: 0,
         }];
     } else {
-        datasets = [{ label: 'GEX líquido', data: strikes.map(r => ({ x: r.strike, y: r.gex_net })), backgroundColor: strikes.map(r => r.gex_net >= 0 ? '#3fb950' : '#f85149') }];
+        datasets = [{ label: 'GEX líquido', data: strikes.map(r => ({ x: r.strike, y: r.gex_net })), backgroundColor: strikes.map(r => r.gex_net >= 0 ? '#3fb950' : '#f85149'), barThickness: BAR_W, minBarLength: 1 }];
     }
     gexChart = new Chart(ctx, {
         type,
