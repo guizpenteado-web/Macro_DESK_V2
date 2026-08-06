@@ -147,6 +147,10 @@ body {
 .gex-metric small { display: block; color: #8b949e; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
 .gex-metric strong { display: block; font-size: 16px; color: #f0f6fc; margin-top: 4px; }
 .gex-metric span { font-size: 10px; color: #6e7681; }
+.gex-metric-toggle { text-align: left; width: 100%; cursor: pointer; font: inherit; transition: all 0.15s; }
+.gex-metric-toggle:hover { border-color: #484f58; }
+.gex-metric-toggle.active { border-color: var(--line-color, #58a6ff); box-shadow: inset 0 0 0 1px var(--line-color, #58a6ff); }
+.gex-metric-toggle.active small { color: var(--line-color, #58a6ff); }
 .gex-tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
 .gex-reset-zoom { margin-left: auto; color: #6e7681; }
 .gex-reset-zoom:hover { color: #e1e4e8; }
@@ -158,7 +162,16 @@ body {
 .gex-chart-wrap { position: relative; height: 320px; }
 
 .rrg-strip { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 6px; }
-.rrg-sq { width: 22px; height: 22px; border-radius: 4px; flex-shrink: 0; }
+.rrg-sq { width: 22px; height: 22px; border-radius: 4px; flex-shrink: 0; cursor: pointer; }
+.rrg-tooltip {
+    display: none; position: fixed; z-index: 50; min-width: 190px;
+    background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+    padding: 10px 12px; pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.rrg-tooltip .rrg-tooltip-date { color: #8b949e; font-size: 11px; margin-bottom: 6px; }
+.rrg-tooltip-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 2px 0; font-size: 12px; }
+.rrg-tooltip-row .rrg-tooltip-label { color: #8b949e; }
+.rrg-tooltip-row .rrg-tooltip-value { font-weight: 700; }
 .rrg-sq.q-Leading { background: #3fb950; }
 .rrg-sq.q-Improving { background: #58a6ff; }
 .rrg-sq.q-Weakening { background: #d29922; }
@@ -517,16 +530,19 @@ body {
                 <span class="tool-section-sub">Rotação relativa vs. IBOV</span>
             </div>
             <div id="rrgContent"><div class="tool-loading">Carregando RRG...</div></div>
+            <div class="rrg-tooltip" id="rrgTooltip"></div>
         </div>
 
         <div class="tool-section" id="smartmoneySection">
-            <div class="tool-section-head">
-                <h2>SmartMoneyBR — fundos posicionados</h2>
-                <span class="tool-section-sub">Posições, insiders e recompras</span>
+            <button type="button" id="smartmoneyToggleBtn" class="timeline-toggle" aria-expanded="true" aria-controls="smartmoneyBody">
+                <span class="timeline-toggle-label">SmartMoneyBR — fundos posicionados</span>
+                <span class="timeline-toggle-chevron" aria-hidden="true">▾</span>
+            </button>
+            <div id="smartmoneyBody">
+                <div class="sm-flow-row" id="smartmoneyFlow"></div>
+                <div class="holders-toggle-row" id="smartmoneyTabs"></div>
+                <div id="smartmoneyContent"><div class="tool-loading">Carregando posições...</div></div>
             </div>
-            <div class="sm-flow-row" id="smartmoneyFlow"></div>
-            <div class="holders-toggle-row" id="smartmoneyTabs"></div>
-            <div id="smartmoneyContent"><div class="tool-loading">Carregando posições...</div></div>
         </div>
     </div>
 
@@ -1282,6 +1298,12 @@ document.getElementById('gexToggleBtn').addEventListener('click', e => {
     btn.setAttribute('aria-expanded', String(!open));
     document.getElementById('gexContent').hidden = open;
 });
+document.getElementById('smartmoneyToggleBtn').addEventListener('click', e => {
+    const btn = e.currentTarget;
+    const open = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', String(!open));
+    document.getElementById('smartmoneyBody').hidden = open;
+});
 
 // ---- Botões de navegação rápida (Gamma / SmartMoneyBR / RRG) ----
 document.querySelectorAll('.tool-nav-btn').forEach(btn => {
@@ -1337,6 +1359,7 @@ async function loadDetailConsensoMini(ticker) {
 let gexData = null;
 let gexChart = null;
 let gexActiveTab = 'net';
+let gexActiveLines = new Set(['spot', 'gamma_flip']);
 
 function gexFmtPrice(v) {
     return csVal(v) ? 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
@@ -1364,6 +1387,7 @@ async function loadGex(ticker) {
         }
         gexData = data;
         gexActiveTab = 'net';
+        gexActiveLines = new Set(['spot', 'gamma_flip']);
         renderGex();
     } catch (e) {
         if (currentTicker === ticker) box.innerHTML = '<div class="tool-empty">Erro ao carregar GEX (GammaScreener indisponível).</div>';
@@ -1374,18 +1398,22 @@ function renderGex() {
     if (!gexData) return;
     const d = gexData;
     const box = document.getElementById('gexContent');
-    const metrics = [
-        ['Spot', gexFmtPrice(d.spot), ''],
-        ['Gamma Flip', gexFmtPrice(d.gamma_flip), ''],
-        ['Zero Gamma', gexFmtPrice(d.zero_gamma_strike), ''],
-        ['Call Wall', gexFmtPrice(d.call_wall), ''],
-        ['Put Wall', gexFmtPrice(d.put_wall), ''],
-        ['GEX líquido total', gexFmtCompact(d.gex_net_total), d.regime || ''],
-        ['IV atual', csVal(d.iv_current) ? d.iv_current.toFixed(1) + '%' : '—', ''],
-    ];
+    const toggleMetrics = GEX_VLINE_DEFS.map(([key, color, label]) => {
+        const active = gexActiveLines.has(key);
+        return `
+            <button type="button" class="gex-metric gex-metric-toggle${active ? ' active' : ''}" data-line-key="${key}" style="--line-color:${color}">
+                <small>${label}</small><strong>${gexFmtPrice(d[key])}</strong>
+            </button>
+        `;
+    }).join('');
+    const plainMetrics = `
+        <div class="gex-metric"><small>GEX líquido total</small><strong>${gexFmtCompact(d.gex_net_total)}</strong>${d.regime ? `<span>${d.regime}</span>` : ''}</div>
+        <div class="gex-metric"><small>IV atual</small><strong>${csVal(d.iv_current) ? d.iv_current.toFixed(1) + '%' : '—'}</strong></div>
+    `;
     box.innerHTML = `
         <div class="gex-metrics">
-            ${metrics.map(m => `<div class="gex-metric"><small>${m[0]}</small><strong>${m[1]}</strong>${m[2] ? `<span>${m[2]}</span>` : ''}</div>`).join('')}
+            ${toggleMetrics}
+            ${plainMetrics}
         </div>
         <div class="gex-tabs">
             <button type="button" class="gex-tab${gexActiveTab === 'net' ? ' active' : ''}" data-tab="net">GEX líquido</button>
@@ -1406,6 +1434,14 @@ function renderGex() {
             drawGexChart();
         });
     });
+    box.querySelectorAll('.gex-metric-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const key = btn.dataset.lineKey;
+            if (gexActiveLines.has(key)) gexActiveLines.delete(key); else gexActiveLines.add(key);
+            btn.classList.toggle('active', gexActiveLines.has(key));
+            drawGexChart();
+        });
+    });
     drawGexChart();
 }
 
@@ -1422,6 +1458,7 @@ const GEX_VLINE_DEFS = [
 function buildGexAnnotations(d) {
     const out = {};
     GEX_VLINE_DEFS.forEach(([key, color, label]) => {
+        if (!gexActiveLines.has(key)) return;
         const val = d[key];
         if (!csVal(val)) return;
         out[key] = {
@@ -1520,7 +1557,7 @@ async function loadRrg(ticker) {
         const weeklyDesc = [...weekly].reverse();
         box.innerHTML = `
             <div class="rrg-strip">
-                ${weeklyDesc.map(w => `<div class="rrg-sq q-${w.quadrant || ''}" title="${fmtDate(w.week_ending)} — ${RRG_QUADRANT_LABELS[w.quadrant] || w.quadrant || 'sem dado'}"></div>`).join('')}
+                ${weeklyDesc.map((w, i) => `<div class="rrg-sq q-${w.quadrant || ''}" data-week-idx="${i}"></div>`).join('')}
             </div>
             <div class="rrg-legend">
                 <span class="rrg-legend-item"><i style="background:#3fb950"></i>Leading</span>
@@ -1529,9 +1566,48 @@ async function loadRrg(ticker) {
                 <span class="rrg-legend-item"><i style="background:#f85149"></i>Lagging</span>
             </div>
         `;
+        box.querySelectorAll('.rrg-sq').forEach(sq => {
+            const w = weeklyDesc[Number(sq.dataset.weekIdx)];
+            sq.addEventListener('mouseenter', e => showRrgTooltip(e, w));
+            sq.addEventListener('mousemove', e => positionRrgTooltip(e));
+            sq.addEventListener('mouseleave', hideRrgTooltip);
+        });
     } catch (e) {
         if (currentTicker === ticker) box.innerHTML = '<div class="tool-empty">Erro ao carregar RRG (RRGCOMPLETO indisponível).</div>';
     }
+}
+
+function rrgFmtPct(v, forceSign) {
+    if (!csVal(v)) return '—';
+    const sign = v > 0 && forceSign ? '+' : '';
+    return sign + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+}
+function rrgPctColor(v) {
+    return csVal(v) ? (v < 0 ? '#f85149' : '#3fb950') : '#8b949e';
+}
+function showRrgTooltip(e, w) {
+    const tt = document.getElementById('rrgTooltip');
+    const rel = csVal(w.weekly_return) && csVal(w.ibov_weekly_return) ? w.weekly_return - w.ibov_weekly_return : null;
+    tt.innerHTML = `
+        <div class="rrg-tooltip-date">${fmtDate(w.week_ending)} — ${RRG_QUADRANT_LABELS[w.quadrant] || w.quadrant || 'sem dado'}</div>
+        <div class="rrg-tooltip-row"><span class="rrg-tooltip-label">Retorno da ação</span><span class="rrg-tooltip-value" style="color:${rrgPctColor(w.weekly_return)}">${rrgFmtPct(w.weekly_return)}</span></div>
+        <div class="rrg-tooltip-row"><span class="rrg-tooltip-label">Retorno do IBOV</span><span class="rrg-tooltip-value" style="color:${rrgPctColor(w.ibov_weekly_return)}">${rrgFmtPct(w.ibov_weekly_return)}</span></div>
+        <div class="rrg-tooltip-row"><span class="rrg-tooltip-label">Performance relativa</span><span class="rrg-tooltip-value" style="color:${rrgPctColor(rel)}">${rrgFmtPct(rel, true)}</span></div>
+    `;
+    tt.style.display = 'block';
+    positionRrgTooltip(e);
+}
+function positionRrgTooltip(e) {
+    const tt = document.getElementById('rrgTooltip');
+    if (tt.style.display !== 'block') return;
+    const ttWidth = tt.offsetWidth || 190;
+    let left = e.clientX + 14;
+    if (left + ttWidth > window.innerWidth - 10) left = e.clientX - ttWidth - 14;
+    tt.style.left = left + 'px';
+    tt.style.top = (e.clientY - 10) + 'px';
+}
+function hideRrgTooltip() {
+    document.getElementById('rrgTooltip').style.display = 'none';
 }
 
 // ---- SmartMoneyBR — Posições / Insiders / Recompras (abas embutidas, sem navegar pra fora) ----
