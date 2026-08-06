@@ -214,9 +214,20 @@ def _start_subservers() -> None:
             # Caminho so vale nesta maquina local; VPS nao tem essa pasta ainda.
             # FUNDAMENTUS_DB: mesmo motivo -- o SQLite do FundamentusBR
             # (processo separado abaixo) mora fora do repo do Hub.
+            # GAMMA_API_BASE/RRG_API_BASE/SMARTMONEY_API_BASE: a pagina de
+            # detalhe de ativo (acoes.html) usa 3 rotas-proxy em
+            # IbovCalls/server.py que buscam GEX/RRG/holders dos outros
+            # sub-servicos. Os defaults hardcoded no server.py (8017/8021/8100)
+            # sao os de DEV STANDALONE de cada projeto; o Hub roda RRGCOMPLETO
+            # em PORT_RRG (8014, nao 8021) -- sem essa env var explicita,
+            # /api/rrg-strip sempre 503 mesmo com o RRGCompleto no ar (achado
+            # 06/ago/2026).
             "env":  {**__import__("os").environ, "PORT": str(PORT_IBOV),
                      "DEEPVAL_HTML_PATH": r"C:\Users\Guilherme\Downloads\TestCarlao\DeepValuationBrasil\consenso_analistas.html",
-                     "FUNDAMENTUS_DB": str(FUNDAMENTUS_DIR / "data" / "fundamentus.sqlite3")},
+                     "FUNDAMENTUS_DB": str(FUNDAMENTUS_DIR / "data" / "fundamentus.sqlite3"),
+                     "GAMMA_API_BASE": f"http://127.0.0.1:{PORT_GAMMA}",
+                     "RRG_API_BASE": f"http://127.0.0.1:{PORT_RRG}",
+                     "SMARTMONEY_API_BASE": f"http://127.0.0.1:{PORT_SMARTMONEY_BACKEND}"},
         },
         {
             # So mantem o SQLite atualizado (scheduler 11h/15h/19:30 BRT
