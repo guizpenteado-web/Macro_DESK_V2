@@ -492,17 +492,17 @@ body {
 
         <div class="timeline-section">
             <button type="button" id="timelineToggleBtn" class="timeline-toggle" aria-expanded="true" aria-controls="detailTimeline">
-                <span class="timeline-toggle-label">Calls sobre este ativo</span>
+                <span class="timeline-toggle-label">SELL SIDE CALLS</span>
                 <span class="timeline-toggle-chevron" aria-hidden="true">▾</span>
             </button>
             <div class="timeline" id="detailTimeline"></div>
         </div>
 
         <div class="tool-section" id="gexSection">
-            <div class="tool-section-head">
-                <h2>GEX — Gamma Exposure</h2>
-                <span class="tool-section-sub">Dados do GammaScreener</span>
-            </div>
+            <button type="button" id="gexToggleBtn" class="timeline-toggle" aria-expanded="true" aria-controls="gexContent">
+                <span class="timeline-toggle-label">GEX — Gamma Exposure</span>
+                <span class="timeline-toggle-chevron" aria-hidden="true">▾</span>
+            </button>
             <div id="gexContent"><div class="tool-loading">Carregando GEX...</div></div>
         </div>
 
@@ -1262,12 +1262,18 @@ document.addEventListener('keydown', e => {
     }
 });
 
-// ---- Toggle "Calls sobre este ativo" ----
+// ---- Toggle "SELL SIDE CALLS" / GEX ----
 document.getElementById('timelineToggleBtn').addEventListener('click', e => {
     const btn = e.currentTarget;
     const open = btn.getAttribute('aria-expanded') === 'true';
     btn.setAttribute('aria-expanded', String(!open));
     document.getElementById('detailTimeline').hidden = open;
+});
+document.getElementById('gexToggleBtn').addEventListener('click', e => {
+    const btn = e.currentTarget;
+    const open = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', String(!open));
+    document.getElementById('gexContent').hidden = open;
 });
 
 // ---- Botões de navegação rápida (Gamma / SmartMoneyBR / RRG) ----
@@ -1367,8 +1373,6 @@ function renderGex() {
         ['Zero Gamma', gexFmtPrice(d.zero_gamma_strike), ''],
         ['Call Wall', gexFmtPrice(d.call_wall), ''],
         ['Put Wall', gexFmtPrice(d.put_wall), ''],
-        ['Gamma Máx', gexFmtPrice(d.gamma_max), ''],
-        ['Gamma Mín', gexFmtPrice(d.gamma_min), ''],
         ['GEX líquido total', gexFmtCompact(d.gex_net_total), d.regime || ''],
         ['IV atual', csVal(d.iv_current) ? d.iv_current.toFixed(1) + '%' : '—', ''],
     ];
@@ -1394,40 +1398,70 @@ function renderGex() {
     drawGexChart();
 }
 
+// Linhas verticais de referência (spot/gamma flip/walls), igual ao layout
+// original do GammaScreener (lá em Plotly, aqui via chartjs-plugin-annotation
+// -- já carregado nesta página pro gráfico de preço).
+const GEX_VLINE_DEFS = [
+    ['spot', '#ffffff', 'Spot'],
+    ['gamma_flip', '#f0c94a', 'Gamma Flip'],
+    ['zero_gamma_strike', '#8b5cf6', 'Zero Gamma'],
+    ['call_wall', '#22c55e', 'Call Wall'],
+    ['put_wall', '#ef4444', 'Put Wall'],
+];
+function buildGexAnnotations(d) {
+    const out = {};
+    GEX_VLINE_DEFS.forEach(([key, color, label]) => {
+        const val = d[key];
+        if (!csVal(val)) return;
+        out[key] = {
+            type: 'line', xMin: val, xMax: val, borderColor: color, borderWidth: 2, borderDash: [6, 4],
+            label: {
+                display: true, content: `${label} ${val.toFixed(2)}`, position: 'start', rotation: 0,
+                backgroundColor: color, color: '#0d1117', font: { size: 9, weight: 'bold' },
+                padding: { top: 2, bottom: 2, left: 5, right: 5 },
+            },
+        };
+    });
+    return out;
+}
+
 function drawGexChart() {
     if (!gexData) return;
     const ctx = document.getElementById('gexChartCanvas');
     if (!ctx) return;
     const strikes = gexData.by_strike || [];
-    const labels = strikes.map(r => r.strike.toFixed(2));
     let datasets;
     if (gexActiveTab === 'callput') {
         datasets = [
-            { label: 'CALL', data: strikes.map(r => r.gex_call), backgroundColor: '#3fb950' },
-            { label: 'PUT', data: strikes.map(r => -Math.abs(r.gex_put)), backgroundColor: '#f85149' },
+            { label: 'CALL', data: strikes.map(r => ({ x: r.strike, y: r.gex_call })), backgroundColor: '#3fb950' },
+            { label: 'PUT', data: strikes.map(r => ({ x: r.strike, y: -Math.abs(r.gex_put) })), backgroundColor: '#f85149' },
         ];
     } else if (gexActiveTab === 'oi') {
         datasets = [
-            { label: 'OI líquido (call - put)', data: strikes.map(r => (r.weight_call || 0) - (r.weight_put || 0)),
+            { label: 'OI líquido (call - put)', data: strikes.map(r => ({ x: r.strike, y: (r.weight_call || 0) - (r.weight_put || 0) })),
               backgroundColor: strikes.map(r => (r.weight_call || 0) - (r.weight_put || 0) >= 0 ? '#3fb950' : '#f85149') },
         ];
     } else if (gexActiveTab === 'cum') {
         let acc = 0;
-        const cum = strikes.map(r => acc += r.gex_net);
-        datasets = [{ label: 'GEX cumulativo', data: cum, backgroundColor: cum.map(v => v >= 0 ? '#3fb950' : '#f85149') }];
+        const cum = strikes.map(r => ({ x: r.strike, y: (acc += r.gex_net) }));
+        datasets = [{ label: 'GEX cumulativo', data: cum, backgroundColor: cum.map(p => p.y >= 0 ? '#3fb950' : '#f85149') }];
     } else {
-        datasets = [{ label: 'GEX líquido', data: strikes.map(r => r.gex_net), backgroundColor: strikes.map(r => r.gex_net >= 0 ? '#3fb950' : '#f85149') }];
+        datasets = [{ label: 'GEX líquido', data: strikes.map(r => ({ x: r.strike, y: r.gex_net })), backgroundColor: strikes.map(r => r.gex_net >= 0 ? '#3fb950' : '#f85149') }];
     }
     gexChart = new Chart(ctx, {
         type: 'bar',
-        data: { labels, datasets },
+        data: { datasets },
         options: {
             responsive: true, maintainAspectRatio: false,
+            parsing: false,
             scales: {
-                x: { ticks: { color: '#8b949e', maxTicksLimit: 20, autoSkip: true }, grid: { color: '#21262d' } },
+                x: { type: 'linear', ticks: { color: '#8b949e', maxTicksLimit: 20, callback: v => Number(v).toFixed(2) }, grid: { color: '#21262d' } },
                 y: { ticks: { color: '#8b949e' }, grid: { color: '#21262d' } },
             },
-            plugins: { legend: { labels: { color: '#c9d1d9' } } },
+            plugins: {
+                legend: { labels: { color: '#c9d1d9' } },
+                annotation: { annotations: buildGexAnnotations(gexData) },
+            },
         },
     });
 }
