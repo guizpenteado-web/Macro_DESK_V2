@@ -84,8 +84,9 @@ body {
 }
 .detail-header-left, .detail-header-right { display: flex; flex-direction: column; gap: 10px; }
 .detail-header-right { align-items: flex-end; margin-top: 22px; }
-.detail-change { font-size: 14px; font-weight: 500; margin-top: 8px; }
-.ticker-name-row { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+.detail-price-block { display: flex; flex-direction: column; }
+.detail-change { font-size: 14px; font-weight: 500; }
+.ticker-name-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
 .detail-header .ticker-title { font-size: 28px; font-weight: 700; color: #f0f6fc; }
 .detail-header .ticker-company { font-size: 14px; color: #8b949e; margin-top: 4px; }
 .detail-price { text-align: left; }
@@ -479,10 +480,12 @@ body {
     <div id="detailView" style="display:none">
         <div class="detail-header">
             <div class="detail-header-left">
-                <div class="detail-change" id="detailChange"></div>
                 <div class="ticker-name-row">
                     <div class="ticker-title" id="detailTicker"></div>
-                    <div class="detail-price" id="detailPrice"></div>
+                    <div class="detail-price-block">
+                        <div class="detail-change" id="detailChange"></div>
+                        <div class="detail-price" id="detailPrice"></div>
+                    </div>
                 </div>
                 <div class="detail-tools">
                     <button type="button" class="tool-nav-btn" data-target="gexSection">Gamma</button>
