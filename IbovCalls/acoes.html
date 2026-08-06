@@ -174,6 +174,11 @@ body {
 .sm-table-wrap { overflow: auto; max-height: 420px; border: 1px solid #21262d; border-radius: 9px; }
 .sm-table { width: 100%; border-collapse: collapse; white-space: nowrap; }
 .sm-table th { position: sticky; top: 0; background: #1c2128; color: #8b949e; text-align: left; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid #21262d; }
+.sm-table th.sm-sortable { cursor: pointer; user-select: none; }
+.sm-table th.sm-sortable:hover, .sm-table th.sm-sortable.active { color: #58a6ff; }
+.sm-table th.num { text-align: right; }
+.sm-table td.num, .sm-table th .sm-arrow { text-align: right; }
+.sm-table th .sm-arrow { display: inline-block; width: 10px; margin-left: 4px; color: #58a6ff; }
 .sm-table td { padding: 8px 10px; border-bottom: 1px solid #21262d; color: #c9d1d9; font-size: 12px; }
 .sm-table tbody tr:hover { background: #1c2128; }
 
@@ -1580,31 +1585,73 @@ async function loadSmInsiders(ticker) {
     }
 }
 
+// ---- Ordenação genérica por coluna (Insiders/Recompras) ----
+function smSortRows(rows, sortState) {
+    return [...rows].sort((a, b) => {
+        const av = a[sortState.key], bv = b[sortState.key];
+        const am = av === null || av === undefined || av === '', bm = bv === null || bv === undefined || bv === '';
+        if (am || bm) return am === bm ? 0 : am ? 1 : -1;
+        const cmp = typeof av === 'number' && typeof bv === 'number'
+            ? av - bv
+            : String(av).localeCompare(String(bv), 'pt-BR', { sensitivity: 'base' });
+        return sortState.dir === 'asc' ? cmp : -cmp;
+    });
+}
+function smTableHead(columns, sortState) {
+    return columns.map(c => {
+        const active = c.key === sortState.key;
+        const arrow = active ? (sortState.dir === 'asc' ? '▲' : '▼') : '';
+        return `<th class="sm-sortable${c.numeric ? ' num' : ''}${active ? ' active' : ''}" data-key="${c.key}">${c.label}<span class="sm-arrow">${arrow}</span></th>`;
+    }).join('');
+}
+function smWireSortableHeaders(box, sortState, onSort) {
+    box.querySelectorAll('.sm-sortable').forEach(th => {
+        th.addEventListener('click', () => {
+            const key = th.dataset.key;
+            if (sortState.key === key) sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+            else { sortState.key = key; sortState.dir = 'asc'; }
+            onSort();
+        });
+    });
+}
+
+let smInsidersSort = { key: 'data_movimentacao', dir: 'desc' };
+const SM_INSIDERS_COLS = [
+    { key: 'data_movimentacao', label: 'Data' },
+    { key: 'tipo_cargo', label: 'Cargo' },
+    { key: 'direction', label: 'Tipo' },
+    { key: 'quantidade', label: 'Quantidade', numeric: true },
+    { key: 'preco_unitario', label: 'Preço', numeric: true },
+    { key: 'volume', label: 'Volume', numeric: true },
+];
+
 function renderSmInsiders() {
     const box = document.getElementById('smartmoneyContent');
     if (!smInsiders.length) {
         box.innerHTML = '<div class="tool-empty">Nenhuma negociação de insider registrada para este ativo.</div>';
         return;
     }
+    const rows = smSortRows(smInsiders.map(t => ({ ...t, direction: t.direction || t.tipo_movimentacao || '' })), smInsidersSort);
     box.innerHTML = `
         <div class="sm-table-wrap">
             <table class="sm-table">
-                <thead><tr><th>Data</th><th>Cargo</th><th>Tipo</th><th>Quantidade</th><th>Preço</th><th>Volume</th></tr></thead>
+                <thead><tr>${smTableHead(SM_INSIDERS_COLS, smInsidersSort)}</tr></thead>
                 <tbody>
-                    ${smInsiders.map(t => `
+                    ${rows.map(t => `
                         <tr>
                             <td>${t.data_movimentacao ? fmtDate(t.data_movimentacao) : '—'}</td>
                             <td>${csEsc(t.tipo_cargo || '—')}</td>
-                            <td class="${t.direction === 'VENDA' ? 'change negative' : 'change positive'}">${csEsc(t.direction || t.tipo_movimentacao || '—')}</td>
-                            <td>${csVal(t.quantidade) ? t.quantidade.toLocaleString('pt-BR') : '—'}</td>
-                            <td>${csVal(t.preco_unitario) ? gexFmtPrice(t.preco_unitario) : '—'}</td>
-                            <td>${csVal(t.volume) ? gexFmtCompact(t.volume) : '—'}</td>
+                            <td class="${t.direction === 'VENDA' ? 'change negative' : 'change positive'}">${csEsc(t.direction || '—')}</td>
+                            <td class="num">${csVal(t.quantidade) ? t.quantidade.toLocaleString('pt-BR') : '—'}</td>
+                            <td class="num">${csVal(t.preco_unitario) ? gexFmtPrice(t.preco_unitario) : '—'}</td>
+                            <td class="num">${csVal(t.volume) ? gexFmtCompact(t.volume) : '—'}</td>
                         </tr>
                     `).join('')}
                 </tbody>
             </table>
         </div>
     `;
+    smWireSortableHeaders(box, smInsidersSort, renderSmInsiders);
 }
 
 async function loadSmBuybacks(ticker) {
@@ -1626,31 +1673,43 @@ async function loadSmBuybacks(ticker) {
     }
 }
 
+let smBuybacksSort = { key: 'declared_at', dir: 'desc' };
+const SM_BUYBACKS_COLS = [
+    { key: 'declared_at', label: 'Declarado em' },
+    { key: 'deadline', label: 'Prazo' },
+    { key: 'status', label: 'Status' },
+    { key: 'operation_type', label: 'Tipo' },
+    { key: 'qty_common_shares', label: 'Qtd ON', numeric: true },
+    { key: 'qty_preferred_shares', label: 'Qtd PN', numeric: true },
+];
+
 function renderSmBuybacks() {
     const box = document.getElementById('smartmoneyContent');
     if (!smBuybacks.length) {
         box.innerHTML = '<div class="tool-empty">Nenhum programa de recompra registrado para este ativo.</div>';
         return;
     }
+    const rows = smSortRows(smBuybacks, smBuybacksSort);
     box.innerHTML = `
         <div class="sm-table-wrap">
             <table class="sm-table">
-                <thead><tr><th>Declarado em</th><th>Prazo</th><th>Status</th><th>Tipo</th><th>Qtd ON</th><th>Qtd PN</th></tr></thead>
+                <thead><tr>${smTableHead(SM_BUYBACKS_COLS, smBuybacksSort)}</tr></thead>
                 <tbody>
-                    ${smBuybacks.map(b => `
+                    ${rows.map(b => `
                         <tr>
                             <td>${fmtDate(b.declared_at)}</td>
                             <td>${b.deadline ? fmtDate(b.deadline) : '—'}</td>
                             <td>${csEsc(b.status)}</td>
                             <td>${csEsc(b.operation_type || '—')}</td>
-                            <td>${csVal(b.qty_common_shares) ? b.qty_common_shares.toLocaleString('pt-BR') : '—'}</td>
-                            <td>${csVal(b.qty_preferred_shares) ? b.qty_preferred_shares.toLocaleString('pt-BR') : '—'}</td>
+                            <td class="num">${csVal(b.qty_common_shares) ? b.qty_common_shares.toLocaleString('pt-BR') : '—'}</td>
+                            <td class="num">${csVal(b.qty_preferred_shares) ? b.qty_preferred_shares.toLocaleString('pt-BR') : '—'}</td>
                         </tr>
                     `).join('')}
                 </tbody>
             </table>
         </div>
     `;
+    smWireSortableHeaders(box, smBuybacksSort, renderSmBuybacks);
 }
 
 init();
